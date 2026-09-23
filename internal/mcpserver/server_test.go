@@ -149,7 +149,7 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 		{operations.Check.Tool, map[string]any{}},
 		{operations.ListGroups.Tool, map[string]any{}},
 		{operations.CreateGroup.Tool, map[string]any{"name": "New group"}},
-		{operations.UpdateGroup.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000001", "name": "Renamed"}},
+		{operations.UpdateGroup.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000001", "name": "Renamed", "parent_id": "root"}},
 		{operations.ListPriceTypes.Tool, map[string]any{}},
 		{operations.GetPrice.Tool, map[string]any{"product_id": "00000000-0000-0000-0000-000000000004", "price_type": "Retail", "as_of": "2026-09-23"}},
 		{operations.ListWarehouses.Tool, map[string]any{}},

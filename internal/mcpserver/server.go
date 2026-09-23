@@ -53,8 +53,9 @@ type createGroupInput struct {
 }
 
 type updateGroupInput struct {
-	ID   string `json:"id" jsonschema:"Existing product group GUID"`
-	Name string `json:"name" jsonschema:"Replacement product group name"`
+	ID       string  `json:"id" jsonschema:"Existing product group GUID"`
+	Name     *string `json:"name,omitempty" jsonschema:"Replacement product group name"`
+	ParentID *string `json:"parent_id,omitempty" jsonschema:"Destination group GUID or root"`
 }
 
 type listPriceTypesInput struct{}
@@ -249,7 +250,7 @@ func New(svc service.Service) *mcp.Server {
 		Name: operations.UpdateGroup.Tool, Description: operations.UpdateGroup.Description,
 		Annotations: &mcp.ToolAnnotations{IdempotentHint: true},
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, input updateGroupInput) (*mcp.CallToolResult, service.GroupChange, error) {
-		change, err := svc.UpdateGroup(ctx, input.ID, input.Name)
+		change, err := svc.UpdateGroup(ctx, input.ID, service.GroupPatch{Name: input.Name, ParentID: input.ParentID})
 		return nil, change, err
 	})
 	mcp.AddTool(server, &mcp.Tool{

@@ -67,7 +67,7 @@ func TestCreateRootGroupUsesEmptyParent(t *testing.T) {
 
 func TestUpdateGroupUsesDataVersionAndRejectsProducts(t *testing.T) {
 	stub := &groupWriteStub{row: `{"Ref_Key":"` + groupID + `","Description":"Old","Parent_Key":"` + emptyGUID + `","IsFolder":true,"DeletionMark":false,"DataVersion":"AAAAAQ=="}`}
-	change, err := (Service{OData: stub}).UpdateGroup(context.Background(), groupID, "New")
+	change, err := (Service{OData: stub}).UpdateGroup(context.Background(), groupID, GroupPatch{Name: textPointer("New")})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,18 +75,84 @@ func TestUpdateGroupUsesDataVersionAndRejectsProducts(t *testing.T) {
 		t.Fatalf("unexpected update: change=%+v stub=%+v", change, stub)
 	}
 	stub.row = `{"Ref_Key":"` + groupID + `","Description":"Old","IsFolder":false,"DataVersion":"AAAAAQ=="}`
-	if _, err := (Service{OData: stub}).UpdateGroup(context.Background(), groupID, "New"); err == nil || stub.writeHits != 1 {
+	if _, err := (Service{OData: stub}).UpdateGroup(context.Background(), groupID, GroupPatch{Name: textPointer("New")}); err == nil || stub.writeHits != 1 {
 		t.Fatal("updated a product as a group")
 	}
 }
 
 func TestUpdateGroupSkipsUnchangedNameAndRejectsInvalidID(t *testing.T) {
 	stub := &groupWriteStub{row: `{"Ref_Key":"` + groupID + `","Description":"Same","IsFolder":true,"DataVersion":"v1"}`}
-	change, err := (Service{OData: stub}).UpdateGroup(context.Background(), groupID, "Same")
+	change, err := (Service{OData: stub}).UpdateGroup(context.Background(), groupID, GroupPatch{Name: textPointer("Same")})
 	if err != nil || change.Applied || stub.writeHits != 0 {
 		t.Fatalf("unchanged group wrote data: %+v, %v", change, err)
 	}
-	if _, err := (Service{OData: stub}).UpdateGroup(context.Background(), "../../etc/passwd", "New"); err == nil {
+	if _, err := (Service{OData: stub}).UpdateGroup(context.Background(), "../../etc/passwd", GroupPatch{Name: textPointer("New")}); err == nil {
 		t.Fatal("invalid ID accepted")
+	}
+}
+
+type groupMoveStub struct {
+	records map[string]string
+	writes  int
+	body    map[string]any
+	ifMatch string
+}
+
+func (*groupMoveStub) Check(context.Context) (int, error) { return 1, nil }
+
+func (stub *groupMoveStub) Get(_ context.Context, resource string, _ url.Values, _ int64) ([]byte, error) {
+	id := strings.TrimSuffix(strings.TrimPrefix(resource, "Catalog_Номенклатура(guid'"), "')")
+	row, ok := stub.records[id]
+	if !ok {
+		return nil, errors.New("unknown group")
+	}
+	return []byte(row), nil
+}
+
+func (stub *groupMoveStub) Write(_ context.Context, method, resource string, body []byte, ifMatch string) ([]byte, error) {
+	if method != http.MethodPatch || resource != nomenclatureResource(groupID) {
+		return nil, errors.New("unexpected group write")
+	}
+	stub.writes++
+	stub.ifMatch = ifMatch
+	return nil, json.Unmarshal(body, &stub.body)
+}
+
+func TestUpdateGroupMovesAndSkipsUnchangedParent(t *testing.T) {
+	stub := &groupMoveStub{records: map[string]string{
+		groupID: `{"Ref_Key":"` + groupID + `","Description":"Moved","Parent_Key":"` + emptyGUID + `","IsFolder":true,"DeletionMark":false,"DataVersion":"v2"}`,
+		childID: `{"Ref_Key":"` + childID + `","Description":"Destination","Parent_Key":"` + emptyGUID + `","IsFolder":true,"DeletionMark":false}`,
+	}}
+	change, err := (Service{OData: stub}).UpdateGroup(context.Background(), groupID, GroupPatch{ParentID: textPointer(childID)})
+	if err != nil || !change.Applied || change.ParentID != childID || stub.writes != 1 || stub.ifMatch != "v2" || len(stub.body) != 1 || stub.body["Parent_Key"] != childID {
+		t.Fatalf("group move: %+v, %+v, %v", change, stub, err)
+	}
+	stub.records[groupID] = `{"Ref_Key":"` + groupID + `","Description":"Moved","Parent_Key":"` + childID + `","IsFolder":true,"DeletionMark":false,"DataVersion":"v3"}`
+	change, err = (Service{OData: stub}).UpdateGroup(context.Background(), groupID, GroupPatch{ParentID: textPointer(childID)})
+	if err != nil || change.Applied || stub.writes != 1 {
+		t.Fatalf("unchanged parent: %+v, %v", change, err)
+	}
+	change, err = (Service{OData: stub}).UpdateGroup(context.Background(), groupID, GroupPatch{ParentID: textPointer("root")})
+	if err != nil || !change.Applied || change.ParentID != emptyGUID || stub.writes != 2 || stub.body["Parent_Key"] != emptyGUID {
+		t.Fatalf("move to root: %+v, %+v, %v", change, stub, err)
+	}
+}
+
+func TestUpdateGroupRejectsCyclesAndInvalidParents(t *testing.T) {
+	stub := &groupMoveStub{records: map[string]string{
+		groupID: `{"Ref_Key":"` + groupID + `","Description":"Parent","Parent_Key":"` + emptyGUID + `","IsFolder":true,"DeletionMark":false,"DataVersion":"v2"}`,
+		childID: `{"Ref_Key":"` + childID + `","Description":"Child","Parent_Key":"` + groupID + `","IsFolder":true,"DeletionMark":false}`,
+	}}
+	for _, destination := range []string{groupID, childID, "", "not-a-guid"} {
+		if _, err := (Service{OData: stub}).UpdateGroup(context.Background(), groupID, GroupPatch{ParentID: &destination}); err == nil || stub.writes != 0 {
+			t.Fatalf("accepted cyclic or invalid destination %q", destination)
+		}
+	}
+	stub.records[childID] = `{"Ref_Key":"` + childID + `","Description":"Deleted","Parent_Key":"` + emptyGUID + `","IsFolder":true,"DeletionMark":true}`
+	if _, err := (Service{OData: stub}).UpdateGroup(context.Background(), groupID, GroupPatch{ParentID: textPointer(childID)}); err == nil || stub.writes != 0 {
+		t.Fatal("moved under a deleted group")
+	}
+	if _, err := (Service{OData: stub}).UpdateGroup(context.Background(), groupID, GroupPatch{}); err == nil || stub.writes != 0 {
+		t.Fatal("accepted an empty update")
 	}
 }

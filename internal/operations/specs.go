@@ -36,9 +36,9 @@ var CreateGroup = Spec{
 var UpdateGroup = Spec{
 	Command:     "update group",
 	Tool:        "update_product_group",
-	Description: "Rename an existing product group by 1C ID.",
-	Usage:       "1c update group GUID --name NAME [--json]",
-	Example:     "1c update group GROUP_GUID --name НовоеИмя",
+	Description: "Rename or move an existing product group by 1C ID.",
+	Usage:       "1c update group GUID [--name NAME] [--parent GROUP_GUID|root] [--json]",
+	Example:     "1c update group GROUP_GUID --parent PARENT_GUID",
 }
 
 var ListPriceTypes = Spec{
