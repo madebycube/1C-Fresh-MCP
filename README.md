@@ -4,7 +4,7 @@ A local, read-only interface to a 1C-Fresh application through its standard ODat
 
 ## Setup
 
-Requires Go 1.25 or newer. Copy `.env.example` to `.env` and set the application URL, username, and password. The existing `.env` file in this workspace is already ignored by Git. Process environment variables override file values. Set `ONEC_ENV_FILE` to load a different file.
+Requires Go 1.25 or newer. Copy `.env.example` to `.env` and set the application URL, username, and password. The existing `.env` file in this workspace is already ignored by Git. Process environment variables override file values. The CLI reads `.env` in the current directory, then the project `.env` when launched through a binary in the project's `bin` directory. Set `ONEC_ENV_FILE` to load a different file.
 
 ```sh
 go build -o bin/1c ./cmd/1cfresh
@@ -20,6 +20,8 @@ bin/1c list receipts --kind sale --from 2026-09-01 --to 2026-09-01
 bin/1c get receipt --kind refund --json RECEIPT_GUID
 bin/1c audit receipts --from 2026-09-01 --before 2026-09-24 --json
 ```
+
+To run `1c` from any directory, symlink `bin/1c` into a directory on `PATH`. The CLI follows the symlink to find the project `.env`. This workspace already has `~/.local/bin/1c` linked to the built binary.
 
 The CLI uses `1c VERB RESOURCE` throughout. `1c COMMAND --help` explains a command without needing credentials. Earlier `products search`, `orders list`, `orders get`, and `receipts ...` forms still work as aliases. The CLI prints a table by default and JSON with `--json`.
 
