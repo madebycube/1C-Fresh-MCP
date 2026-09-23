@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/url"
 	"strconv"
 	"strings"
@@ -43,8 +44,8 @@ func (r *auditReader) Get(_ context.Context, resource string, params url.Values,
 
 func auditRow(index int, date string, posted any) map[string]any {
 	return map[string]any{
-		"Ref_Key": "00000000-0000-0000-0000-" + strings.Repeat("0", 11) + strconv.Itoa(index%10),
-		"Number":  strconv.Itoa(index), "Date": date, "Posted": posted, "СуммаДокумента": 10,
+		"Ref_Key": fmt.Sprintf("00000000-0000-0000-0000-%012x", index),
+		"Number":  strconv.Itoa(index), "Date": date, "Posted": posted, "DeletionMark": false, "СуммаДокумента": 10,
 	}
 }
 

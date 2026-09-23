@@ -62,33 +62,21 @@ func (s Service) ListOrders(ctx context.Context, limit int) ([]Order, error) {
 		return nil, fmt.Errorf("limit must be between 1 and %d", MaxOrders)
 	}
 	plan := config.CustomerOrders
-	count, err := s.documentCount(ctx, plan)
+	rows, err := s.allDocumentRows(ctx, plan)
 	if err != nil {
 		return nil, err
 	}
-	if limit > count {
-		limit = count
+	if limit > len(rows) {
+		limit = len(rows)
 	}
-	rows, err := s.documentPage(ctx, plan, count-limit, limit)
-	if err != nil {
-		return nil, err
-	}
-	if len(rows) != limit {
-		return nil, errors.New("OData order count changed during lookup")
-	}
-	orders := make([]Order, 0, len(rows))
-	for index := len(rows) - 1; index >= 0; index-- {
+	orders := make([]Order, 0, limit)
+	for index := len(rows) - 1; index >= len(rows)-limit; index-- {
 		row := rows[index]
 		order, err := bindFields[Order](row, plan.Fields)
 		if err != nil {
 			return nil, errors.New("invalid OData order fields")
 		}
 		orders = append(orders, order)
-	}
-	for index := 1; index < len(orders); index++ {
-		if orders[index].Date > orders[index-1].Date {
-			return nil, errors.New("OData returned orders outside descending date order")
-		}
 	}
 	return orders, nil
 }
