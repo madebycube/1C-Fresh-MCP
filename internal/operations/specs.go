@@ -6,7 +6,12 @@ type Spec struct {
 	Description string
 	Usage       string
 	Example     string
-	Advanced    bool
+}
+
+type Topic struct {
+	Name        string
+	Description string
+	Commands    []Spec
 }
 
 var Check = Spec{
@@ -383,7 +388,6 @@ var SearchResources = Spec{
 	Description: "Find raw OData entity sets exposed by this 1C application.",
 	Usage:       "1c search resources [--kind catalog|document|register|other] [--limit N] [--json] QUERY",
 	Example:     "1c search resources --kind document Заказ",
-	Advanced:    true,
 }
 
 var DescribeResource = Spec{
@@ -392,7 +396,25 @@ var DescribeResource = Spec{
 	Description: "Show fields, types, keys, and links for one raw OData entity set.",
 	Usage:       "1c describe resource [--json] EXACT_NAME",
 	Example:     "1c describe resource Catalog_ВидыЦен",
-	Advanced:    true,
 }
 
-var All = []Spec{Check, ListGroups, ListProductCategories, ListProductCharacteristics, CreateGroup, UpdateGroup, ListCounterpartyGroups, CreateCounterpartyGroup, UpdateCounterpartyGroup, ListPriceTypes, ListCurrencies, ListUnitTypes, GetPrice, GetPriceDocument, ListPrices, ListWarehouses, GetStock, ListProducts, GetProduct, CreateProduct, SearchProducts, UpdateProduct, ListCustomers, SearchCustomers, GetCustomer, CreateCustomer, UpdateCustomer, ListSuppliers, SearchSuppliers, GetSupplier, CreateSupplier, UpdateSupplier, ListOrders, GetOrder, ListSales, GetSale, ListPurchases, GetPurchase, ListWarehouseDocuments, GetWarehouseDocument, ListMoneyAccounts, ListMoney, GetMoney, ListReceipts, GetReceipt, AuditUnpostedReceipts, SearchResources, DescribeResource}
+var Topics = []Topic{
+	{Name: "setup", Description: "Connection and local MCP server", Commands: []Spec{Check}},
+	{Name: "products", Description: "Products, groups, categories, and characteristics", Commands: []Spec{ListProducts, GetProduct, SearchProducts, CreateProduct, UpdateProduct, ListGroups, CreateGroup, UpdateGroup, ListProductCategories, ListProductCharacteristics, ListUnitTypes}},
+	{Name: "prices", Description: "Price types, currencies, quotes, and source documents", Commands: []Spec{ListPriceTypes, ListCurrencies, GetPrice, ListPrices, GetPriceDocument}},
+	{Name: "inventory", Description: "Warehouses, stock, and warehouse documents", Commands: []Spec{ListWarehouses, GetStock, ListWarehouseDocuments, GetWarehouseDocument}},
+	{Name: "partners", Description: "Customer and supplier records and folders", Commands: []Spec{ListCounterpartyGroups, CreateCounterpartyGroup, UpdateCounterpartyGroup, ListCustomers, SearchCustomers, GetCustomer, CreateCustomer, UpdateCustomer, ListSuppliers, SearchSuppliers, GetSupplier, CreateSupplier, UpdateSupplier}},
+	{Name: "sales", Description: "Customer orders and sales documents", Commands: []Spec{ListOrders, GetOrder, ListSales, GetSale}},
+	{Name: "purchases", Description: "Supplier orders and goods receipts", Commands: []Spec{ListPurchases, GetPurchase}},
+	{Name: "money", Description: "Accounts, cash, bank, and card movements", Commands: []Spec{ListMoneyAccounts, ListMoney, GetMoney}},
+	{Name: "receipts", Description: "Fiscal receipts and posting audit", Commands: []Spec{ListReceipts, GetReceipt, AuditUnpostedReceipts}},
+	{Name: "schema", Description: "Search and inspect exposed OData resources", Commands: []Spec{SearchResources, DescribeResource}},
+}
+
+var All = func() []Spec {
+	var commands []Spec
+	for _, topic := range Topics {
+		commands = append(commands, topic.Commands...)
+	}
+	return commands
+}()

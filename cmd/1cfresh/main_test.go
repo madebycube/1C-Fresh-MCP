@@ -6,6 +6,8 @@ import (
 	"flag"
 	"strings"
 	"testing"
+
+	"github.com/madebycube/1C-Fresh-MCP/internal/operations"
 )
 
 func TestHelpExplainsCommandsWithoutCredentials(t *testing.T) {
@@ -17,6 +19,34 @@ func TestHelpExplainsCommandsWithoutCredentials(t *testing.T) {
 		if !strings.Contains(output.String(), "1c ") {
 			t.Fatalf("help %v has no example or usage: %s", args, output.String())
 		}
+	}
+}
+
+func TestTopicHelpKeepsEveryCommandDiscoverable(t *testing.T) {
+	var overview bytes.Buffer
+	if err := run(context.Background(), []string{"--help"}, &overview); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(overview.String(), "1c help prices") || strings.Contains(overview.String(), "source documents by ID") {
+		t.Fatalf("unexpected overview: %s", overview.String())
+	}
+	var all bytes.Buffer
+	if err := run(context.Background(), []string{"help", "all"}, &all); err != nil {
+		t.Fatal(err)
+	}
+	seen := make(map[string]bool)
+	for _, operation := range operations.All {
+		if seen[operation.Command] || !strings.Contains(all.String(), operation.Command) {
+			t.Fatalf("command missing or repeated: %s", operation.Command)
+		}
+		seen[operation.Command] = true
+	}
+	var prices bytes.Buffer
+	if err := run(context.Background(), []string{"help", "prices"}, &prices); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(prices.String(), "get price-document") || strings.Contains(prices.String(), "list customers") {
+		t.Fatalf("unexpected price topic: %s", prices.String())
 	}
 }
 
