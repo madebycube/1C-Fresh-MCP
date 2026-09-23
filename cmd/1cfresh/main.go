@@ -122,12 +122,20 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		return runCustomerList(ctx, svc, commandArgs, out, true, "customer")
 	case operations.GetCustomer.Command:
 		return runCustomerGet(ctx, svc, commandArgs, out, "customer")
+	case operations.CreateCustomer.Command:
+		return runCounterpartyCreate(ctx, svc, commandArgs, out, "customer")
+	case operations.UpdateCustomer.Command:
+		return runCounterpartyUpdate(ctx, svc, commandArgs, out, "customer")
 	case operations.ListSuppliers.Command:
 		return runCustomerList(ctx, svc, commandArgs, out, false, "supplier")
 	case operations.SearchSuppliers.Command:
 		return runCustomerList(ctx, svc, commandArgs, out, true, "supplier")
 	case operations.GetSupplier.Command:
 		return runCustomerGet(ctx, svc, commandArgs, out, "supplier")
+	case operations.CreateSupplier.Command:
+		return runCounterpartyCreate(ctx, svc, commandArgs, out, "supplier")
+	case operations.UpdateSupplier.Command:
+		return runCounterpartyUpdate(ctx, svc, commandArgs, out, "supplier")
 	case operations.ListSales.Command:
 		return runSalesList(ctx, svc, commandArgs, out)
 	case operations.GetSale.Command:
@@ -232,6 +240,8 @@ func printHelp(out io.Writer) {
 	fmt.Fprintln(out, "  1c search customers \"Пример компании\"")
 	fmt.Fprintln(out, "  1c search suppliers \"Пример поставщика\"")
 	fmt.Fprintln(out, "  1c list sales --kind shipment --limit 20")
+	fmt.Fprintln(out, "  1c create customer --name \"Example customer\"")
+	fmt.Fprintln(out, "  1c update supplier SUPPLIER_GUID --name \"New name\"")
 	fmt.Fprintln(out, "  1c list purchases --kind receipt --limit 20")
 	fmt.Fprintln(out, "  1c list warehouse-docs --kind transfer --limit 20")
 	fmt.Fprintln(out, "  1c list accounts --kind bank")

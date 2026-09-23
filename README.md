@@ -68,9 +68,13 @@ ln -s /path/to/1C-Fresh-MCP/bin/1c "$HOME/.local/bin/1c"
 1c list customers --limit 20
 1c search customers "Пример компании"
 1c get customer CUSTOMER_GUID
+1c create customer --name "Пример покупателя"
+1c update customer CUSTOMER_GUID --name "Новое название"
 1c list suppliers --limit 20
 1c search suppliers "Пример поставщика"
 1c get supplier SUPPLIER_GUID
+1c create supplier --name "Пример поставщика"
+1c update supplier SUPPLIER_GUID --name "Новое название"
 1c list orders --limit 20
 1c get order --json ORDER_GUID
 1c list sales --kind shipment --limit 20
@@ -100,7 +104,7 @@ ln -s /path/to/1C-Fresh-MCP/bin/1c "$HOME/.local/bin/1c"
 
 `list warehouses` показывает склады и розничные точки из справочника структурных единиц. `get stock` показывает текущие остатки товара по складам; `--warehouse` ограничивает ответ одним складом, `--characteristic` — одной характеристикой. Количество берётся из виртуальной таблицы `AccumulationRegister_ЗапасыНаСкладах/Balance` и суммируется по характеристикам, партиям, ячейкам и организациям, если характеристика не выбрана. JSON также содержит исходные строки баланса и ID единицы измерения товара. Если 1С не находит описание единицы, её ID остаётся в результате. Это остаток на складе, а не обещание доступности товара для продажи.
 
-`create group` создаёт группу в корне каталога либо внутри группы, указанной через `--parent`. `update group` переименовывает существующую группу по её GUID. `update product` меняет название, полное название (`--full-name`) и/или артикул (`--article`) товара; пустая строка очищает полное название или артикул. Эти команды **изменяют данные в действующей 1С**. Запись в действующую базу не проверялась. Создания товаров, удаления и общего редактора OData пока нет.
+`create group` создаёт группу в корне каталога либо внутри группы, указанной через `--parent`. `update group` переименовывает существующую группу по её GUID. `update product` меняет название, полное название (`--full-name`) и/или артикул (`--article`) товара; пустая строка очищает полное название или артикул. `create customer` и `create supplier` создают контрагента с соответствующим признаком; полное название по умолчанию совпадает с названием, а `--parent` задаёт папку контрагентов. `update customer` и `update supplier` меняют название и/или полное название существующего контрагента с нужным признаком. Пустое `--full-name ""` очищает полное название. Эти команды **изменяют данные в действующей 1С**. Запись в действующую базу не проверялась. Создания товаров, удаления и общего редактора OData пока нет.
 
 Поиск товаров проверяет название, полное название и артикул, исключает папки и помеченные на удаление записи и возвращает не более 50 результатов. Список заказов показывает до 100 последних заказов без пометки на удаление; просмотр заказа включает товарные строки. Список чеков принимает включительный диапазон до 31 дня, возвращает до 100 записей на страницу и поддерживает `--offset`. Детали чека включают товарные строки и безналичные платежи. В JSON суммы и количества представлены строками с десятичными числами, чтобы сохранить точность источника.
 
@@ -141,8 +145,8 @@ bin/1c mcp
 | `list_product_groups`, `list_price_types`, `get_product_price` | `update_product_group` |
 | `list_warehouses`, `get_product_stock` | |
 | `find_nomenclature` | `update_product` |
-| `list_customers`, `search_customers`, `get_customer` | |
-| `list_suppliers`, `search_suppliers`, `get_supplier` | |
+| `list_customers`, `search_customers`, `get_customer` | `create_customer`, `update_customer` |
+| `list_suppliers`, `search_suppliers`, `get_supplier` | `create_supplier`, `update_supplier` |
 | `list_customer_orders`, `get_customer_order` | |
 | `list_sales_documents`, `get_sales_document` | |
 | `list_purchase_documents`, `get_purchase_document` | |
@@ -152,7 +156,7 @@ bin/1c mcp
 | `audit_unposted_receipts` | |
 | `search_odata_resources`, `describe_odata_resource` | |
 
-Инструменты создания и изменения групп записывают данные в 1С. Инструментов для удаления, проведения документов и произвольных запросов OData нет.
+Инструменты создания и изменения групп и контрагентов записывают данные в 1С. Инструментов для удаления, проведения документов и произвольных запросов OData нет.
 
 Границы доступа к отчётам, кадровым и налоговым данным описаны в [политике доступа](docs/access-policy.md).
 

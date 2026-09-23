@@ -42,7 +42,7 @@ func (stubReader) Get(_ context.Context, resource string, params url.Values, _ i
 		return []byte(`{"odata.count":"1","value":[{"Ref_Key":"00000000-0000-0000-0000-000000000011","Code":"C1","Description":"Cash desk","DeletionMark":false,"Недействителен":false}]}`), nil
 	}
 	if strings.HasPrefix(resource, "Catalog_Контрагенты(") {
-		return []byte(`{"Ref_Key":"00000000-0000-0000-0000-000000000007","Code":"C1","Description":"Example customer","IsFolder":false,"DeletionMark":false,"Недействителен":false,"Покупатель":true,"Поставщик":true}`), nil
+		return []byte(`{"Ref_Key":"00000000-0000-0000-0000-000000000007","Code":"C1","Description":"Example customer","НаименованиеПолное":"Example customer","IsFolder":false,"DeletionMark":false,"Недействителен":false,"Покупатель":true,"Поставщик":true,"DataVersion":"version-1"}`), nil
 	}
 	if params.Get("$inlinecount") != "" {
 		return []byte(`{"odata.count":"1","value":[]}`), nil
@@ -121,22 +121,22 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(listed.Tools) != 32 {
-		t.Fatalf("got %d tools; want 32", len(listed.Tools))
+	if len(listed.Tools) != 36 {
+		t.Fatalf("got %d tools; want 36", len(listed.Tools))
 	}
 	for _, tool := range listed.Tools {
 		if tool.Annotations == nil {
 			t.Fatalf("tool %s has no annotations", tool.Name)
 		}
-		write := tool.Name == operations.CreateGroup.Tool || tool.Name == operations.UpdateGroup.Tool || tool.Name == operations.UpdateProduct.Tool
+		write := tool.Name == operations.CreateGroup.Tool || tool.Name == operations.UpdateGroup.Tool || tool.Name == operations.UpdateProduct.Tool || tool.Name == operations.CreateCustomer.Tool || tool.Name == operations.UpdateCustomer.Tool || tool.Name == operations.CreateSupplier.Tool || tool.Name == operations.UpdateSupplier.Tool
 		if tool.Annotations.ReadOnlyHint == write {
 			t.Fatalf("tool %s has incorrect read-only annotation", tool.Name)
 		}
-		if tool.Name == operations.CreateGroup.Tool && (tool.Annotations.DestructiveHint == nil || *tool.Annotations.DestructiveHint) {
-			t.Fatal("create group must be marked additive")
+		if (tool.Name == operations.CreateGroup.Tool || tool.Name == operations.CreateCustomer.Tool || tool.Name == operations.CreateSupplier.Tool) && (tool.Annotations.DestructiveHint == nil || *tool.Annotations.DestructiveHint) {
+			t.Fatalf("%s must be marked additive", tool.Name)
 		}
-		if tool.Name == operations.UpdateGroup.Tool && !tool.Annotations.IdempotentHint {
-			t.Fatal("update group must be marked idempotent")
+		if (tool.Name == operations.UpdateGroup.Tool || tool.Name == operations.UpdateCustomer.Tool || tool.Name == operations.UpdateSupplier.Tool) && !tool.Annotations.IdempotentHint {
+			t.Fatalf("%s must be marked idempotent", tool.Name)
 		}
 	}
 	for _, call := range []struct {
@@ -158,9 +158,13 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 		{operations.ListCustomers.Tool, map[string]any{"limit": 2}},
 		{operations.SearchCustomers.Tool, map[string]any{"query": "Example", "limit": 2}},
 		{operations.GetCustomer.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000007"}},
+		{operations.CreateCustomer.Tool, map[string]any{"name": "New customer"}},
+		{operations.UpdateCustomer.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000007", "name": "Renamed customer"}},
 		{operations.ListSuppliers.Tool, map[string]any{"limit": 2}},
 		{operations.SearchSuppliers.Tool, map[string]any{"query": "Example", "limit": 2}},
 		{operations.GetSupplier.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000007"}},
+		{operations.CreateSupplier.Tool, map[string]any{"name": "New supplier"}},
+		{operations.UpdateSupplier.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000007", "name": "Renamed supplier"}},
 		{operations.ListSales.Tool, map[string]any{"kind": "shipment", "limit": 2}},
 		{operations.GetSale.Tool, map[string]any{"kind": "shipment", "id": "00000000-0000-0000-0000-000000000008"}},
 		{operations.ListPurchases.Tool, map[string]any{"kind": "order", "limit": 2}},

@@ -67,9 +67,13 @@ Commands follow `1c VERB RESOURCE [OPTIONS]`. Use `--help` on a command for its 
 1c list customers --limit 20
 1c search customers "Example company"
 1c get customer CUSTOMER_GUID
+1c create customer --name "Example customer"
+1c update customer CUSTOMER_GUID --name "New name"
 1c list suppliers --limit 20
 1c search suppliers "Example supplier"
 1c get supplier SUPPLIER_GUID
+1c create supplier --name "Example supplier"
+1c update supplier SUPPLIER_GUID --name "New name"
 1c search resources --kind catalog --limit 20 "Номенклатура"
 1c describe resource Catalog_Номенклатура
 1c list orders --limit 20
@@ -101,7 +105,7 @@ Commands follow `1c VERB RESOURCE [OPTIONS]`. Use `--help` on a command for its 
 
 `list warehouses` shows warehouses and retail stores from the structural units catalog. `get stock` shows current product balances by warehouse; `--warehouse` selects one, and `--characteristic` selects a product characteristic. Quantities come from the `AccumulationRegister_ЗапасыНаСкладах/Balance` virtual table and are summed across characteristics, batches, cells, and organizations when no characteristic is selected. JSON also includes the source balance rows and product unit ID. If 1C cannot resolve the unit's description, its ID remains available. A stock balance does not promise that the product is available to sell.
 
-`create group` creates a group at the catalog root or under the group specified by `--parent`. `update group` renames an existing group by GUID. `update product` changes a product's name, full name (`--full-name`), and/or article (`--article`); an empty string clears the full name or article. These commands **change live 1C data**. A live write has not been verified. Product creation, deletion, and generic OData editing are not available yet.
+`create group` creates a group at the catalog root or under the group specified by `--parent`. `update group` renames an existing group by GUID. `update product` changes a product's name, full name (`--full-name`), and/or article (`--article`); an empty string clears the full name or article. `create customer` and `create supplier` create a counterparty with the matching role flag. The full name defaults to the name; `--parent` selects a counterparty folder. `update customer` and `update supplier` change the name and/or full name of an existing counterparty with the matching role. Pass `--full-name ""` to clear the full name. These commands **change live 1C data**. A live write has not been verified. Product creation, deletion, and generic OData editing are not available yet.
 
 `search resources` uses `1c search resources [--kind catalog|document|register|other] [--limit N] [--json] QUERY` to search OData metadata names by resource kind. `describe resource` uses `1c describe resource [--json] EXACT_NAME` to show schema fields for an exact OData resource name. These commands expose OData schema names and fields; they do not enumerate every screen in the 1C interface or provide generic reads of resource data.
 
@@ -138,7 +142,9 @@ Configure your MCP client to launch this command from the repository directory, 
 - `search_odata_resources` and `describe_odata_resource`
 - `list_customer_orders` and `get_customer_order`
 - `list_customers`, `search_customers`, and `get_customer`
+- `create_customer` and `update_customer` (write operations)
 - `list_suppliers`, `search_suppliers`, and `get_supplier`
+- `create_supplier` and `update_supplier` (write operations)
 - `list_sales_documents` and `get_sales_document`
 - `list_purchase_documents` and `get_purchase_document`
 - `list_warehouse_documents` and `get_warehouse_document`

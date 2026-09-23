@@ -129,6 +129,22 @@ var GetCustomer = Spec{
 	Example:     "1c get customer CUSTOMER_GUID",
 }
 
+var CreateCustomer = Spec{
+	Command:     "create customer",
+	Tool:        "create_customer",
+	Description: "Create a customer counterparty in 1C.",
+	Usage:       "1c create customer --name NAME [--full-name TEXT] [--parent GUID] [--json]",
+	Example:     "1c create customer --name \"Example customer\"",
+}
+
+var UpdateCustomer = Spec{
+	Command:     "update customer",
+	Tool:        "update_customer",
+	Description: "Rename an existing customer by 1C ID.",
+	Usage:       "1c update customer GUID [--name TEXT] [--full-name TEXT] [--json]",
+	Example:     "1c update customer CUSTOMER_GUID --name \"New name\"",
+}
+
 var ListSuppliers = Spec{
 	Command:     "list suppliers",
 	Tool:        "list_suppliers",
@@ -151,6 +167,22 @@ var GetSupplier = Spec{
 	Description: "Show a supplier by 1C ID.",
 	Usage:       "1c get supplier [--json] GUID",
 	Example:     "1c get supplier SUPPLIER_GUID",
+}
+
+var CreateSupplier = Spec{
+	Command:     "create supplier",
+	Tool:        "create_supplier",
+	Description: "Create a supplier counterparty in 1C.",
+	Usage:       "1c create supplier --name NAME [--full-name TEXT] [--parent GUID] [--json]",
+	Example:     "1c create supplier --name \"Example supplier\"",
+}
+
+var UpdateSupplier = Spec{
+	Command:     "update supplier",
+	Tool:        "update_supplier",
+	Description: "Rename an existing supplier by 1C ID.",
+	Usage:       "1c update supplier GUID [--name TEXT] [--full-name TEXT] [--json]",
+	Example:     "1c update supplier SUPPLIER_GUID --name \"New name\"",
 }
 
 var ListSales = Spec{
@@ -267,4 +299,4 @@ var DescribeResource = Spec{
 	Advanced:    true,
 }
 
-var All = []Spec{Check, ListGroups, CreateGroup, UpdateGroup, ListPriceTypes, GetPrice, ListWarehouses, GetStock, SearchProducts, UpdateProduct, ListCustomers, SearchCustomers, GetCustomer, ListSuppliers, SearchSuppliers, GetSupplier, ListOrders, GetOrder, ListSales, GetSale, ListPurchases, GetPurchase, ListWarehouseDocuments, GetWarehouseDocument, ListMoneyAccounts, ListMoney, GetMoney, ListReceipts, GetReceipt, AuditUnpostedReceipts, SearchResources, DescribeResource}
+var All = []Spec{Check, ListGroups, CreateGroup, UpdateGroup, ListPriceTypes, GetPrice, ListWarehouses, GetStock, SearchProducts, UpdateProduct, ListCustomers, SearchCustomers, GetCustomer, CreateCustomer, UpdateCustomer, ListSuppliers, SearchSuppliers, GetSupplier, CreateSupplier, UpdateSupplier, ListOrders, GetOrder, ListSales, GetSale, ListPurchases, GetPurchase, ListWarehouseDocuments, GetWarehouseDocument, ListMoneyAccounts, ListMoney, GetMoney, ListReceipts, GetReceipt, AuditUnpostedReceipts, SearchResources, DescribeResource}
