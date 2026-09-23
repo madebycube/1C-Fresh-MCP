@@ -15,26 +15,75 @@ const priceTestType = "00000000-0000-0000-0000-000000000002"
 const priceTestVariant = "00000000-0000-0000-0000-000000000003"
 
 type priceReader struct {
-	documents []map[string]any
+	documents     []map[string]any
+	products      []map[string]any
+	groupID       string
+	documentPages *int
 }
 
 func (priceReader) Check(context.Context) (int, error) { return 1, nil }
 
 func (r priceReader) Get(_ context.Context, resource string, params url.Values, _ int64) ([]byte, error) {
 	switch {
+	case r.groupID != "" && resource == nomenclatureResource(r.groupID):
+		return json.Marshal(map[string]any{"Ref_Key": r.groupID, "Description": "Example group", "IsFolder": true, "DeletionMark": false})
 	case strings.HasPrefix(resource, "Catalog_Номенклатура("):
 		return []byte(`{"Ref_Key":"` + priceTestProduct + `","Description":"Example product","IsFolder":false,"DeletionMark":false}`), nil
+	case resource == "Catalog_Номенклатура":
+		skip, _ := strconv.Atoi(params.Get("$skip"))
+		top, _ := strconv.Atoi(params.Get("$top"))
+		return json.Marshal(map[string]any{"value": r.products[min(skip, len(r.products)):min(skip+top, len(r.products))]})
 	case resource == "Catalog_ВидыЦен":
 		return []byte(`{"odata.count":"1","value":[{"Ref_Key":"` + priceTestType + `","Description":"Example price","DeletionMark":false,"Недействителен":false}]}`), nil
 	case resource == "Document_УстановкаЦенНоменклатуры":
 		if params.Get("$inlinecount") != "" {
 			return json.Marshal(map[string]any{"odata.count": strconv.Itoa(len(r.documents)), "value": []any{}})
 		}
+		if r.documentPages != nil {
+			*r.documentPages++
+		}
 		skip, _ := strconv.Atoi(params.Get("$skip"))
 		top, _ := strconv.Atoi(params.Get("$top"))
 		return json.Marshal(map[string]any{"value": r.documents[skip : skip+top]})
 	}
 	return nil, nil
+}
+
+func TestListPricesScansHistoryOnceForProductPage(t *testing.T) {
+	group := salesID(20)
+	secondProduct := salesID(4)
+	firstDoc := salesID(10)
+	secondDoc := salesID(11)
+	documentPages := 0
+	reader := priceReader{
+		groupID:       group,
+		documentPages: &documentPages,
+		products: []map[string]any{
+			{"Ref_Key": group, "Description": "Group", "Parent_Key": emptyGUID, "IsFolder": true, "DeletionMark": false},
+			{"Ref_Key": priceTestProduct, "Code": "P001", "Description": "First", "Артикул": "A001", "Parent_Key": group, "IsFolder": false, "DeletionMark": false},
+			{"Ref_Key": secondProduct, "Description": "Second", "Parent_Key": group, "IsFolder": false, "DeletionMark": false},
+		},
+		documents: []map[string]any{
+			priceTestDocument(firstDoc, "2026-09-20T10:00:00", true, false, emptyGUID, "10.10"),
+			{"Ref_Key": secondDoc, "Date": "2026-09-21T10:00:00", "Posted": true, "DeletionMark": false, "Запасы": []map[string]any{{"LineNumber": "1", "Номенклатура_Key": secondProduct, "ВидЦены_Key": priceTestType, "Характеристика_Key": emptyGUID, "Цена": json.Number("20.20")}}},
+		},
+	}
+	svc := Service{OData: reader}
+	first, err := svc.ListPrices(context.Background(), "Example price", group, "", "2026-09-23", 1, 0)
+	if err != nil || len(first.Items) != 1 || first.Items[0].ProductID != priceTestProduct || first.Items[0].ProductCode != "P001" || first.Items[0].ProductArticle != "A001" || first.Items[0].Price != "10.10" || first.NextOffset == nil || *first.NextOffset != 2 {
+		t.Fatalf("first price page: %+v, %v", first, err)
+	}
+	if documentPages != 1 {
+		t.Fatalf("scanned %d price document pages for one product page", documentPages)
+	}
+	second, err := svc.ListPrices(context.Background(), "Example price", group, "", "2026-09-23", 1, *first.NextOffset)
+	if err != nil || len(second.Items) != 1 || second.Items[0].ProductID != secondProduct || second.Items[0].Price != "20.20" || second.NextOffset != nil {
+		t.Fatalf("second price page: %+v, %v", second, err)
+	}
+	before, err := svc.ListPrices(context.Background(), "Example price", group, "", "2026-09-19", 2, 0)
+	if err != nil || len(before.Items) != 2 || before.Items[0].Found || before.Items[1].Found {
+		t.Fatalf("prices before documents: %+v, %v", before, err)
+	}
 }
 
 func priceTestDocument(id, date string, posted, deleted bool, characteristic, amount string) map[string]any {

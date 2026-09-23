@@ -89,6 +89,8 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		return runUnitTypeList(ctx, svc, commandArgs, out)
 	case operations.GetPrice.Command:
 		return runPriceGet(ctx, svc, commandArgs, out)
+	case operations.ListPrices.Command:
+		return runPriceList(ctx, svc, commandArgs, out)
 	case operations.ListWarehouses.Command:
 		return runWarehouseList(ctx, svc, commandArgs, out)
 	case operations.GetStock.Command:
@@ -251,6 +253,7 @@ func printHelp(out io.Writer) {
 	fmt.Fprintln(out, "  1c list counterparty-groups")
 	fmt.Fprintln(out, "  1c create customer --name \"Example customer\" --parent FOLDER_GUID")
 	fmt.Fprintln(out, "  1c list price-types")
+	fmt.Fprintln(out, "  1c list prices --price-type \"Пример цены\" --group GROUP_GUID")
 	fmt.Fprintln(out, "  1c list unit-types")
 	fmt.Fprintln(out, "  1c list products --limit 20")
 	fmt.Fprintln(out, "  1c list products --group GROUP_GUID --limit 20")
