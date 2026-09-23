@@ -168,7 +168,7 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 		{operations.ListProducts.Tool, map[string]any{"limit": 2, "group_id": "00000000-0000-0000-0000-000000000001"}},
 		{operations.GetProduct.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000004"}},
 		{operations.UpdateProduct.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000004", "article": "B", "group_id": "00000000-0000-0000-0000-000000000001"}},
-		{operations.ListOrders.Tool, map[string]any{"limit": 2}},
+		{operations.ListOrders.Tool, map[string]any{"limit": 2, "offset": 0, "customer_id": "00000000-0000-0000-0000-000000000002", "from": "2026-09-23", "to": "2026-09-23"}},
 		{operations.GetOrder.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000001"}},
 		{operations.ListCustomers.Tool, map[string]any{"limit": 2, "group_id": "root"}},
 		{operations.SearchCustomers.Tool, map[string]any{"query": "Example", "limit": 2, "group_id": "root"}},
@@ -203,6 +203,12 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 			data, err := json.Marshal(result.StructuredContent)
 			if err != nil || !strings.Contains(string(data), `"found":true`) || !strings.Contains(string(data), `"price":"120.50"`) {
 				t.Fatalf("price tool returned %s: %v", data, err)
+			}
+		}
+		if call.name == operations.ListOrders.Tool {
+			data, err := json.Marshal(result.StructuredContent)
+			if err != nil || !strings.Contains(string(data), `"customer_id":"00000000-0000-0000-0000-000000000002"`) || !strings.Contains(string(data), `"total":0`) || !strings.Contains(string(data), `"items":[]`) {
+				t.Fatalf("order list tool returned %s: %v", data, err)
 			}
 		}
 	}

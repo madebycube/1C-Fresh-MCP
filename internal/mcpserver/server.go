@@ -124,12 +124,11 @@ type describeResourceInput struct {
 }
 
 type listOrdersInput struct {
-	Limit int `json:"limit,omitempty" jsonschema:"Maximum results, from 1 to 100; defaults to 20"`
-}
-
-type listOrdersOutput struct {
-	Orders []service.Order `json:"orders"`
-	Count  int             `json:"count"`
+	Limit      int    `json:"limit,omitempty" jsonschema:"Maximum results, from 1 to 100; defaults to 20"`
+	Offset     int    `json:"offset,omitempty" jsonschema:"Offset within matching orders"`
+	CustomerID string `json:"customer_id,omitempty" jsonschema:"Optional customer GUID"`
+	From       string `json:"from,omitempty" jsonschema:"Optional first date, YYYY-MM-DD; requires to"`
+	To         string `json:"to,omitempty" jsonschema:"Optional last date, YYYY-MM-DD; requires from"`
 }
 
 type getOrderInput struct {
@@ -374,9 +373,13 @@ func New(svc service.Service) *mcp.Server {
 	mcp.AddTool(server, &mcp.Tool{
 		Name: operations.ListOrders.Tool, Description: operations.ListOrders.Description,
 		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, input listOrdersInput) (*mcp.CallToolResult, listOrdersOutput, error) {
-		orders, err := svc.ListOrders(ctx, input.Limit)
-		return nil, listOrdersOutput{Orders: orders, Count: len(orders)}, err
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input listOrdersInput) (*mcp.CallToolResult, service.OrderPage, error) {
+		limit := input.Limit
+		if limit == 0 {
+			limit = 20
+		}
+		page, err := svc.ListOrdersPage(ctx, input.CustomerID, input.From, input.To, limit, input.Offset)
+		return nil, page, err
 	})
 	mcp.AddTool(server, &mcp.Tool{
 		Name: operations.GetOrder.Tool, Description: operations.GetOrder.Description,

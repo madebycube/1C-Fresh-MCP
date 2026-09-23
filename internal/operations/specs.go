@@ -140,9 +140,9 @@ var UpdateProduct = Spec{
 var ListOrders = Spec{
 	Command:     "list orders",
 	Tool:        "list_customer_orders",
-	Description: "List recent customer orders.",
-	Usage:       "1c list orders [--limit N] [--json]",
-	Example:     "1c list orders --limit 10",
+	Description: "List customer orders with optional customer and date filters, and paging.",
+	Usage:       "1c list orders [--customer GUID] [--from YYYY-MM-DD --to YYYY-MM-DD] [--limit N] [--offset N] [--json]",
+	Example:     "1c list orders --customer CUSTOMER_GUID --limit 20",
 }
 
 var GetOrder = Spec{
