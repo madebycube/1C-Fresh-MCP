@@ -30,6 +30,7 @@ var Products = SearchResource{
 
 type DocumentResource struct {
 	Name          string
+	Filter        string
 	DateField     string
 	DeletedField  string
 	Fields        []FieldBinding
@@ -65,6 +66,28 @@ var PriceTypes = CatalogListResource{
 		{Output: "name", Source: "Description"},
 		{Output: "deleted", Source: "DeletionMark"},
 		{Output: "inactive", Source: "Недействителен"},
+	},
+}
+
+var PriceDocuments = DocumentResource{
+	Name:         "Document_УстановкаЦенНоменклатуры",
+	Filter:       "Posted eq true and DeletionMark eq false",
+	DateField:    "Date",
+	DeletedField: "DeletionMark",
+	Fields: []FieldBinding{
+		{Output: "id", Source: "Ref_Key"},
+		{Output: "date", Source: "Date"},
+		{Output: "posted", Source: "Posted"},
+		{Output: "deleted", Source: "DeletionMark"},
+	},
+	LinesField: "Запасы",
+	LineFields: []FieldBinding{
+		{Output: "line_number", Source: "LineNumber"},
+		{Output: "product_id", Source: "Номенклатура_Key"},
+		{Output: "price_type_id", Source: "ВидЦены_Key"},
+		{Output: "characteristic_id", Source: "Характеристика_Key"},
+		{Output: "price", Source: "Цена"},
+		{Output: "currency_id", Source: "Валюта_Key"},
 	},
 }
 
