@@ -13,12 +13,12 @@ import (
 )
 
 func runOrderList(ctx context.Context, svc service.Service, args []string, out io.Writer) error {
-	flags := flag.NewFlagSet("orders list", flag.ContinueOnError)
+	flags := flag.NewFlagSet("list orders", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	limit := flags.Int("limit", 20, "maximum results (1-100)")
 	asJSON := flags.Bool("json", false, "print JSON")
 	if err := flags.Parse(args); err != nil || flags.NArg() != 0 {
-		return errors.New("usage: 1cfresh orders list [--limit N] [--json]")
+		return errors.New("usage: 1c list orders [--limit N] [--json]")
 	}
 	orders, err := svc.ListOrders(ctx, *limit)
 	if err != nil {
@@ -40,11 +40,11 @@ func runOrderList(ctx context.Context, svc service.Service, args []string, out i
 }
 
 func runOrderGet(ctx context.Context, svc service.Service, args []string, out io.Writer) error {
-	flags := flag.NewFlagSet("orders get", flag.ContinueOnError)
+	flags := flag.NewFlagSet("get order", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	asJSON := flags.Bool("json", false, "print JSON")
 	if err := flags.Parse(args); err != nil || flags.NArg() != 1 {
-		return errors.New("usage: 1cfresh orders get [--json] GUID")
+		return errors.New("usage: 1c get order [--json] GUID")
 	}
 	order, err := svc.GetOrder(ctx, flags.Arg(0))
 	if err != nil {

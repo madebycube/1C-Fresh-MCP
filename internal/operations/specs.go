@@ -4,48 +4,80 @@ type Spec struct {
 	Command     string
 	Tool        string
 	Description string
+	Usage       string
+	Example     string
 }
 
 var Check = Spec{
 	Command:     "check",
 	Tool:        "check_connection",
-	Description: "Verify read-only access to the configured 1C-Fresh OData application.",
+	Description: "Check the connection to 1C.",
+	Usage:       "1c check [--json]",
+	Example:     "1c check",
+}
+
+var ListGroups = Spec{
+	Command:     "list groups",
+	Tool:        "list_product_groups",
+	Description: "List product folders, their paths, and 1C IDs.",
+	Usage:       "1c list groups [--name TEXT] [--json]",
+	Example:     "1c list groups --name КЛИМОВО",
+}
+
+var ListPriceTypes = Spec{
+	Command:     "list price-types",
+	Tool:        "list_price_types",
+	Description: "List price types such as Розничная and their 1C IDs.",
+	Usage:       "1c list price-types [--json]",
+	Example:     "1c list price-types",
 }
 
 var SearchProducts = Spec{
-	Command:     "products search",
+	Command:     "search products",
 	Tool:        "find_nomenclature",
-	Description: "Find existing nomenclature by name or article; returns at most 50 items.",
+	Description: "Find products by name or article.",
+	Usage:       "1c search products [--limit N] [--json] QUERY",
+	Example:     "1c search products диван",
 }
 
 var ListOrders = Spec{
-	Command:     "orders list",
+	Command:     "list orders",
 	Tool:        "list_customer_orders",
-	Description: "List recent customer orders without changing them; returns at most 100.",
+	Description: "List recent customer orders.",
+	Usage:       "1c list orders [--limit N] [--json]",
+	Example:     "1c list orders --limit 10",
 }
 
 var GetOrder = Spec{
-	Command:     "orders get",
+	Command:     "get order",
 	Tool:        "get_customer_order",
-	Description: "Read one customer order and its stock line items by GUID.",
+	Description: "Show an order and its product lines by 1C ID.",
+	Usage:       "1c get order [--json] GUID",
+	Example:     "1c get order --json ORDER_GUID",
 }
 
 var ListReceipts = Spec{
-	Command:     "receipts list",
+	Command:     "list receipts",
 	Tool:        "list_cash_receipts",
-	Description: "List sales receipts or refunds in a bounded application date range.",
+	Description: "List sale or refund receipts in a date range.",
+	Usage:       "1c list receipts --from YYYY-MM-DD --to YYYY-MM-DD [--kind sale|refund] [--limit N] [--offset N] [--json]",
+	Example:     "1c list receipts --from 2026-09-01 --to 2026-09-07",
 }
 
 var GetReceipt = Spec{
-	Command:     "receipts get",
+	Command:     "get receipt",
 	Tool:        "get_cash_receipt",
-	Description: "Read one cash receipt or refund, including stock lines and cashless payments.",
+	Description: "Show a sale or refund receipt by 1C ID.",
+	Usage:       "1c get receipt [--kind sale|refund] [--json] GUID",
+	Example:     "1c get receipt --json RECEIPT_GUID",
 }
 
 var AuditUnpostedReceipts = Spec{
-	Command:     "receipts audit-unposted",
+	Command:     "audit receipts",
 	Tool:        "audit_unposted_receipts",
-	Description: "Find unposted sale and refund receipts before a date in a bounded read-only scan.",
+	Description: "List older unposted receipts for review.",
+	Usage:       "1c audit receipts --from YYYY-MM-DD --before YYYY-MM-DD [--kind sale|refund|both] [--json]",
+	Example:     "1c audit receipts --from 2026-09-01 --before 2026-09-24",
 }
 
-var All = []Spec{Check, SearchProducts, ListOrders, GetOrder, ListReceipts, GetReceipt, AuditUnpostedReceipts}
+var All = []Spec{Check, ListGroups, ListPriceTypes, SearchProducts, ListOrders, GetOrder, ListReceipts, GetReceipt, AuditUnpostedReceipts}
