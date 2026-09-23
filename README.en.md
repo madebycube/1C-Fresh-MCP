@@ -67,6 +67,7 @@ Commands follow `1c VERB RESOURCE [OPTIONS]`. Use `--help` on a command for its 
 1c update product PRODUCT_GUID --name "New name" --article NEW-ARTICLE
 1c update product PRODUCT_GUID --group GROUP_GUID
 1c list price-types
+1c list currencies
 1c list prices --price-type "Example price" --group GROUP_GUID --limit 20
 1c list unit-types
 1c get price PRODUCT_GUID --price-type "Example price" --as-of 2026-09-23
@@ -119,11 +120,11 @@ Commands follow `1c VERB RESOURCE [OPTIONS]`. Use `--help` on a command for its 
 
 `list characteristics` shows active product characteristics, their IDs, and owning product IDs. Use `--product` or `--name` to find a GUID for `get price --characteristic` and `get stock --characteristic`. A call is limited to catalogs of 5,000 records.
 
-`list groups` returns product folders and their IDs; `list price-types` returns price type names and IDs. `list unit-types` returns measurement-unit classifier entries. Product base-unit IDs from `get product` refer to this classifier in the tested tenant. Product groups and price types are separate entities. These commands do not retrieve prices from price documents.
+`list groups` returns product folders and their IDs; `list price-types` returns price type names and IDs. `list currencies` returns active currency codes, symbols, and IDs. `list unit-types` returns measurement-unit classifier entries. Product base-unit IDs from `get product` refer to this classifier in the tested tenant. Product groups and price types are separate entities. These commands do not retrieve prices from price documents.
 
-`list prices` shows products in the selected group and their effective prices for a named price type as of `--as-of`. Use `--group GROUP_GUID` or `--group root`; without a group, it browses the catalog. Its pages use raw catalog offsets like `list products` and include products without a price as `found: false`. Each item includes product code, article, and the source price document when found. It scans price document history once per page instead of once per product.
+`list prices` shows products in the selected group and their effective prices for a named price type as of `--as-of`. Use `--group GROUP_GUID` or `--group root`; without a group, it browses the catalog. Its pages use raw catalog offsets like `list products` and include products without a price as `found: false`. Each item includes product code, article, currency, and the source price document when found. It scans price document history once per page instead of once per product.
 
-`get price` finds the latest price for a product and named price type as of `--as-of` (today by default). It uses posted, non-deleted documents. Omit `--characteristic GUID` for a price without a characteristic or pass a variant's GUID. When no price exists, the result has `found: false`. JSON includes the exact decimal price string, currency, and source document ID, date, and line number. The command scans price document history, so it may take some time.
+`get price` finds the latest price for a product and named price type as of `--as-of` (today by default). It uses posted, non-deleted documents. Omit `--characteristic GUID` for a price without a characteristic or pass a variant's GUID. When no price exists, the result has `found: false`. JSON includes the exact decimal price string, currency ID and, when the catalog is available, its code and symbol, plus source document ID, date, and line number. The command scans price document history, so it may take some time.
 
 `list warehouses` shows warehouses and retail stores from the structural units catalog. `get stock` shows current product balances by warehouse; `--warehouse` selects one, and `--characteristic` selects a product characteristic. Quantities come from the `AccumulationRegister_ЗапасыНаСкладах/Balance` virtual table and are summed across characteristics, batches, cells, and organizations when no characteristic is selected. JSON also includes the source balance rows and product unit ID. If 1C cannot resolve the unit's description, its ID remains available. A stock balance does not promise that the product is available to sell.
 
@@ -158,7 +159,7 @@ bin/1c mcp
 Configure your MCP client to launch this command from the repository directory, or provide the three `ONEC_ODATA_*` variables in the client's environment. The server exposes:
 
 - `check_connection`
-- `list_product_groups`, `list_product_categories`, `list_product_characteristics`, and `list_price_types`
+- `list_product_groups`, `list_product_categories`, `list_product_characteristics`, `list_price_types`, and `list_currencies`
 - `get_product_price` and `list_product_prices`
 - `list_warehouses`, `get_product_stock`, and `list_unit_types`
 - `find_nomenclature`

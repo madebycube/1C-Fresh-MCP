@@ -89,6 +89,8 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		return runCounterpartyGroupUpdate(ctx, svc, commandArgs, out)
 	case operations.ListPriceTypes.Command:
 		return runPriceTypeList(ctx, svc, commandArgs, out)
+	case operations.ListCurrencies.Command:
+		return runCurrencyList(ctx, svc, commandArgs, out)
 	case operations.ListUnitTypes.Command:
 		return runUnitTypeList(ctx, svc, commandArgs, out)
 	case operations.GetPrice.Command:
@@ -261,6 +263,7 @@ func printHelp(out io.Writer) {
 	fmt.Fprintln(out, "  1c list counterparty-groups")
 	fmt.Fprintln(out, "  1c create customer --name \"Example customer\" --parent FOLDER_GUID")
 	fmt.Fprintln(out, "  1c list price-types")
+	fmt.Fprintln(out, "  1c list currencies")
 	fmt.Fprintln(out, "  1c list prices --price-type \"Пример цены\" --group GROUP_GUID")
 	fmt.Fprintln(out, "  1c list unit-types")
 	fmt.Fprintln(out, "  1c list products --limit 20")

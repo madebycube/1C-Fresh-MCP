@@ -44,6 +44,9 @@ func (stubReader) Get(_ context.Context, resource string, params url.Values, _ i
 	if resource == "Catalog_ВидыЦен" {
 		return []byte(`{"odata.count":"1","value":[{"Ref_Key":"00000000-0000-0000-0000-000000000002","Description":"Retail","DeletionMark":false,"Недействителен":false}]}`), nil
 	}
+	if resource == "Catalog_Валюты" {
+		return []byte(`{"odata.count":"1","value":[{"Ref_Key":"00000000-0000-0000-0000-000000000016","Code":"643","Description":"Ruble","СимвольноеПредставление":"₽","DeletionMark":false}]}`), nil
+	}
 	if resource == "Catalog_КлассификаторЕдиницИзмерения" {
 		return []byte(`{"odata.count":"1","value":[{"Ref_Key":"00000000-0000-0000-0000-000000000013","Code":"796","Description":"pc","DeletionMark":false}]}`), nil
 	}
@@ -139,8 +142,8 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(listed.Tools) != 46 {
-		t.Fatalf("got %d tools; want 46", len(listed.Tools))
+	if len(listed.Tools) != 47 {
+		t.Fatalf("got %d tools; want 47", len(listed.Tools))
 	}
 	for _, tool := range listed.Tools {
 		if tool.Annotations == nil {
@@ -171,6 +174,7 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 		{operations.CreateCounterpartyGroup.Tool, map[string]any{"name": "New folder"}},
 		{operations.UpdateCounterpartyGroup.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000001", "name": "Renamed", "parent_id": "root"}},
 		{operations.ListPriceTypes.Tool, map[string]any{}},
+		{operations.ListCurrencies.Tool, map[string]any{}},
 		{operations.ListUnitTypes.Tool, map[string]any{}},
 		{operations.GetPrice.Tool, map[string]any{"product_id": "00000000-0000-0000-0000-000000000004", "price_type": "Retail", "as_of": "2026-09-23"}},
 		{operations.ListPrices.Tool, map[string]any{"price_type": "Retail", "group_id": "00000000-0000-0000-0000-000000000001", "as_of": "2026-09-23", "limit": 1}},
