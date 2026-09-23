@@ -6,6 +6,7 @@ type Spec struct {
 	Description string
 	Usage       string
 	Example     string
+	Advanced    bool
 }
 
 var Check = Spec{
@@ -80,4 +81,22 @@ var AuditUnpostedReceipts = Spec{
 	Example:     "1c audit receipts --from 2026-09-01 --before 2026-09-24",
 }
 
-var All = []Spec{Check, ListGroups, ListPriceTypes, SearchProducts, ListOrders, GetOrder, ListReceipts, GetReceipt, AuditUnpostedReceipts}
+var SearchResources = Spec{
+	Command:     "search resources",
+	Tool:        "search_odata_resources",
+	Description: "Find raw OData entity sets exposed by this 1C application.",
+	Usage:       "1c search resources [--kind catalog|document|register|other] [--limit N] [--json] QUERY",
+	Example:     "1c search resources --kind document Заказ",
+	Advanced:    true,
+}
+
+var DescribeResource = Spec{
+	Command:     "describe resource",
+	Tool:        "describe_odata_resource",
+	Description: "Show fields, types, keys, and links for one raw OData entity set.",
+	Usage:       "1c describe resource [--json] EXACT_NAME",
+	Example:     "1c describe resource Catalog_ВидыЦен",
+	Advanced:    true,
+}
+
+var All = []Spec{Check, ListGroups, ListPriceTypes, SearchProducts, ListOrders, GetOrder, ListReceipts, GetReceipt, AuditUnpostedReceipts, SearchResources, DescribeResource}

@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"flag"
 	"strings"
 	"testing"
 )
@@ -16,6 +17,18 @@ func TestHelpExplainsCommandsWithoutCredentials(t *testing.T) {
 		if !strings.Contains(output.String(), "1c ") {
 			t.Fatalf("help %v has no example or usage: %s", args, output.String())
 		}
+	}
+}
+
+func TestFlagsCanFollowPositionalArguments(t *testing.T) {
+	flags := flag.NewFlagSet("test", flag.ContinueOnError)
+	limit := flags.Int("limit", 20, "")
+	asJSON := flags.Bool("json", false, "")
+	if err := parseFlags(flags, []string{"диван", "--json", "--limit", "2"}); err != nil {
+		t.Fatal(err)
+	}
+	if flags.NArg() != 1 || flags.Arg(0) != "диван" || !*asJSON || *limit != 2 {
+		t.Fatalf("args=%v json=%t limit=%d", flags.Args(), *asJSON, *limit)
 	}
 }
 
