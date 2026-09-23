@@ -16,6 +16,8 @@ import (
 )
 
 const MaxProducts = 50
+const productSearchBatch = 100
+const productSearchScanLimit = 500
 
 type Reader interface {
 	Get(context.Context, string, url.Values, int64) ([]byte, error)
@@ -51,10 +53,6 @@ func (s Service) SearchProducts(ctx context.Context, query string, limit int) ([
 		return nil, fmt.Errorf("limit must be between 1 and %d", MaxProducts)
 	}
 	plan := config.Products
-	selectFields := make([]string, 0, len(plan.Fields))
-	for _, field := range plan.Fields {
-		selectFields = append(selectFields, field.Source)
-	}
 	type result struct {
 		rows []Product
 		err  error
@@ -65,7 +63,7 @@ func (s Service) SearchProducts(ctx context.Context, query string, limit int) ([
 		workers.Add(1)
 		go func() {
 			defer workers.Done()
-			results[index].rows, results[index].err = s.searchProductField(ctx, plan, field, query, limit, selectFields)
+			results[index].rows, results[index].err = s.searchProductField(ctx, plan, field, query, limit)
 		}()
 	}
 	workers.Wait()
@@ -89,37 +87,61 @@ func (s Service) SearchProducts(ctx context.Context, query string, limit int) ([
 	return products, nil
 }
 
-func (s Service) searchProductField(ctx context.Context, plan config.SearchResource, field, query string, limit int, selectFields []string) ([]Product, error) {
+func (s Service) searchProductField(ctx context.Context, plan config.SearchResource, field, query string, limit int) ([]Product, error) {
 	quoted := "'" + strings.ReplaceAll(query, "'", "''") + "'"
+	needle := strings.ToLower(query)
 	params := url.Values{
 		"$format":     {"json"},
-		"$filter":     {"substringof(" + quoted + "," + field + ") and " + plan.FolderField + " eq false and " + plan.DeletedField + " eq false"},
-		"$select":     {strings.Join(selectFields, ",")},
-		"$top":        {strconv.Itoa(limit)},
+		"$filter":     {"substringof(" + quoted + "," + field + ")"},
+		"$select":     {sourceFields(plan.Fields) + "," + plan.FolderField + "," + plan.DeletedField},
+		"$orderby":    {"Ref_Key asc"},
 		"allowedOnly": {"true"},
 	}
-	data, err := s.OData.Get(ctx, plan.Name, params, 2<<20)
-	if err != nil {
-		return nil, err
-	}
-	var response struct {
-		Value []map[string]any `json:"value"`
-	}
-	if err := json.Unmarshal(data, &response); err != nil || response.Value == nil {
-		return nil, errors.New("invalid OData product response")
-	}
-	products := make([]Product, 0, len(response.Value))
-	for _, row := range response.Value {
-		mapped := make(map[string]string, len(plan.Fields))
-		for _, field := range plan.Fields {
-			if value, ok := row[field.Source].(string); ok {
-				mapped[field.Output] = value
+	products := make([]Product, 0, limit)
+	for scanned := 0; scanned < productSearchScanLimit && len(products) < limit; {
+		top := min(productSearchBatch, productSearchScanLimit-scanned)
+		params.Set("$top", strconv.Itoa(top))
+		params.Set("$skip", strconv.Itoa(scanned))
+		data, err := s.OData.Get(ctx, plan.Name, params, 4<<20)
+		if err != nil {
+			return nil, err
+		}
+		var response struct {
+			Value []map[string]json.RawMessage `json:"value"`
+		}
+		if err := json.Unmarshal(data, &response); err != nil || response.Value == nil || len(response.Value) > top {
+			return nil, errors.New("invalid OData product response")
+		}
+		if len(response.Value) == 0 {
+			break
+		}
+		for _, row := range response.Value {
+			if !catalogBoolean(row[plan.FolderField]) || !catalogBoolean(row[plan.DeletedField]) {
+				return nil, errors.New("invalid OData product flags")
+			}
+			if string(row[plan.FolderField]) != "false" || string(row[plan.DeletedField]) != "false" {
+				continue
+			}
+			var value string
+			if len(row[field]) == 0 {
+				continue
+			}
+			if err := json.Unmarshal(row[field], &value); err != nil || !strings.Contains(strings.ToLower(value), needle) {
+				continue
+			}
+			product, err := bindFields[Product](row, plan.Fields)
+			if err != nil || !linkedGUID(product.ID) {
+				return nil, errors.New("invalid OData product")
+			}
+			products = append(products, product)
+			if len(products) == limit {
+				return products, nil
 			}
 		}
-		products = append(products, Product{
-			ID: mapped["id"], Code: mapped["code"], Name: mapped["name"],
-			FullName: mapped["full_name"], Article: mapped["article"], ParentID: mapped["parent_id"],
-		})
+		scanned += len(response.Value)
+		if len(response.Value) < top {
+			break
+		}
 	}
 	return products, nil
 }
