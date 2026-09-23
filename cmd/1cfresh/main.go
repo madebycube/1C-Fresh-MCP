@@ -43,6 +43,9 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		printCommandHelp(out, command)
 		return nil
 	}
+	if command == "login" {
+		return runLogin(ctx, commandArgs, out)
+	}
 	cfg, err := config.Load()
 	if err != nil {
 		return err
@@ -126,7 +129,7 @@ func parseCommand(args []string) (string, []string) {
 	}
 	command := args[0]
 	remaining := args[1:]
-	if command != "check" && command != "mcp" {
+	if command != "check" && command != "mcp" && command != "login" {
 		if len(args) < 2 {
 			return "", nil
 		}
@@ -146,7 +149,7 @@ func parseCommand(args []string) (string, []string) {
 	if canonical, ok := aliases[command]; ok {
 		command = canonical
 	}
-	if command == "mcp" {
+	if command == "mcp" || command == "login" {
 		return command, remaining
 	}
 	for _, operation := range operations.All {
@@ -163,10 +166,11 @@ func flat(value string) string {
 
 func printHelp(out io.Writer) {
 	fmt.Fprintln(out, "1c reads products, groups, price types, orders, and receipts from 1C-Fresh.")
-	fmt.Fprintln(out, "Every command is read-only. 'Posted' means a document was processed in 1C; it is not a payment status.")
+	fmt.Fprintln(out, "Data commands are read-only. 'Posted' means a document was processed in 1C; it is not a payment status.")
 	fmt.Fprintln(out, "\nUsage: 1c VERB RESOURCE [OPTIONS]")
 	fmt.Fprintln(out, "       1c COMMAND --help")
 	fmt.Fprintln(out, "\nCommands:")
+	fmt.Fprintln(out, "  login              Connect to 1C and save credentials in .env.")
 	for _, operation := range operations.All {
 		if !operation.Advanced {
 			fmt.Fprintf(out, "  %-18s %s\n", operation.Command, operation.Description)
@@ -189,6 +193,10 @@ func printHelp(out io.Writer) {
 }
 
 func printCommandHelp(out io.Writer, command string) {
+	if command == "login" {
+		fmt.Fprintln(out, "Prompt for the 1C link, user, and hidden password; check OData access; save .env.\n\nUsage: 1c login")
+		return
+	}
 	if command == "mcp" {
 		fmt.Fprintln(out, "Run the read-only MCP server over stdio for an AI client.\n\nUsage: 1c mcp")
 		return

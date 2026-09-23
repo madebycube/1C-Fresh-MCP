@@ -2,7 +2,10 @@ module github.com/madebycube/1C-Fresh-MCP
 
 go 1.25.0
 
-require github.com/modelcontextprotocol/go-sdk v1.7.0
+require (
+	github.com/modelcontextprotocol/go-sdk v1.7.0
+	golang.org/x/term v0.38.0
+)
 
 require (
 	github.com/google/jsonschema-go v0.4.3 // indirect

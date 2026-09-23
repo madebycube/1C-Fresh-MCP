@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -17,13 +18,8 @@ type Config struct {
 }
 
 func Load() (Config, error) {
-	filePath := os.Getenv("ONEC_ENV_FILE")
-	if filePath == "" {
-		cwd, _ := os.Getwd()
-		executable, _ := os.Executable()
-		filePath = defaultEnvFile(cwd, executable)
-	}
-	fileValues, err := readEnvFile(filePath)
+	filePath := EnvFilePath()
+	fileValues, err := ReadEnvFile(filePath)
 	if err != nil {
 		if !errors.Is(err, os.ErrNotExist) || os.Getenv("ONEC_ENV_FILE") != "" {
 			return Config{}, fmt.Errorf("read environment file: %w", err)
@@ -35,9 +31,20 @@ func Load() (Config, error) {
 		}
 		return fileValues[key]
 	}
-	base := strings.TrimSpace(value("ONEC_ODATA_BASE_URL"))
-	username := value("ONEC_ODATA_USERNAME")
-	password := value("ONEC_ODATA_PASSWORD")
+	return New(value("ONEC_ODATA_BASE_URL"), value("ONEC_ODATA_USERNAME"), value("ONEC_ODATA_PASSWORD"))
+}
+
+func EnvFilePath() string {
+	if path := os.Getenv("ONEC_ENV_FILE"); path != "" {
+		return path
+	}
+	cwd, _ := os.Getwd()
+	executable, _ := os.Executable()
+	return defaultEnvFile(cwd, executable)
+}
+
+func New(base, username, password string) (Config, error) {
+	base = strings.TrimSpace(base)
 	if base == "" || username == "" || password == "" {
 		return Config{}, errors.New("ONEC_ODATA_BASE_URL, ONEC_ODATA_USERNAME, and ONEC_ODATA_PASSWORD are required")
 	}
@@ -63,7 +70,7 @@ func defaultEnvFile(cwd, executable string) string {
 	return filepath.Join(filepath.Dir(resolved), "..", ".env")
 }
 
-func readEnvFile(path string) (map[string]string, error) {
+func ReadEnvFile(path string) (map[string]string, error) {
 	values := make(map[string]string)
 	file, err := os.Open(path)
 	if err != nil {
@@ -82,7 +89,13 @@ func readEnvFile(path string) (map[string]string, error) {
 		}
 		key = strings.TrimSpace(strings.TrimPrefix(key, "export "))
 		raw = strings.TrimSpace(raw)
-		if len(raw) >= 2 && (raw[0] == '\'' && raw[len(raw)-1] == '\'' || raw[0] == '"' && raw[len(raw)-1] == '"') {
+		if len(raw) >= 2 && raw[0] == '"' && raw[len(raw)-1] == '"' {
+			decoded, err := strconv.Unquote(raw)
+			if err != nil {
+				return nil, errors.New("invalid quoted environment value")
+			}
+			raw = decoded
+		} else if len(raw) >= 2 && raw[0] == '\'' && raw[len(raw)-1] == '\'' {
 			raw = raw[1 : len(raw)-1]
 		}
 		values[key] = raw
