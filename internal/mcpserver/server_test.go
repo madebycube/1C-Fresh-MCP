@@ -42,12 +42,15 @@ func (stubReader) Get(_ context.Context, resource string, params url.Values, _ i
 		return []byte(`{"odata.count":"1","value":[{"Ref_Key":"00000000-0000-0000-0000-000000000006","Description":"Example warehouse","ТипСтруктурнойЕдиницы":"Склад","DeletionMark":false,"Недействителен":false}]}`), nil
 	}
 	if resource == "Catalog_Контрагенты" {
-		return []byte(`{"odata.count":"1","value":[{"Ref_Key":"00000000-0000-0000-0000-000000000007","Code":"C1","Description":"Example customer","IsFolder":false,"DeletionMark":false,"Недействителен":false,"Покупатель":true,"Поставщик":true}]}`), nil
+		return []byte(`{"odata.count":"2","value":[{"Ref_Key":"00000000-0000-0000-0000-000000000001","Code":"G1","Description":"Example folder","Parent_Key":"00000000-0000-0000-0000-000000000000","IsFolder":true,"DeletionMark":false},{"Ref_Key":"00000000-0000-0000-0000-000000000007","Code":"C1","Description":"Example customer","IsFolder":false,"DeletionMark":false,"Недействителен":false,"Покупатель":true,"Поставщик":true}]}`), nil
 	}
 	if resource == "Catalog_Кассы" {
 		return []byte(`{"odata.count":"1","value":[{"Ref_Key":"00000000-0000-0000-0000-000000000011","Code":"C1","Description":"Cash desk","DeletionMark":false,"Недействителен":false}]}`), nil
 	}
 	if strings.HasPrefix(resource, "Catalog_Контрагенты(") {
+		if strings.Contains(resource, "00000000-0000-0000-0000-000000000001") {
+			return []byte(`{"Ref_Key":"00000000-0000-0000-0000-000000000001","Description":"Example folder","Parent_Key":"00000000-0000-0000-0000-000000000000","IsFolder":true,"DeletionMark":false,"DataVersion":"version-1"}`), nil
+		}
 		return []byte(`{"Ref_Key":"00000000-0000-0000-0000-000000000007","Code":"C1","Description":"Example customer","НаименованиеПолное":"Example customer","IsFolder":false,"DeletionMark":false,"Недействителен":false,"Покупатель":true,"Поставщик":true,"DataVersion":"version-1"}`), nil
 	}
 	if params.Get("$inlinecount") != "" {
@@ -127,21 +130,21 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(listed.Tools) != 39 {
-		t.Fatalf("got %d tools; want 39", len(listed.Tools))
+	if len(listed.Tools) != 42 {
+		t.Fatalf("got %d tools; want 42", len(listed.Tools))
 	}
 	for _, tool := range listed.Tools {
 		if tool.Annotations == nil {
 			t.Fatalf("tool %s has no annotations", tool.Name)
 		}
-		write := tool.Name == operations.CreateGroup.Tool || tool.Name == operations.UpdateGroup.Tool || tool.Name == operations.UpdateProduct.Tool || tool.Name == operations.CreateCustomer.Tool || tool.Name == operations.UpdateCustomer.Tool || tool.Name == operations.CreateSupplier.Tool || tool.Name == operations.UpdateSupplier.Tool
+		write := tool.Name == operations.CreateGroup.Tool || tool.Name == operations.UpdateGroup.Tool || tool.Name == operations.CreateCounterpartyGroup.Tool || tool.Name == operations.UpdateCounterpartyGroup.Tool || tool.Name == operations.UpdateProduct.Tool || tool.Name == operations.CreateCustomer.Tool || tool.Name == operations.UpdateCustomer.Tool || tool.Name == operations.CreateSupplier.Tool || tool.Name == operations.UpdateSupplier.Tool
 		if tool.Annotations.ReadOnlyHint == write {
 			t.Fatalf("tool %s has incorrect read-only annotation", tool.Name)
 		}
-		if (tool.Name == operations.CreateGroup.Tool || tool.Name == operations.CreateCustomer.Tool || tool.Name == operations.CreateSupplier.Tool) && (tool.Annotations.DestructiveHint == nil || *tool.Annotations.DestructiveHint) {
+		if (tool.Name == operations.CreateGroup.Tool || tool.Name == operations.CreateCounterpartyGroup.Tool || tool.Name == operations.CreateCustomer.Tool || tool.Name == operations.CreateSupplier.Tool) && (tool.Annotations.DestructiveHint == nil || *tool.Annotations.DestructiveHint) {
 			t.Fatalf("%s must be marked additive", tool.Name)
 		}
-		if (tool.Name == operations.UpdateGroup.Tool || tool.Name == operations.UpdateCustomer.Tool || tool.Name == operations.UpdateSupplier.Tool) && !tool.Annotations.IdempotentHint {
+		if (tool.Name == operations.UpdateGroup.Tool || tool.Name == operations.UpdateCounterpartyGroup.Tool || tool.Name == operations.UpdateCustomer.Tool || tool.Name == operations.UpdateSupplier.Tool) && !tool.Annotations.IdempotentHint {
 			t.Fatalf("%s must be marked idempotent", tool.Name)
 		}
 	}
@@ -153,6 +156,9 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 		{operations.ListGroups.Tool, map[string]any{}},
 		{operations.CreateGroup.Tool, map[string]any{"name": "New group"}},
 		{operations.UpdateGroup.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000001", "name": "Renamed", "parent_id": "root"}},
+		{operations.ListCounterpartyGroups.Tool, map[string]any{}},
+		{operations.CreateCounterpartyGroup.Tool, map[string]any{"name": "New folder"}},
+		{operations.UpdateCounterpartyGroup.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000001", "name": "Renamed", "parent_id": "root"}},
 		{operations.ListPriceTypes.Tool, map[string]any{}},
 		{operations.ListUnitTypes.Tool, map[string]any{}},
 		{operations.GetPrice.Tool, map[string]any{"product_id": "00000000-0000-0000-0000-000000000004", "price_type": "Retail", "as_of": "2026-09-23"}},

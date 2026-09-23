@@ -63,6 +63,22 @@ type updateGroupInput struct {
 	ParentID *string `json:"parent_id,omitempty" jsonschema:"Destination group GUID or root"`
 }
 
+type listCounterpartyGroupsOutput struct {
+	Groups []service.CounterpartyGroup `json:"groups"`
+	Count  int                         `json:"count"`
+}
+
+type createCounterpartyGroupInput struct {
+	Name     string `json:"name" jsonschema:"Name for the new counterparty folder"`
+	ParentID string `json:"parent_id,omitempty" jsonschema:"Optional parent counterparty folder GUID; omit for root"`
+}
+
+type updateCounterpartyGroupInput struct {
+	ID       string  `json:"id" jsonschema:"Existing counterparty folder GUID"`
+	Name     *string `json:"name,omitempty" jsonschema:"Replacement folder name"`
+	ParentID *string `json:"parent_id,omitempty" jsonschema:"Destination folder GUID or root"`
+}
+
 type listPriceTypesInput struct{}
 
 type listUnitTypesInput struct{}
@@ -263,6 +279,27 @@ func New(svc service.Service) *mcp.Server {
 		Annotations: &mcp.ToolAnnotations{IdempotentHint: true},
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, input updateGroupInput) (*mcp.CallToolResult, service.GroupChange, error) {
 		change, err := svc.UpdateGroup(ctx, input.ID, service.GroupPatch{Name: input.Name, ParentID: input.ParentID})
+		return nil, change, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.ListCounterpartyGroups.Tool, Description: operations.ListCounterpartyGroups.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input listGroupsInput) (*mcp.CallToolResult, listCounterpartyGroupsOutput, error) {
+		groups, err := svc.ListCounterpartyGroups(ctx, input.Name)
+		return nil, listCounterpartyGroupsOutput{Groups: groups, Count: len(groups)}, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.CreateCounterpartyGroup.Tool, Description: operations.CreateCounterpartyGroup.Description,
+		Annotations: &mcp.ToolAnnotations{DestructiveHint: &additive},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input createCounterpartyGroupInput) (*mcp.CallToolResult, service.CounterpartyGroupChange, error) {
+		change, err := svc.CreateCounterpartyGroup(ctx, input.Name, input.ParentID)
+		return nil, change, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.UpdateCounterpartyGroup.Tool, Description: operations.UpdateCounterpartyGroup.Description,
+		Annotations: &mcp.ToolAnnotations{IdempotentHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input updateCounterpartyGroupInput) (*mcp.CallToolResult, service.CounterpartyGroupChange, error) {
+		change, err := svc.UpdateCounterpartyGroup(ctx, input.ID, service.CounterpartyGroupPatch{Name: input.Name, ParentID: input.ParentID})
 		return nil, change, err
 	})
 	mcp.AddTool(server, &mcp.Tool{

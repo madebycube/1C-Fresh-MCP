@@ -77,6 +77,12 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		return runGroupCreate(ctx, svc, commandArgs, out)
 	case operations.UpdateGroup.Command:
 		return runGroupUpdate(ctx, svc, commandArgs, out)
+	case operations.ListCounterpartyGroups.Command:
+		return runCounterpartyGroupList(ctx, svc, commandArgs, out)
+	case operations.CreateCounterpartyGroup.Command:
+		return runCounterpartyGroupCreate(ctx, svc, commandArgs, out)
+	case operations.UpdateCounterpartyGroup.Command:
+		return runCounterpartyGroupUpdate(ctx, svc, commandArgs, out)
 	case operations.ListPriceTypes.Command:
 		return runPriceTypeList(ctx, svc, commandArgs, out)
 	case operations.ListUnitTypes.Command:
@@ -242,6 +248,8 @@ func printHelp(out io.Writer) {
 	fmt.Fprintln(out, "\nExamples:")
 	fmt.Fprintln(out, "  1c list groups --name \"Пример группы\"")
 	fmt.Fprintln(out, "  1c update group GROUP_GUID --parent PARENT_GUID")
+	fmt.Fprintln(out, "  1c list counterparty-groups")
+	fmt.Fprintln(out, "  1c create customer --name \"Example customer\" --parent FOLDER_GUID")
 	fmt.Fprintln(out, "  1c list price-types")
 	fmt.Fprintln(out, "  1c list unit-types")
 	fmt.Fprintln(out, "  1c list products --limit 20")
@@ -258,7 +266,7 @@ func printHelp(out io.Writer) {
 	fmt.Fprintln(out, "  1c list accounts --kind bank")
 	fmt.Fprintln(out, "  1c list money --kind bank-in --from 2026-09-01 --to 2026-09-30 --account BANK_ACCOUNT_GUID")
 	fmt.Fprintln(out, "  1c list receipts --from 2026-09-01 --to 2026-09-07")
-	fmt.Fprintln(out, "\nGroups are product folders. Price types are labels in a separate catalog.")
+	fmt.Fprintln(out, "\nGroups are product folders; counterparty groups contain customers and suppliers. Price types are labels in a separate catalog.")
 	fmt.Fprintln(out, "Use --json for structured output. Commands read credentials from .env or ONEC_ODATA_* environment variables.")
 }
 
