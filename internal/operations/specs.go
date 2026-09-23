@@ -105,6 +105,46 @@ var GetOrder = Spec{
 	Example:     "1c get order --json ORDER_GUID",
 }
 
+var ListCustomers = Spec{
+	Command:     "list customers",
+	Tool:        "list_customers",
+	Description: "List customers with stable paging.",
+	Usage:       "1c list customers [--limit N] [--offset N] [--json]",
+	Example:     "1c list customers --limit 20",
+}
+
+var SearchCustomers = Spec{
+	Command:     "search customers",
+	Tool:        "search_customers",
+	Description: "Find customers by name or code.",
+	Usage:       "1c search customers [--limit N] [--offset N] [--json] QUERY",
+	Example:     "1c search customers \"Пример компании\"",
+}
+
+var GetCustomer = Spec{
+	Command:     "get customer",
+	Tool:        "get_customer",
+	Description: "Show a customer by 1C ID.",
+	Usage:       "1c get customer [--json] GUID",
+	Example:     "1c get customer CUSTOMER_GUID",
+}
+
+var ListSales = Spec{
+	Command:     "list sales",
+	Tool:        "list_sales_documents",
+	Description: "List invoices, customer shipments, or customer returns.",
+	Usage:       "1c list sales --kind invoice|shipment|return [--customer GUID] [--from YYYY-MM-DD --to YYYY-MM-DD] [--limit N] [--offset N] [--json]",
+	Example:     "1c list sales --kind shipment --limit 20",
+}
+
+var GetSale = Spec{
+	Command:     "get sale",
+	Tool:        "get_sales_document",
+	Description: "Show an invoice, shipment, or return by 1C ID.",
+	Usage:       "1c get sale --kind invoice|shipment|return [--json] GUID",
+	Example:     "1c get sale --kind shipment DOCUMENT_GUID",
+}
+
 var ListReceipts = Spec{
 	Command:     "list receipts",
 	Tool:        "list_cash_receipts",
@@ -147,4 +187,4 @@ var DescribeResource = Spec{
 	Advanced:    true,
 }
 
-var All = []Spec{Check, ListGroups, CreateGroup, UpdateGroup, ListPriceTypes, GetPrice, ListWarehouses, GetStock, SearchProducts, UpdateProduct, ListOrders, GetOrder, ListReceipts, GetReceipt, AuditUnpostedReceipts, SearchResources, DescribeResource}
+var All = []Spec{Check, ListGroups, CreateGroup, UpdateGroup, ListPriceTypes, GetPrice, ListWarehouses, GetStock, SearchProducts, UpdateProduct, ListCustomers, SearchCustomers, GetCustomer, ListOrders, GetOrder, ListSales, GetSale, ListReceipts, GetReceipt, AuditUnpostedReceipts, SearchResources, DescribeResource}

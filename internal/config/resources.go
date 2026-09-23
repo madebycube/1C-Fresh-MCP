@@ -81,6 +81,21 @@ var Warehouses = CatalogListResource{
 	},
 }
 
+var Customers = CatalogListResource{
+	Name: "Catalog_Контрагенты",
+	Fields: []FieldBinding{
+		{Output: "id", Source: "Ref_Key"},
+		{Output: "code", Source: "Code"},
+		{Output: "name", Source: "Description"},
+		{Output: "full_name", Source: "НаименованиеПолное"},
+		{Output: "is_folder", Source: "IsFolder"},
+		{Output: "deleted", Source: "DeletionMark"},
+		{Output: "inactive", Source: "Недействителен"},
+		{Output: "buyer", Source: "Покупатель"},
+		{Output: "supplier", Source: "Поставщик"},
+	},
+}
+
 type BalanceResource struct {
 	Name         string
 	ProductField string
@@ -145,6 +160,71 @@ var CustomerOrders = DocumentResource{
 		{Output: "price", Source: "Цена"},
 		{Output: "amount", Source: "Сумма"},
 		{Output: "total", Source: "Всего"},
+	},
+}
+
+var salesLineFields = []FieldBinding{
+	{Output: "line_number", Source: "LineNumber"},
+	{Output: "product_id", Source: "Номенклатура_Key"},
+	{Output: "quantity", Source: "Количество"},
+	{Output: "unit", Source: "ЕдиницаИзмерения"},
+	{Output: "price", Source: "Цена"},
+	{Output: "amount", Source: "Сумма"},
+	{Output: "total", Source: "Всего"},
+	{Output: "vat", Source: "СуммаНДС"},
+}
+
+var SalesDocuments = map[string]DocumentResource{
+	"invoice": {
+		Name: "Document_СчетНаОплату", DateField: "Date", DeletedField: "DeletionMark",
+		Fields: []FieldBinding{
+			{Output: "id", Source: "Ref_Key"},
+			{Output: "number", Source: "Number"},
+			{Output: "date", Source: "Date"},
+			{Output: "posted", Source: "Posted"},
+			{Output: "deleted", Source: "DeletionMark"},
+			{Output: "amount", Source: "СуммаДокумента"},
+			{Output: "customer_id", Source: "Контрагент_Key"},
+			{Output: "basis_id", Source: "ДокументОснование"},
+			{Output: "basis_type", Source: "ДокументОснование_Type"},
+		},
+		LinesField: "Запасы", LineFields: salesLineFields,
+	},
+	"shipment": {
+		Name: "Document_РасходнаяНакладная", DateField: "Date", DeletedField: "DeletionMark",
+		Fields: []FieldBinding{
+			{Output: "id", Source: "Ref_Key"},
+			{Output: "number", Source: "Number"},
+			{Output: "date", Source: "Date"},
+			{Output: "posted", Source: "Posted"},
+			{Output: "deleted", Source: "DeletionMark"},
+			{Output: "amount", Source: "СуммаДокумента"},
+			{Output: "customer_id", Source: "Контрагент_Key"},
+			{Output: "operation", Source: "ВидОперации"},
+			{Output: "order_id", Source: "Заказ"},
+			{Output: "order_type", Source: "Заказ_Type"},
+			{Output: "basis_id", Source: "ДокументОснование"},
+			{Output: "basis_type", Source: "ДокументОснование_Type"},
+		},
+		LinesField: "Запасы", LineFields: salesLineFields,
+	},
+	"return": {
+		Name: "Document_ПриходнаяНакладная", DateField: "Date", DeletedField: "DeletionMark",
+		Fields: []FieldBinding{
+			{Output: "id", Source: "Ref_Key"},
+			{Output: "number", Source: "Number"},
+			{Output: "date", Source: "Date"},
+			{Output: "posted", Source: "Posted"},
+			{Output: "deleted", Source: "DeletionMark"},
+			{Output: "amount", Source: "СуммаДокумента"},
+			{Output: "customer_id", Source: "Контрагент_Key"},
+			{Output: "operation", Source: "ВидОперации"},
+			{Output: "order_id", Source: "Заказ"},
+			{Output: "order_type", Source: "Заказ_Type"},
+			{Output: "basis_id", Source: "ДокументОснование"},
+			{Output: "basis_type", Source: "ДокументОснование_Type"},
+		},
+		LinesField: "Запасы", LineFields: salesLineFields,
 	},
 }
 

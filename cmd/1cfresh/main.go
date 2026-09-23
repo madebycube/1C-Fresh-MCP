@@ -116,6 +116,16 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		return runOrderList(ctx, svc, commandArgs, out)
 	case operations.GetOrder.Command:
 		return runOrderGet(ctx, svc, commandArgs, out)
+	case operations.ListCustomers.Command:
+		return runCustomerList(ctx, svc, commandArgs, out, false)
+	case operations.SearchCustomers.Command:
+		return runCustomerList(ctx, svc, commandArgs, out, true)
+	case operations.GetCustomer.Command:
+		return runCustomerGet(ctx, svc, commandArgs, out)
+	case operations.ListSales.Command:
+		return runSalesList(ctx, svc, commandArgs, out)
+	case operations.GetSale.Command:
+		return runSalesGet(ctx, svc, commandArgs, out)
 	case operations.ListReceipts.Command:
 		return runReceiptList(ctx, svc, commandArgs, out)
 	case operations.GetReceipt.Command:
@@ -177,7 +187,7 @@ func flat(value string) string {
 }
 
 func printHelp(out io.Writer) {
-	fmt.Fprintln(out, "1c reads products, groups, prices, orders, and receipts from 1C-Fresh.")
+	fmt.Fprintln(out, "1c reads products, groups, prices, customers, sales, orders, and receipts from 1C-Fresh.")
 	fmt.Fprintln(out, "Create and update commands write to 1C. 'Posted' means a document was processed in 1C; it is not a payment status.")
 	fmt.Fprintln(out, "\nUsage: 1c VERB RESOURCE [OPTIONS]")
 	fmt.Fprintln(out, "       1c COMMAND --help")
@@ -199,6 +209,8 @@ func printHelp(out io.Writer) {
 	fmt.Fprintln(out, "  1c list groups --name \"Пример группы\"")
 	fmt.Fprintln(out, "  1c list price-types")
 	fmt.Fprintln(out, "  1c search products \"название товара\"")
+	fmt.Fprintln(out, "  1c search customers \"Пример компании\"")
+	fmt.Fprintln(out, "  1c list sales --kind shipment --limit 20")
 	fmt.Fprintln(out, "  1c list receipts --from 2026-09-01 --to 2026-09-07")
 	fmt.Fprintln(out, "\nGroups are product folders. Price types are labels in a separate catalog.")
 	fmt.Fprintln(out, "Use --json for structured output. Commands read credentials from .env or ONEC_ODATA_* environment variables.")
