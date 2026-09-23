@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -18,7 +19,9 @@ type Config struct {
 func Load() (Config, error) {
 	filePath := os.Getenv("ONEC_ENV_FILE")
 	if filePath == "" {
-		filePath = ".env"
+		cwd, _ := os.Getwd()
+		executable, _ := os.Executable()
+		filePath = defaultEnvFile(cwd, executable)
 	}
 	fileValues, err := readEnvFile(filePath)
 	if err != nil {
@@ -46,6 +49,18 @@ func Load() (Config, error) {
 		return Config{}, errors.New("ONEC_ODATA_BASE_URL must be the application URL, not an OData endpoint")
 	}
 	return Config{BaseURL: parsed, Username: username, Password: password}, nil
+}
+
+func defaultEnvFile(cwd, executable string) string {
+	local := filepath.Join(cwd, ".env")
+	if _, err := os.Stat(local); !errors.Is(err, os.ErrNotExist) {
+		return local
+	}
+	resolved, err := filepath.EvalSymlinks(executable)
+	if err != nil || filepath.Base(filepath.Dir(resolved)) != "bin" {
+		return local
+	}
+	return filepath.Join(filepath.Dir(resolved), "..", ".env")
 }
 
 func readEnvFile(path string) (map[string]string, error) {
