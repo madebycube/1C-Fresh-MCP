@@ -116,6 +116,18 @@ type getCustomerInput struct {
 	ID string `json:"id" jsonschema:"Customer GUID"`
 }
 
+type createCounterpartyInput struct {
+	Name     string `json:"name" jsonschema:"Counterparty name"`
+	FullName string `json:"full_name,omitempty" jsonschema:"Optional full name; defaults to name"`
+	ParentID string `json:"parent_id,omitempty" jsonschema:"Optional counterparty folder GUID"`
+}
+
+type updateCounterpartyInput struct {
+	ID       string  `json:"id" jsonschema:"Existing counterparty GUID"`
+	Name     *string `json:"name,omitempty" jsonschema:"Replacement name"`
+	FullName *string `json:"full_name,omitempty" jsonschema:"Replacement full name; empty string clears it"`
+}
+
 type listSalesInput struct {
 	Kind       string `json:"kind" jsonschema:"invoice, shipment, or return"`
 	CustomerID string `json:"customer_id,omitempty" jsonschema:"Optional customer GUID"`
@@ -320,6 +332,20 @@ func New(svc service.Service) *mcp.Server {
 		return nil, customer, err
 	})
 	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.CreateCustomer.Tool, Description: operations.CreateCustomer.Description,
+		Annotations: &mcp.ToolAnnotations{DestructiveHint: &additive},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input createCounterpartyInput) (*mcp.CallToolResult, service.CounterpartyChange, error) {
+		change, err := svc.CreateCounterparty(ctx, "customer", input.Name, input.FullName, input.ParentID)
+		return nil, change, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.UpdateCustomer.Tool, Description: operations.UpdateCustomer.Description,
+		Annotations: &mcp.ToolAnnotations{IdempotentHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input updateCounterpartyInput) (*mcp.CallToolResult, service.CounterpartyChange, error) {
+		change, err := svc.UpdateCounterparty(ctx, "customer", input.ID, service.CounterpartyPatch{Name: input.Name, FullName: input.FullName})
+		return nil, change, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
 		Name: operations.ListSuppliers.Tool, Description: operations.ListSuppliers.Description,
 		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, input listCustomersInput) (*mcp.CallToolResult, service.SupplierPage, error) {
@@ -347,6 +373,20 @@ func New(svc service.Service) *mcp.Server {
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, input getCustomerInput) (*mcp.CallToolResult, service.Supplier, error) {
 		supplier, err := svc.GetSupplier(ctx, input.ID)
 		return nil, supplier, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.CreateSupplier.Tool, Description: operations.CreateSupplier.Description,
+		Annotations: &mcp.ToolAnnotations{DestructiveHint: &additive},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input createCounterpartyInput) (*mcp.CallToolResult, service.CounterpartyChange, error) {
+		change, err := svc.CreateCounterparty(ctx, "supplier", input.Name, input.FullName, input.ParentID)
+		return nil, change, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.UpdateSupplier.Tool, Description: operations.UpdateSupplier.Description,
+		Annotations: &mcp.ToolAnnotations{IdempotentHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input updateCounterpartyInput) (*mcp.CallToolResult, service.CounterpartyChange, error) {
+		change, err := svc.UpdateCounterparty(ctx, "supplier", input.ID, service.CounterpartyPatch{Name: input.Name, FullName: input.FullName})
+		return nil, change, err
 	})
 	mcp.AddTool(server, &mcp.Tool{
 		Name: operations.ListSales.Tool, Description: operations.ListSales.Description,
