@@ -27,6 +27,11 @@ type GroupChange struct {
 	Applied  bool   `json:"applied"`
 }
 
+type GroupPatch struct {
+	Name     *string `json:"name,omitempty"`
+	ParentID *string `json:"parent_id,omitempty"`
+}
+
 type groupRecord struct {
 	ID          string `json:"Ref_Key"`
 	Name        string `json:"Description"`
@@ -77,13 +82,20 @@ func (s Service) CreateGroup(ctx context.Context, name, parentID string) (GroupC
 	return change, nil
 }
 
-func (s Service) UpdateGroup(ctx context.Context, id, name string) (GroupChange, error) {
-	if !guidPattern.MatchString(id) || strings.EqualFold(id, emptyGUID) {
+func (s Service) UpdateGroup(ctx context.Context, id string, patch GroupPatch) (GroupChange, error) {
+	if !linkedGUID(id) {
 		return GroupChange{}, errors.New("group ID must be a nonzero GUID")
 	}
-	name, err := groupName(name)
-	if err != nil {
-		return GroupChange{}, err
+	if patch.Name == nil && patch.ParentID == nil {
+		return GroupChange{}, errors.New("provide a name or parent to update")
+	}
+	fields := make(map[string]string)
+	if patch.Name != nil {
+		name, err := groupName(*patch.Name)
+		if err != nil {
+			return GroupChange{}, err
+		}
+		fields["Description"] = name
 	}
 	current, err := s.readGroup(ctx, id)
 	if err != nil {
@@ -95,19 +107,70 @@ func (s Service) UpdateGroup(ctx context.Context, id, name string) (GroupChange,
 	if current.DataVersion == "" {
 		return GroupChange{}, errors.New("group has no data version for a safe update")
 	}
-	if current.Name == name {
-		return GroupChange{ID: id, Name: name, ParentID: current.ParentID, Applied: false}, nil
+	change := GroupChange{ID: current.ID, Name: current.Name, ParentID: current.ParentID}
+	if name, ok := fields["Description"]; ok {
+		change.Name = name
+		if name == current.Name {
+			delete(fields, "Description")
+		}
+	}
+	if patch.ParentID != nil {
+		parentID := strings.TrimSpace(*patch.ParentID)
+		if parentID == "root" || strings.EqualFold(parentID, emptyGUID) {
+			parentID = emptyGUID
+		} else if !linkedGUID(parentID) {
+			return GroupChange{}, errors.New("parent must be a group GUID or root")
+		}
+		if !strings.EqualFold(parentID, emptyGUID) {
+			if err := s.validateGroupParentChain(ctx, id, parentID); err != nil {
+				return GroupChange{}, err
+			}
+		}
+		change.ParentID = strings.ToLower(parentID)
+		if !strings.EqualFold(parentID, current.ParentID) && !(current.ParentID == "" && parentID == emptyGUID) {
+			fields["Parent_Key"] = change.ParentID
+		}
+	}
+	if len(fields) == 0 {
+		return change, nil
 	}
 	writer, ok := s.OData.(odataWriter)
 	if !ok {
 		return GroupChange{}, errors.New("OData client does not support writes")
 	}
-	body, _ := json.Marshal(map[string]string{"Description": name})
+	body, _ := json.Marshal(fields)
 	_, err = writer.Write(ctx, http.MethodPatch, nomenclatureResource(id), body, current.DataVersion)
 	if err != nil {
 		return GroupChange{}, err
 	}
-	return GroupChange{ID: id, Name: name, ParentID: current.ParentID, Applied: true}, nil
+	change.Applied = true
+	return change, nil
+}
+
+func (s Service) validateGroupParentChain(ctx context.Context, id, parentID string) error {
+	seen := map[string]bool{strings.ToLower(id): true}
+	for depth := 0; depth < 100; depth++ {
+		key := strings.ToLower(parentID)
+		if seen[key] {
+			return errors.New("parent would create a group cycle")
+		}
+		seen[key] = true
+		parent, err := s.readGroup(ctx, parentID)
+		if err != nil {
+			return err
+		}
+		if !strings.EqualFold(parent.ID, parentID) || !parent.IsFolder || parent.Deleted {
+			return errors.New("parent must be an active product group")
+		}
+		if parent.ParentID == "" || strings.EqualFold(parent.ParentID, emptyGUID) {
+			return nil
+		}
+		if !linkedGUID(parent.ParentID) {
+			return errors.New("invalid parent group chain")
+		}
+		parentID = parent.ParentID
+	}
+	return errors.New("parent group chain is too deep")
 }
 
 func (s Service) readGroup(ctx context.Context, id string) (groupRecord, error) {
