@@ -159,6 +159,31 @@ type getWarehouseDocumentInput struct {
 	ID   string `json:"id" jsonschema:"Warehouse document GUID"`
 }
 
+type listMoneyAccountsInput struct {
+	Kind string `json:"kind" jsonschema:"cash, bank, or register"`
+}
+
+type listMoneyAccountsOutput struct {
+	Accounts []service.MoneyAccount `json:"accounts"`
+	Count    int                    `json:"count"`
+}
+
+type listMoneyInput struct {
+	Kind       string `json:"kind" jsonschema:"cash-in, cash-out, bank-in, bank-out, card-payment, or cash-shift"`
+	From       string `json:"from" jsonschema:"First date YYYY-MM-DD"`
+	To         string `json:"to" jsonschema:"Last date YYYY-MM-DD, at most 31 calendar days inclusive"`
+	AccountID  string `json:"account_id,omitempty" jsonschema:"Required cash or bank account GUID for account-scoped kinds"`
+	RegisterID string `json:"register_id,omitempty" jsonschema:"Register GUID for retail and card kinds"`
+	TerminalID string `json:"terminal_id,omitempty" jsonschema:"Acquiring terminal GUID for card payments"`
+	Limit      int    `json:"limit,omitempty" jsonschema:"Maximum results, 1 to 100; defaults to 20"`
+	Offset     int    `json:"offset,omitempty" jsonschema:"Offset within matching documents"`
+}
+
+type getMoneyInput struct {
+	Kind string `json:"kind" jsonschema:"cash-in, cash-out, bank-in, bank-out, card-payment, or cash-shift"`
+	ID   string `json:"id" jsonschema:"Money document GUID from list_money_documents"`
+}
+
 type listReceiptsInput struct {
 	Kind   string `json:"kind" jsonschema:"sale or refund"`
 	From   string `json:"from" jsonschema:"First application date, YYYY-MM-DD"`
@@ -375,6 +400,31 @@ func New(svc service.Service) *mcp.Server {
 		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, input getWarehouseDocumentInput) (*mcp.CallToolResult, service.OperationalDocument, error) {
 		doc, err := svc.GetOperationalDocument(ctx, "warehouse", input.Kind, input.ID)
+		return nil, doc, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.ListMoneyAccounts.Tool, Description: operations.ListMoneyAccounts.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input listMoneyAccountsInput) (*mcp.CallToolResult, listMoneyAccountsOutput, error) {
+		accounts, err := svc.ListMoneyAccounts(ctx, input.Kind)
+		return nil, listMoneyAccountsOutput{Accounts: accounts, Count: len(accounts)}, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.ListMoney.Tool, Description: operations.ListMoney.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input listMoneyInput) (*mcp.CallToolResult, service.MoneyPage, error) {
+		limit := input.Limit
+		if limit == 0 {
+			limit = 20
+		}
+		page, err := svc.ListMoneyDocuments(ctx, input.Kind, input.From, input.To, input.AccountID, input.RegisterID, input.TerminalID, limit, input.Offset)
+		return nil, page, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.GetMoney.Tool, Description: operations.GetMoney.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input getMoneyInput) (*mcp.CallToolResult, service.MoneyDocument, error) {
+		doc, err := svc.GetMoneyDocument(ctx, input.Kind, input.ID)
 		return nil, doc, err
 	})
 	mcp.AddTool(server, &mcp.Tool{

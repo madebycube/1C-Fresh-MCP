@@ -2,7 +2,7 @@
 
 ![1C-Fresh: CLI и MCP](Images/READMEHeader.png)
 
-`1c` — CLI и локальный MCP-сервер на Go для работы с приложением 1С:Фреш через OData. У них общий клиент; операции с данными доступны через оба интерфейса. Сейчас доступны группы номенклатуры, виды и поиск цен, товары, склады и остатки, покупатели и поставщики, заказы, документы продаж и закупок, складские документы, кассовые чеки и просмотр схемы OData. Запись реализована для групп номенклатуры и отдельных полей товаров.
+`1c` — CLI и локальный MCP-сервер на Go для работы с приложением 1С:Фреш через OData. У них общий клиент; операции с данными доступны через оба интерфейса. Сейчас доступны группы номенклатуры, виды и поиск цен, товары, склады и остатки, покупатели и поставщики, заказы, документы продаж и закупок, складские документы, движение денег, кассовые чеки и просмотр схемы OData. Запись реализована для групп номенклатуры и отдельных полей товаров.
 
 ## Требования
 
@@ -83,6 +83,12 @@ ln -s /path/to/1C-Fresh-MCP/bin/1c "$HOME/.local/bin/1c"
 1c list warehouse-docs --kind transfer --warehouse WAREHOUSE_GUID
 1c list warehouse-docs --kind stock-writeoff --limit 20
 1c get warehouse-doc --kind transfer DOCUMENT_GUID
+1c list accounts --kind bank
+1c list accounts --kind cash
+1c list accounts --kind register
+1c list money --kind bank-in --account BANK_ACCOUNT_GUID --from 2026-09-01 --to 2026-09-07
+1c list money --kind card-payment --register REGISTER_GUID --from 2026-09-01 --to 2026-09-07
+1c get money --kind bank-in DOCUMENT_GUID
 1c list receipts --kind sale --from 2026-09-01 --to 2026-09-07
 1c get receipt --kind refund --json RECEIPT_GUID
 1c audit receipts --from 2026-09-01 --before 2026-09-24 --json
@@ -101,6 +107,8 @@ ln -s /path/to/1C-Fresh-MCP/bin/1c "$HOME/.local/bin/1c"
 `list customers` и `search customers` показывают контрагентов с признаком «Покупатель», исключая папки и помеченные на удаление записи. `list sales` читает счета на оплату (`invoice`), расходные накладные продажи (`shipment`) и приходные накладные с операцией возврата от покупателя (`return`). `--customer`, `--from` и `--to` ограничивают выборку; `--limit` и `--offset` делят её на страницы. `get sale` показывает дату, сумму, факт проведения, товарные строки и идентификаторы связанного заказа или документа-основания, когда 1С возвращает их с подходящим типом связи. `Posted` означает проведение документа, а не оплату. В проверенной базе ресурс счетов на оплату пуст; операции чтения счёта по GUID на живой записи пока не проверялись. Списки читают историю ресурсов и могут занять несколько секунд.
 
 `list suppliers` и `search suppliers` показывают контрагентов с признаком «Поставщик». `list purchases --kind order` читает заказы поставщикам, а `--kind receipt` — только приходные накладные с операцией «ПоступлениеОтПоставщика». `list warehouse-docs` читает заказы на перемещение (`transfer-order`), перемещения запасов с операцией «Перемещение» (`transfer`), оприходования (`stock-receipt`) и списания (`stock-writeoff`). `--supplier` и `--warehouse` выбирают записи по ID; для перемещения склад может быть исходным или конечным. Оба списка поддерживают даты, `--limit` и `--offset`. `get purchase` и `get warehouse-doc` показывают товарные строки и доступные ID связанных документов. `Posted` показывает проведение в 1С, а не получение товара или исполнение заказа. В проверенной базе заказов на перемещение нет, поэтому получение такого документа по GUID на живой записи не проверялось.
+
+`list accounts` показывает кассы (`cash`), банковские счета организации (`bank`) и кассы ККМ (`register`). `list money` читает поступления и расходы кассы (`cash-in`, `cash-out`), банка (`bank-in`, `bank-out`), операции по платёжным картам (`card-payment`) и кассовые смены (`cash-shift`). Укажите даты включительно, не более 31 дня, и ID кассы, счёта, кассы ККМ или терминала через `--account`, `--register`, `--terminal`. `--limit` и `--offset` делят результат на страницы; `get money` показывает документ по GUID. Операции зарплаты, налогов, выплат работникам и неизвестные виды операций исключены. Кассовый чек, операция по карте и зачисление на банковский счёт — отдельные документы; `Posted` означает проведение, а не подтверждение оплаты или сверки. Команды только читают данные и могут просматривать историю ресурса несколько секунд.
 
 ### Проверка непроведённых чеков
 
@@ -139,6 +147,7 @@ bin/1c mcp
 | `list_sales_documents`, `get_sales_document` | |
 | `list_purchase_documents`, `get_purchase_document` | |
 | `list_warehouse_documents`, `get_warehouse_document` | |
+| `list_money_accounts`, `list_money_documents`, `get_money_document` | |
 | `list_cash_receipts`, `get_cash_receipt` | |
 | `audit_unposted_receipts` | |
 | `search_odata_resources`, `describe_odata_resource` | |

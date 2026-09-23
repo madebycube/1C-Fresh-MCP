@@ -38,6 +38,9 @@ func (stubReader) Get(_ context.Context, resource string, params url.Values, _ i
 	if resource == "Catalog_Контрагенты" {
 		return []byte(`{"odata.count":"1","value":[{"Ref_Key":"00000000-0000-0000-0000-000000000007","Code":"C1","Description":"Example customer","IsFolder":false,"DeletionMark":false,"Недействителен":false,"Покупатель":true,"Поставщик":true}]}`), nil
 	}
+	if resource == "Catalog_Кассы" {
+		return []byte(`{"odata.count":"1","value":[{"Ref_Key":"00000000-0000-0000-0000-000000000011","Code":"C1","Description":"Cash desk","DeletionMark":false,"Недействителен":false}]}`), nil
+	}
 	if strings.HasPrefix(resource, "Catalog_Контрагенты(") {
 		return []byte(`{"Ref_Key":"00000000-0000-0000-0000-000000000007","Code":"C1","Description":"Example customer","IsFolder":false,"DeletionMark":false,"Недействителен":false,"Покупатель":true,"Поставщик":true}`), nil
 	}
@@ -61,6 +64,12 @@ func (stubReader) Get(_ context.Context, resource string, params url.Values, _ i
 	}
 	if resource == "Document_ПеремещениеЗапасов" {
 		return []byte(`{"value":[{"Ref_Key":"00000000-0000-0000-0000-000000000010","Number":"T1","Date":"2026-09-23T00:00:00","Posted":true,"DeletionMark":false,"ВидОперации":"Перемещение","СтруктурнаяЕдиница_Key":"00000000-0000-0000-0000-000000000006"}]}`), nil
+	}
+	if strings.HasPrefix(resource, "Document_ПоступлениеНаСчет(") {
+		return []byte(`{"Ref_Key":"00000000-0000-0000-0000-000000000012","Number":"B1","Date":"2026-09-23T00:00:00","Posted":true,"DeletionMark":false,"СуммаДокумента":100,"ВидОперации":"ПоступлениеОплатыПоКартам","БанковскийСчет_Key":"00000000-0000-0000-0000-000000000011"}`), nil
+	}
+	if resource == "Document_ПоступлениеНаСчет" {
+		return []byte(`{"value":[{"Ref_Key":"00000000-0000-0000-0000-000000000012","Number":"B1","Date":"2026-09-23T00:00:00","Posted":true,"DeletionMark":false,"СуммаДокумента":100,"ВидОперации":"ПоступлениеОплатыПоКартам","БанковскийСчет_Key":"00000000-0000-0000-0000-000000000011"}]}`), nil
 	}
 	if resource == "Document_УстановкаЦенНоменклатуры" {
 		return []byte(`{"value":[{"Ref_Key":"00000000-0000-0000-0000-000000000005","Date":"2026-09-23T12:00:00","Posted":true,"DeletionMark":false,"Запасы":[{"LineNumber":"1","Номенклатура_Key":"00000000-0000-0000-0000-000000000004","ВидЦены_Key":"00000000-0000-0000-0000-000000000002","Характеристика_Key":"00000000-0000-0000-0000-000000000000","Цена":120.50,"Валюта_Key":"00000000-0000-0000-0000-000000000006"}]}]}`), nil
@@ -112,8 +121,8 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(listed.Tools) != 29 {
-		t.Fatalf("got %d tools; want 29", len(listed.Tools))
+	if len(listed.Tools) != 32 {
+		t.Fatalf("got %d tools; want 32", len(listed.Tools))
 	}
 	for _, tool := range listed.Tools {
 		if tool.Annotations == nil {
@@ -158,6 +167,9 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 		{operations.GetPurchase.Tool, map[string]any{"kind": "order", "id": "00000000-0000-0000-0000-000000000009"}},
 		{operations.ListWarehouseDocuments.Tool, map[string]any{"kind": "transfer", "limit": 2}},
 		{operations.GetWarehouseDocument.Tool, map[string]any{"kind": "transfer", "id": "00000000-0000-0000-0000-000000000010"}},
+		{operations.ListMoneyAccounts.Tool, map[string]any{"kind": "cash"}},
+		{operations.ListMoney.Tool, map[string]any{"kind": "bank-in", "from": "2026-09-23", "to": "2026-09-23", "account_id": "00000000-0000-0000-0000-000000000011", "limit": 2}},
+		{operations.GetMoney.Tool, map[string]any{"kind": "bank-in", "id": "00000000-0000-0000-0000-000000000012"}},
 		{operations.ListReceipts.Tool, map[string]any{"kind": "sale", "from": "2026-09-23", "to": "2026-09-23", "limit": 2}},
 		{operations.GetReceipt.Tool, map[string]any{"kind": "sale", "id": "00000000-0000-0000-0000-000000000001"}},
 		{operations.AuditUnpostedReceipts.Tool, map[string]any{"from": "2026-09-23", "before": "2026-09-24"}},

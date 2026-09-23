@@ -201,6 +201,30 @@ var GetWarehouseDocument = Spec{
 	Example:     "1c get warehouse-doc --kind transfer DOCUMENT_GUID",
 }
 
+var ListMoneyAccounts = Spec{
+	Command:     "list accounts",
+	Tool:        "list_money_accounts",
+	Description: "List cash accounts, own bank accounts, or retail registers.",
+	Usage:       "1c list accounts --kind cash|bank|register [--json]",
+	Example:     "1c list accounts --kind bank",
+}
+
+var ListMoney = Spec{
+	Command:     "list money",
+	Tool:        "list_money_documents",
+	Description: "List scoped cash, bank, card, or retail shift documents.",
+	Usage:       "1c list money --kind cash-in|cash-out|bank-in|bank-out|card-payment|cash-shift --from YYYY-MM-DD --to YYYY-MM-DD [--account GUID] [--register GUID] [--terminal GUID] [--limit N] [--offset N] [--json]",
+	Example:     "1c list money --kind bank-in --from 2026-09-01 --to 2026-09-30 --account BANK_ACCOUNT_GUID",
+}
+
+var GetMoney = Spec{
+	Command:     "get money",
+	Tool:        "get_money_document",
+	Description: "Show a scoped cash, bank, card, or retail shift document by ID.",
+	Usage:       "1c get money --kind cash-in|cash-out|bank-in|bank-out|card-payment|cash-shift [--json] GUID",
+	Example:     "1c get money --kind card-payment DOCUMENT_GUID",
+}
+
 var ListReceipts = Spec{
 	Command:     "list receipts",
 	Tool:        "list_cash_receipts",
@@ -243,4 +267,4 @@ var DescribeResource = Spec{
 	Advanced:    true,
 }
 
-var All = []Spec{Check, ListGroups, CreateGroup, UpdateGroup, ListPriceTypes, GetPrice, ListWarehouses, GetStock, SearchProducts, UpdateProduct, ListCustomers, SearchCustomers, GetCustomer, ListSuppliers, SearchSuppliers, GetSupplier, ListOrders, GetOrder, ListSales, GetSale, ListPurchases, GetPurchase, ListWarehouseDocuments, GetWarehouseDocument, ListReceipts, GetReceipt, AuditUnpostedReceipts, SearchResources, DescribeResource}
+var All = []Spec{Check, ListGroups, CreateGroup, UpdateGroup, ListPriceTypes, GetPrice, ListWarehouses, GetStock, SearchProducts, UpdateProduct, ListCustomers, SearchCustomers, GetCustomer, ListSuppliers, SearchSuppliers, GetSupplier, ListOrders, GetOrder, ListSales, GetSale, ListPurchases, GetPurchase, ListWarehouseDocuments, GetWarehouseDocument, ListMoneyAccounts, ListMoney, GetMoney, ListReceipts, GetReceipt, AuditUnpostedReceipts, SearchResources, DescribeResource}
