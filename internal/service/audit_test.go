@@ -7,18 +7,19 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"testing"
 )
 
 type auditReader struct {
 	rows  map[string][]map[string]any
-	calls int
+	calls atomic.Int64
 }
 
 func (r *auditReader) Check(context.Context) (int, error) { return 1, nil }
 
 func (r *auditReader) Get(_ context.Context, resource string, params url.Values, _ int64) ([]byte, error) {
-	r.calls++
+	r.calls.Add(1)
 	kind := "sale"
 	if strings.Contains(resource, "Возврат") {
 		kind = "refund"
@@ -84,7 +85,7 @@ func TestAuditRejectsBadInputBeforeOData(t *testing.T) {
 			t.Errorf("accepted %+v", test)
 		}
 	}
-	if reader.calls != 0 {
+	if reader.calls.Load() != 0 {
 		t.Fatal("invalid input reached OData")
 	}
 }
