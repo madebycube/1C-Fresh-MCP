@@ -17,9 +17,10 @@ func runProductUpdate(ctx context.Context, svc service.Service, args []string, o
 	name := flags.String("name", "", "replacement product name")
 	fullName := flags.String("full-name", "", "replacement full name")
 	article := flags.String("article", "", "replacement article")
+	group := flags.String("group", "", "destination product group GUID")
 	asJSON := flags.Bool("json", false, "print JSON")
 	if err := parseFlags(flags, args); err != nil || flags.NArg() != 1 {
-		return errors.New("usage: 1c update product GUID [--name TEXT] [--full-name TEXT] [--article TEXT] [--json]")
+		return errors.New("usage: 1c update product GUID [--name TEXT] [--full-name TEXT] [--article TEXT] [--group GUID] [--json]")
 	}
 	var patch service.ProductPatch
 	flags.Visit(func(option *flag.Flag) {
@@ -30,6 +31,8 @@ func runProductUpdate(ctx context.Context, svc service.Service, args []string, o
 			patch.FullName = fullName
 		case "article":
 			patch.Article = article
+		case "group":
+			patch.GroupID = group
 		}
 	})
 	change, err := svc.UpdateProduct(ctx, flags.Arg(0), patch)
