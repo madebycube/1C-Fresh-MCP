@@ -54,6 +54,7 @@ Commands follow `1c VERB RESOURCE [OPTIONS]`. Use `--help` on a command for its 
 ```sh
 1c check
 1c login
+1c list product-categories
 1c list groups --name "Пример группы"
 1c list product-categories
 1c create group --name "Новая группа"
@@ -114,6 +115,8 @@ Commands follow `1c VERB RESOURCE [OPTIONS]`. Use `--help` on a command for its 
 1c audit receipts --from 2026-09-01 --before 2026-09-24 --json
 ```
 
+`list product-categories` shows active product categories, paths, default types, and units.
+
 `list groups` returns product folders and their IDs; `list price-types` returns price type names and IDs. `list unit-types` returns measurement-unit classifier entries. Product base-unit IDs from `get product` refer to this classifier in the tested tenant. Product groups and price types are separate entities. These commands do not retrieve prices from price documents.
 
 `list prices` shows products in the selected group and their effective prices for a named price type as of `--as-of`. Use `--group GROUP_GUID` or `--group root`; without a group, it browses the catalog. Its pages use raw catalog offsets like `list products` and include products without a price as `found: false`. Each item includes product code, article, and the source price document when found. It scans price document history once per page instead of once per product.
@@ -153,12 +156,11 @@ bin/1c mcp
 Configure your MCP client to launch this command from the repository directory, or provide the three `ONEC_ODATA_*` variables in the client's environment. The server exposes:
 
 - `check_connection`
-- `list_product_groups` and `list_price_types`
+- `list_product_groups`, `list_product_categories`, and `list_price_types`
 - `get_product_price` and `list_product_prices`
 - `list_warehouses`, `get_product_stock`, and `list_unit_types`
 - `find_nomenclature`
 - `list_products` and `get_product`
-- `list_product_categories`
 - `list_counterparty_groups`
 - `create_counterparty_group` and `update_counterparty_group` (write operations)
 - `create_product` and `update_product` (write operations)

@@ -161,8 +161,7 @@ bin/1c mcp
 | Чтение | Изменение |
 | --- | --- |
 | `check_connection` | `create_product_group` |
-| `list_product_groups`, `list_price_types`, `get_product_price`, `list_product_prices` | `update_product_group` |
-| `list_product_categories` | |
+| `list_product_groups`, `list_product_categories`, `list_price_types`, `get_product_price`, `list_product_prices` | `update_product_group` |
 | `list_counterparty_groups` | `create_counterparty_group`, `update_counterparty_group` |
 | `list_warehouses`, `get_product_stock`, `list_unit_types` | |
 | `find_nomenclature` | `create_product`, `update_product` |

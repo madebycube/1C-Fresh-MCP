@@ -40,11 +40,6 @@ type createProductInput struct {
 	CategoryID string `json:"category_id,omitempty" jsonschema:"Active product category GUID; required for stock"`
 }
 
-type listProductCategoriesOutput struct {
-	Categories []service.ProductCategory `json:"categories"`
-	Count      int                       `json:"count"`
-}
-
 type searchOutput struct {
 	Products []service.Product `json:"products"`
 	Count    int               `json:"count"`
@@ -65,6 +60,11 @@ type listGroupsInput struct {
 type listGroupsOutput struct {
 	Groups []service.Group `json:"groups"`
 	Count  int             `json:"count"`
+}
+
+type listProductCategoriesOutput struct {
+	Categories []service.ProductCategory `json:"categories"`
+	Count      int                       `json:"count"`
 }
 
 type createGroupInput struct {
