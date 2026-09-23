@@ -31,6 +31,21 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		printHelp(out)
 		return nil
 	}
+	if args[0] == "help" && len(args) == 2 {
+		if args[1] == "all" {
+			for _, topic := range operations.Topics {
+				printTopicCommands(out, topic)
+			}
+			fmt.Fprintln(out, "Run '1c VERB RESOURCE --help' for syntax and an example.")
+			return nil
+		}
+		for _, topic := range operations.Topics {
+			if topic.Name == args[1] {
+				printTopicHelp(out, topic)
+				return nil
+			}
+		}
+	}
 	helpRequested := args[0] == "help"
 	if helpRequested {
 		args = args[1:]
@@ -237,52 +252,40 @@ func flat(value string) string {
 }
 
 func printHelp(out io.Writer) {
-	fmt.Fprintln(out, "1c reads products, prices, stock, sales, purchases, warehouse, money, and retail data from 1C-Fresh.")
-	fmt.Fprintln(out, "Create and update commands write to 1C. 'Posted' means a document was processed in 1C; it does not prove payment, receipt, or fulfillment.")
+	fmt.Fprintln(out, "1c connects a CLI and MCP server to your 1C-Fresh application.")
 	fmt.Fprintln(out, "\nUsage: 1c VERB RESOURCE [OPTIONS]")
-	fmt.Fprintln(out, "       1c COMMAND --help")
-	fmt.Fprintln(out, "\nCommands:")
-	fmt.Fprintln(out, "  login              Connect to 1C and save credentials in .env.")
-	for _, operation := range operations.All {
-		if !operation.Advanced {
-			fmt.Fprintf(out, "  %-18s %s\n", operation.Command, operation.Description)
-		}
+	fmt.Fprintln(out, "       1c help TOPIC|all")
+	fmt.Fprintln(out, "       1c VERB RESOURCE --help")
+	fmt.Fprintln(out, "\nStart:")
+	fmt.Fprintln(out, "  1c login                    Save your 1C link and credentials locally.")
+	fmt.Fprintln(out, "  1c check                    Verify the connection.")
+	fmt.Fprintln(out, "  1c list products --limit 20  Browse products.")
+	fmt.Fprintln(out, "  1c mcp                      Run the MCP server for AI clients.")
+	fmt.Fprintln(out, "\nTopics:")
+	for _, topic := range operations.Topics {
+		fmt.Fprintf(out, "  %-12s %s\n", topic.Name, topic.Description)
 	}
-	fmt.Fprintln(out, "  mcp                Run the MCP server for AI clients.")
-	fmt.Fprintln(out, "\nExplore the raw 1C schema:")
-	for _, operation := range operations.All {
-		if operation.Advanced {
-			fmt.Fprintf(out, "  %-18s %s\n", operation.Command, operation.Description)
-		}
+	fmt.Fprintln(out, "\nRun '1c help prices' for price commands or '1c help all' for every command.")
+	fmt.Fprintln(out, "Use --json for structured output. Create and update commands write to 1C.")
+}
+
+func printTopicHelp(out io.Writer, topic operations.Topic) {
+	printTopicCommands(out, topic)
+	fmt.Fprintln(out, "Run '1c VERB RESOURCE --help' for syntax and an example.")
+}
+
+func printTopicCommands(out io.Writer, topic operations.Topic) {
+	fmt.Fprintf(out, "%s — %s\n\n", topic.Name, topic.Description)
+	if topic.Name == "setup" {
+		fmt.Fprintln(out, "  login                  Connect to 1C and save credentials in .env.")
 	}
-	fmt.Fprintln(out, "\nExamples:")
-	fmt.Fprintln(out, "  1c list groups --name \"Пример группы\"")
-	fmt.Fprintln(out, "  1c list product-categories")
-	fmt.Fprintln(out, "  1c list characteristics --product PRODUCT_GUID")
-	fmt.Fprintln(out, "  1c update group GROUP_GUID --parent PARENT_GUID")
-	fmt.Fprintln(out, "  1c list counterparty-groups")
-	fmt.Fprintln(out, "  1c create customer --name \"Example customer\" --parent FOLDER_GUID")
-	fmt.Fprintln(out, "  1c list price-types")
-	fmt.Fprintln(out, "  1c list currencies")
-	fmt.Fprintln(out, "  1c list prices --price-type \"Пример цены\" --group GROUP_GUID")
-	fmt.Fprintln(out, "  1c list unit-types")
-	fmt.Fprintln(out, "  1c list products --limit 20")
-	fmt.Fprintln(out, "  1c list products --group GROUP_GUID --limit 20")
-	fmt.Fprintln(out, "  1c get product PRODUCT_GUID")
-	fmt.Fprintln(out, "  1c search products \"название товара\"")
-	fmt.Fprintln(out, "  1c search customers \"Пример компании\"")
-	fmt.Fprintln(out, "  1c list customers --group FOLDER_GUID --limit 20")
-	fmt.Fprintln(out, "  1c search suppliers \"Пример поставщика\"")
-	fmt.Fprintln(out, "  1c list sales --kind shipment --limit 20")
-	fmt.Fprintln(out, "  1c create customer --name \"Example customer\"")
-	fmt.Fprintln(out, "  1c update supplier SUPPLIER_GUID --name \"New name\"")
-	fmt.Fprintln(out, "  1c list purchases --kind receipt --limit 20")
-	fmt.Fprintln(out, "  1c list warehouse-docs --kind transfer --limit 20")
-	fmt.Fprintln(out, "  1c list accounts --kind bank")
-	fmt.Fprintln(out, "  1c list money --kind bank-in --from 2026-09-01 --to 2026-09-30 --account BANK_ACCOUNT_GUID")
-	fmt.Fprintln(out, "  1c list receipts --from 2026-09-01 --to 2026-09-07")
-	fmt.Fprintln(out, "\nGroups are product folders; counterparty groups contain customers and suppliers. Price types are labels in a separate catalog.")
-	fmt.Fprintln(out, "Use --json for structured output. Commands read credentials from .env or ONEC_ODATA_* environment variables.")
+	for _, operation := range topic.Commands {
+		fmt.Fprintf(out, "  %-22s %s\n", operation.Command, operation.Description)
+	}
+	if topic.Name == "setup" {
+		fmt.Fprintln(out, "  mcp                    Run the MCP server for AI clients.")
+	}
+	fmt.Fprintln(out)
 }
 
 func printCommandHelp(out io.Writer, command string) {
@@ -291,7 +294,7 @@ func printCommandHelp(out io.Writer, command string) {
 		return
 	}
 	if command == "mcp" {
-		fmt.Fprintln(out, "Run the MCP server over stdio for an AI client. Read tools and product group write tools are available.\n\nUsage: 1c mcp")
+		fmt.Fprintln(out, "Run the MCP server over stdio for an AI client.\n\nUsage: 1c mcp")
 		return
 	}
 	for _, operation := range operations.All {
