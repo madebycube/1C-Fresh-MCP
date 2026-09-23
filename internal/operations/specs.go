@@ -42,4 +42,10 @@ var GetReceipt = Spec{
 	Description: "Read one cash receipt or refund, including stock lines and cashless payments.",
 }
 
-var All = []Spec{Check, SearchProducts, ListOrders, GetOrder, ListReceipts, GetReceipt}
+var AuditUnpostedReceipts = Spec{
+	Command:     "receipts audit-unposted",
+	Tool:        "audit_unposted_receipts",
+	Description: "Find unposted sale and refund receipts before a date in a bounded read-only scan.",
+}
+
+var All = []Spec{Check, SearchProducts, ListOrders, GetOrder, ListReceipts, GetReceipt, AuditUnpostedReceipts}

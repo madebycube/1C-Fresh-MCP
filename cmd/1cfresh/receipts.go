@@ -99,3 +99,36 @@ func runReceiptGet(ctx context.Context, svc service.Service, args []string, out 
 	}
 	return payments.Flush()
 }
+
+func runReceiptAudit(ctx context.Context, svc service.Service, args []string, out io.Writer) error {
+	flags := flag.NewFlagSet("receipts audit-unposted", flag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+	kind := flags.String("kind", "both", "sale, refund, or both")
+	from := flags.String("from", "", "first date (YYYY-MM-DD)")
+	before := flags.String("before", "", "exclusive cutoff date (YYYY-MM-DD)")
+	asJSON := flags.Bool("json", false, "print JSON")
+	if err := flags.Parse(args); err != nil || flags.NArg() != 0 || *from == "" || *before == "" {
+		return errors.New("usage: 1cfresh receipts audit-unposted --from YYYY-MM-DD --before YYYY-MM-DD [--kind sale|refund|both] [--json]")
+	}
+	report, err := svc.AuditUnpostedReceipts(ctx, *kind, *from, *before)
+	if err != nil {
+		return err
+	}
+	if *asJSON {
+		return json.NewEncoder(out).Encode(report)
+	}
+	writer := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
+	if _, err := fmt.Fprintln(writer, "KIND\tNUMBER\tDATE\tPOSTED\tAMOUNT\tID"); err != nil {
+		return err
+	}
+	for _, receipt := range report.Findings {
+		if _, err := fmt.Fprintf(writer, "%s\t%s\t%s\t%t\t%s\t%s\n", receipt.Kind, flat(receipt.Number), flat(receipt.Date), receipt.Posted, receipt.Amount, receipt.ID); err != nil {
+			return err
+		}
+	}
+	if err := writer.Flush(); err != nil {
+		return err
+	}
+	_, err = fmt.Fprintf(out, "%d unposted receipts found among %d inspected from %s before %s\n", len(report.Findings), report.Inspected, report.From, report.Before)
+	return err
+}
