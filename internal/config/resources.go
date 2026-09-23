@@ -73,6 +73,20 @@ var ProductCategories = CatalogListResource{
 	},
 }
 
+var ProductCharacteristics = CatalogListResource{
+	Name: "Catalog_ХарактеристикиНоменклатуры",
+	Fields: []FieldBinding{
+		{Output: "id", Source: "Ref_Key"},
+		{Output: "code", Source: "Code"},
+		{Output: "name", Source: "Description"},
+		{Output: "article", Source: "Артикул"},
+		{Output: "product_id", Source: "Owner"},
+		{Output: "owner_type", Source: "Owner_Type"},
+		{Output: "deleted", Source: "DeletionMark"},
+		{Output: "inactive", Source: "Недействителен"},
+	},
+}
+
 var PriceTypes = CatalogListResource{
 	Name: "Catalog_ВидыЦен",
 	Fields: []FieldBinding{
