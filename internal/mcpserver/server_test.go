@@ -26,6 +26,12 @@ func (stubReader) Get(_ context.Context, resource string, params url.Values, _ i
 	if resource == "Catalog_Номенклатура" {
 		return []byte(`{"odata.count":"1","value":[{"Ref_Key":"00000000-0000-0000-0000-000000000001","Description":"Furniture","Parent_Key":"00000000-0000-0000-0000-000000000000","IsFolder":true,"DeletionMark":false}]}`), nil
 	}
+	if resource == "Catalog_КатегорииНоменклатуры" {
+		return []byte(`{"odata.count":"1","value":[{"Ref_Key":"00000000-0000-0000-0000-000000000014","Description":"Example category","Parent_Key":"00000000-0000-0000-0000-000000000000","IsFolder":false,"DeletionMark":false,"ТипНоменклатурыПоУмолчанию":"Запас","ЕдиницаИзмерения_Key":"00000000-0000-0000-0000-000000000013"}]}`), nil
+	}
+	if strings.HasPrefix(resource, "Catalog_КатегорииНоменклатуры(") {
+		return []byte(`{"Ref_Key":"00000000-0000-0000-0000-000000000014","Description":"Example category","IsFolder":false,"DeletionMark":false}`), nil
+	}
 	if strings.HasPrefix(resource, "Catalog_Номенклатура(") {
 		if strings.Contains(resource, "00000000-0000-0000-0000-000000000004") {
 			return []byte(`{"Ref_Key":"00000000-0000-0000-0000-000000000004","Description":"Chair","НаименованиеПолное":"Chair full","Артикул":"A","ТипНоменклатуры":"Товар","ЕдиницаИзмерения_Key":"00000000-0000-0000-0000-000000000002","IsFolder":false,"DeletionMark":false,"DataVersion":"version-1"}`), nil
@@ -130,8 +136,8 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(listed.Tools) != 43 {
-		t.Fatalf("got %d tools; want 43", len(listed.Tools))
+	if len(listed.Tools) != 44 {
+		t.Fatalf("got %d tools; want 44", len(listed.Tools))
 	}
 	for _, tool := range listed.Tools {
 		if tool.Annotations == nil {
@@ -154,6 +160,7 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 	}{
 		{operations.Check.Tool, map[string]any{}},
 		{operations.ListGroups.Tool, map[string]any{}},
+		{operations.ListProductCategories.Tool, map[string]any{}},
 		{operations.CreateGroup.Tool, map[string]any{"name": "New group"}},
 		{operations.UpdateGroup.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000001", "name": "Renamed", "parent_id": "root"}},
 		{operations.ListCounterpartyGroups.Tool, map[string]any{}},
@@ -167,7 +174,7 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 		{operations.SearchProducts.Tool, map[string]any{"query": "Chair", "limit": 2}},
 		{operations.ListProducts.Tool, map[string]any{"limit": 2, "group_id": "00000000-0000-0000-0000-000000000001"}},
 		{operations.GetProduct.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000004"}},
-		{operations.CreateProduct.Tool, map[string]any{"name": "Example item", "type": "stock", "unit_id": "00000000-0000-0000-0000-000000000013"}},
+		{operations.CreateProduct.Tool, map[string]any{"name": "Example item", "type": "stock", "unit_id": "00000000-0000-0000-0000-000000000013", "category_id": "00000000-0000-0000-0000-000000000014"}},
 		{operations.UpdateProduct.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000004", "article": "B", "group_id": "00000000-0000-0000-0000-000000000001"}},
 		{operations.ListOrders.Tool, map[string]any{"limit": 2}},
 		{operations.GetOrder.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000001"}},

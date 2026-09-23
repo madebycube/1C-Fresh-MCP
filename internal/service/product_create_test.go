@@ -13,6 +13,7 @@ import (
 type productCreateStub struct {
 	unitDeleted bool
 	groupRow    string
+	categoryRow string
 	response    []byte
 	writeErr    error
 	writes      int
@@ -34,6 +35,8 @@ func (stub *productCreateStub) Get(_ context.Context, resource string, _ url.Val
 		return data, nil
 	case strings.HasPrefix(resource, "Catalog_Номенклатура(guid'"):
 		return []byte(stub.groupRow), nil
+	case strings.HasPrefix(resource, "Catalog_КатегорииНоменклатуры(guid'"):
+		return []byte(stub.categoryRow), nil
 	default:
 		return nil, errors.New("unexpected read")
 	}
@@ -50,16 +53,17 @@ func (stub *productCreateStub) Write(_ context.Context, method, resource string,
 
 func TestCreateProductLinksActiveClassifierUnitAndGroup(t *testing.T) {
 	stub := &productCreateStub{
-		groupRow: `{"Ref_Key":"` + groupID + `","Description":"Furniture","IsFolder":true,"DeletionMark":false}`,
-		response: []byte(`{"Ref_Key":"33333333-3333-3333-3333-333333333333"}`),
+		groupRow:    `{"Ref_Key":"` + groupID + `","Description":"Furniture","IsFolder":true,"DeletionMark":false}`,
+		categoryRow: `{"Ref_Key":"44444444-4444-4444-4444-444444444444","Description":"Furniture","IsFolder":false,"DeletionMark":false}`,
+		response:    []byte(`{"Ref_Key":"33333333-3333-3333-3333-333333333333"}`),
 	}
 	created, err := (Service{OData: stub}).CreateProduct(context.Background(), ProductCreate{
-		Name: "Chair", Article: "A1", Type: "stock", UnitID: childID, GroupID: groupID,
+		Name: "Chair", Article: "A1", Type: "stock", UnitID: childID, GroupID: groupID, CategoryID: "44444444-4444-4444-4444-444444444444",
 	})
 	if err != nil || !created.Applied || created.ID != "33333333-3333-3333-3333-333333333333" || created.FullName != "Chair" || stub.writes != 1 || stub.method != http.MethodPost || stub.resource != "Catalog_Номенклатура" {
 		t.Fatalf("product creation: %+v, %+v, %v", created, stub, err)
 	}
-	if stub.body["ТипНоменклатуры"] != "Запас" || stub.body["ЕдиницаИзмерения_Key"] != childID || stub.body["Parent_Key"] != groupID || stub.body["IsFolder"] != false {
+	if stub.body["ТипНоменклатуры"] != "Запас" || stub.body["ЕдиницаИзмерения_Key"] != childID || stub.body["Parent_Key"] != groupID || stub.body["КатегорияНоменклатуры_Key"] != "44444444-4444-4444-4444-444444444444" || stub.body["IsFolder"] != false {
 		t.Fatalf("product payload: %+v", stub.body)
 	}
 }
@@ -78,6 +82,9 @@ func TestCreateProductRejectsInvalidUnitAndGroup(t *testing.T) {
 	stub := &productCreateStub{unitDeleted: true}
 	svc := Service{OData: stub}
 	input := ProductCreate{Name: "Service", Type: "service", UnitID: childID}
+	if _, err := svc.CreateProduct(context.Background(), ProductCreate{Name: "Stock", Type: "stock", UnitID: childID}); err == nil || stub.writes != 0 {
+		t.Fatal("accepted stock without a category")
+	}
 	if _, err := svc.CreateProduct(context.Background(), input); err == nil || stub.writes != 0 {
 		t.Fatal("accepted a deleted classifier unit")
 	}
@@ -90,6 +97,12 @@ func TestCreateProductRejectsInvalidUnitAndGroup(t *testing.T) {
 	input.Type = "unknown"
 	if _, err := svc.CreateProduct(context.Background(), input); err == nil || stub.writes != 0 {
 		t.Fatal("accepted an unknown product type")
+	}
+	input.Type = "stock"
+	input.CategoryID = "44444444-4444-4444-4444-444444444444"
+	stub.categoryRow = `{"Ref_Key":"44444444-4444-4444-4444-444444444444","Description":"Folder","IsFolder":true,"DeletionMark":false}`
+	if _, err := svc.CreateProduct(context.Background(), input); err == nil || stub.writes != 0 {
+		t.Fatal("accepted a folder as product category")
 	}
 }
 

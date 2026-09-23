@@ -31,12 +31,18 @@ type getProductInput struct {
 }
 
 type createProductInput struct {
-	Name     string `json:"name" jsonschema:"Product name"`
-	FullName string `json:"full_name,omitempty" jsonschema:"Optional full name"`
-	Article  string `json:"article,omitempty" jsonschema:"Optional article"`
-	Type     string `json:"type" jsonschema:"stock or service"`
-	UnitID   string `json:"unit_id" jsonschema:"Active GUID from list_unit_types"`
-	GroupID  string `json:"group_id,omitempty" jsonschema:"Optional active product group GUID"`
+	Name       string `json:"name" jsonschema:"Product name"`
+	FullName   string `json:"full_name,omitempty" jsonschema:"Optional full name"`
+	Article    string `json:"article,omitempty" jsonschema:"Optional article"`
+	Type       string `json:"type" jsonschema:"stock or service"`
+	UnitID     string `json:"unit_id" jsonschema:"Active GUID from list_unit_types"`
+	GroupID    string `json:"group_id,omitempty" jsonschema:"Optional active product group GUID"`
+	CategoryID string `json:"category_id,omitempty" jsonschema:"Active product category GUID; required for stock"`
+}
+
+type listProductCategoriesOutput struct {
+	Categories []service.ProductCategory `json:"categories"`
+	Count      int                       `json:"count"`
 }
 
 type searchOutput struct {
@@ -277,6 +283,13 @@ func New(svc service.Service) *mcp.Server {
 		return nil, listGroupsOutput{Groups: groups, Count: len(groups)}, err
 	})
 	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.ListProductCategories.Tool, Description: operations.ListProductCategories.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input listGroupsInput) (*mcp.CallToolResult, listProductCategoriesOutput, error) {
+		categories, err := svc.ListProductCategories(ctx, input.Name)
+		return nil, listProductCategoriesOutput{Categories: categories, Count: len(categories)}, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
 		Name: operations.CreateGroup.Tool, Description: operations.CreateGroup.Description,
 		Annotations: &mcp.ToolAnnotations{DestructiveHint: &additive},
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, input createGroupInput) (*mcp.CallToolResult, service.GroupChange, error) {
@@ -377,7 +390,7 @@ func New(svc service.Service) *mcp.Server {
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, input createProductInput) (*mcp.CallToolResult, service.ProductCreation, error) {
 		created, err := svc.CreateProduct(ctx, service.ProductCreate{
 			Name: input.Name, FullName: input.FullName, Article: input.Article,
-			Type: input.Type, UnitID: input.UnitID, GroupID: input.GroupID,
+			Type: input.Type, UnitID: input.UnitID, GroupID: input.GroupID, CategoryID: input.CategoryID,
 		})
 		return nil, created, err
 	})
