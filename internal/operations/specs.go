@@ -126,6 +126,14 @@ var GetPriceDocument = Spec{
 	Example:     "1c get price-document DOCUMENT_GUID --product PRODUCT_GUID",
 }
 
+var ListPriceDocuments = Spec{
+	Command:     "list price-documents",
+	Tool:        "list_price_documents",
+	Description: "Browse price-setting documents and their posting status.",
+	Usage:       "1c list price-documents [--from YYYY-MM-DD --to YYYY-MM-DD] [--posted true|false] [--limit N] [--offset N] [--json]",
+	Example:     "1c list price-documents --posted false --limit 20",
+}
+
 var ListPrices = Spec{
 	Command:     "list prices",
 	Tool:        "list_product_prices",
@@ -393,7 +401,7 @@ var DescribeResource = Spec{
 var Topics = []Topic{
 	{Name: "setup", Description: "Connection and local MCP server", Commands: []Spec{Check}},
 	{Name: "products", Description: "Products, groups, categories, and characteristics", Commands: []Spec{ListProducts, GetProduct, SearchProducts, UpdateProduct, ListGroups, CreateGroup, UpdateGroup, ListProductCategories, ListProductCharacteristics, ListUnitTypes}},
-	{Name: "prices", Description: "Price types, currencies, quotes, and source documents", Commands: []Spec{ListPriceTypes, ListCurrencies, GetPrice, ListPrices, GetPriceDocument}},
+	{Name: "prices", Description: "Price types, currencies, quotes, and source documents", Commands: []Spec{ListPriceTypes, ListCurrencies, GetPrice, ListPrices, ListPriceDocuments, GetPriceDocument}},
 	{Name: "inventory", Description: "Warehouses, stock, and warehouse documents", Commands: []Spec{ListWarehouses, GetStock, ListWarehouseDocuments, GetWarehouseDocument}},
 	{Name: "partners", Description: "Customer and supplier records and folders", Commands: []Spec{ListCounterpartyGroups, CreateCounterpartyGroup, UpdateCounterpartyGroup, ListCustomers, SearchCustomers, GetCustomer, CreateCustomer, UpdateCustomer, ListSuppliers, SearchSuppliers, GetSupplier, CreateSupplier, UpdateSupplier}},
 	{Name: "sales", Description: "Customer orders and sales documents", Commands: []Spec{ListOrders, GetOrder, ListSales, GetSale}},
