@@ -67,6 +67,7 @@ Commands follow `1c VERB RESOURCE [OPTIONS]`. Use `--help` on a command for its 
 1c get stock PRODUCT_GUID --warehouse WAREHOUSE_GUID
 1c list products --limit 20
 1c list products --limit 20 --offset NEXT_OFFSET
+1c get product PRODUCT_GUID --json
 1c search products --limit 10 "название товара"
 1c list customers --limit 20
 1c search customers "Example company"
@@ -113,7 +114,7 @@ Commands follow `1c VERB RESOURCE [OPTIONS]`. Use `--help` on a command for its 
 
 `search resources` uses `1c search resources [--kind catalog|document|register|other] [--limit N] [--json] QUERY` to search OData metadata names by resource kind. `describe resource` uses `1c describe resource [--json] EXACT_NAME` to show schema fields for an exact OData resource name. These commands expose OData schema names and fields; they do not enumerate every screen in the 1C interface or provide generic reads of resource data.
 
-`list products` browses the catalog without a query and excludes folders and deletion-marked records. `next_offset` is an offset into raw OData rows: pass it as the next `--offset` rather than adding the number of products shown. Each call scans at most 500 rows, so a page can contain fewer than `--limit` products while still returning `next_offset`. Offsets do not provide a snapshot if the catalog changes between requests. Product search checks product name, full name, and article, excludes folders and deletion-marked rows locally, and returns up to 50 matches. It scans at most 500 OData candidates per field. Order listing returns the latest non-deleted orders, up to 100; order details include product lines. Receipt listing accepts an inclusive date range of up to 31 days, returns up to 100 rows per page, and supports `--offset` for the next page. Receipt details include stock lines and cashless payments. JSON represents amounts and quantities as decimal strings to preserve source precision.
+`list products` browses the catalog without a query and excludes folders and deletion-marked records. `get product` reads one active product by GUID, including its product type and base unit reference. `next_offset` is an offset into raw OData rows: pass it as the next `--offset` rather than adding the number of products shown. Each call scans at most 500 rows, so a page can contain fewer than `--limit` products while still returning `next_offset`. Offsets do not provide a snapshot if the catalog changes between requests. Product search checks product name, full name, and article, excludes folders and deletion-marked rows locally, and returns up to 50 matches. It scans at most 500 OData candidates per field. Order listing returns the latest non-deleted orders, up to 100; order details include product lines. Receipt listing accepts an inclusive date range of up to 31 days, returns up to 100 rows per page, and supports `--offset` for the next page. Receipt details include stock lines and cashless payments. JSON represents amounts and quantities as decimal strings to preserve source precision.
 
 `list customers` and `search customers` show counterparties marked as buyers, excluding folders and deletion-marked records. `list sales` reads invoices (`invoice`), customer shipments (`shipment`), and incoming goods documents whose operation is customer return (`return`). Use `--customer`, `--from`, and `--to` to narrow results, then `--limit` and `--offset` for paging. `get sale` includes date, amount, posting status, product lines, and linked order or source document IDs when 1C supplies a matching relationship type. `Posted` means the document was posted in 1C; it does not mean paid. The invoice resource is empty in the tested tenant, so lookup of a live invoice by GUID has not been verified. Listings scan resource history and may take several seconds.
 
@@ -142,7 +143,7 @@ Configure your MCP client to launch this command from the repository directory, 
 - `get_product_price`
 - `list_warehouses` and `get_product_stock`
 - `find_nomenclature`
-- `list_products`
+- `list_products` and `get_product`
 - `update_product` (write operation)
 - `search_odata_resources` and `describe_odata_resource`
 - `list_customer_orders` and `get_customer_order`

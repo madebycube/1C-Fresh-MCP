@@ -25,6 +25,10 @@ type listProductsInput struct {
 	Offset int `json:"offset,omitempty" jsonschema:"Raw catalog offset from a previous list_products result"`
 }
 
+type getProductInput struct {
+	ID string `json:"id" jsonschema:"Product GUID from list_products or find_nomenclature"`
+}
+
 type searchOutput struct {
 	Products []service.Product `json:"products"`
 	Count    int               `json:"count"`
@@ -298,6 +302,13 @@ func New(svc service.Service) *mcp.Server {
 		}
 		page, err := svc.ListProducts(ctx, limit, input.Offset)
 		return nil, page, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.GetProduct.Tool, Description: operations.GetProduct.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input getProductInput) (*mcp.CallToolResult, service.ProductDetail, error) {
+		product, err := svc.GetProduct(ctx, input.ID)
+		return nil, product, err
 	})
 	mcp.AddTool(server, &mcp.Tool{
 		Name: operations.UpdateProduct.Tool, Description: operations.UpdateProduct.Description,

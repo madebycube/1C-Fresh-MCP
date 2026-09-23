@@ -28,7 +28,7 @@ func (stubReader) Get(_ context.Context, resource string, params url.Values, _ i
 	}
 	if strings.HasPrefix(resource, "Catalog_Номенклатура(") {
 		if strings.Contains(resource, "00000000-0000-0000-0000-000000000004") {
-			return []byte(`{"Ref_Key":"00000000-0000-0000-0000-000000000004","Description":"Chair","НаименованиеПолное":"Chair full","Артикул":"A","IsFolder":false,"DeletionMark":false,"DataVersion":"version-1"}`), nil
+			return []byte(`{"Ref_Key":"00000000-0000-0000-0000-000000000004","Description":"Chair","НаименованиеПолное":"Chair full","Артикул":"A","ТипНоменклатуры":"Товар","ЕдиницаИзмерения_Key":"00000000-0000-0000-0000-000000000002","IsFolder":false,"DeletionMark":false,"DataVersion":"version-1"}`), nil
 		}
 		return []byte(`{"Ref_Key":"00000000-0000-0000-0000-000000000001","Description":"Furniture","Parent_Key":"00000000-0000-0000-0000-000000000000","IsFolder":true,"DeletionMark":false,"DataVersion":"version-1"}`), nil
 	}
@@ -124,8 +124,8 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(listed.Tools) != 37 {
-		t.Fatalf("got %d tools; want 37", len(listed.Tools))
+	if len(listed.Tools) != 38 {
+		t.Fatalf("got %d tools; want 38", len(listed.Tools))
 	}
 	for _, tool := range listed.Tools {
 		if tool.Annotations == nil {
@@ -156,6 +156,7 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 		{operations.GetStock.Tool, map[string]any{"product_id": "00000000-0000-0000-0000-000000000004"}},
 		{operations.SearchProducts.Tool, map[string]any{"query": "Chair", "limit": 2}},
 		{operations.ListProducts.Tool, map[string]any{"limit": 2}},
+		{operations.GetProduct.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000004"}},
 		{operations.UpdateProduct.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000004", "article": "B", "group_id": "00000000-0000-0000-0000-000000000001"}},
 		{operations.ListOrders.Tool, map[string]any{"limit": 2}},
 		{operations.GetOrder.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000001"}},
