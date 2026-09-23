@@ -95,6 +95,9 @@ func (stubReader) Get(_ context.Context, resource string, params url.Values, _ i
 	if resource == "Document_УстановкаЦенНоменклатуры" {
 		return []byte(`{"value":[{"Ref_Key":"00000000-0000-0000-0000-000000000005","Date":"2026-09-23T12:00:00","Posted":true,"DeletionMark":false,"Запасы":[{"LineNumber":"1","Номенклатура_Key":"00000000-0000-0000-0000-000000000004","ВидЦены_Key":"00000000-0000-0000-0000-000000000002","Характеристика_Key":"00000000-0000-0000-0000-000000000000","Цена":120.50,"Валюта_Key":"00000000-0000-0000-0000-000000000006"}]}]}`), nil
 	}
+	if strings.HasPrefix(resource, "Document_УстановкаЦенНоменклатуры(") {
+		return []byte(`{"Ref_Key":"00000000-0000-0000-0000-000000000005","Date":"2026-09-23T12:00:00","Posted":true,"DeletionMark":false,"Запасы":[{"LineNumber":"1","Номенклатура_Key":"00000000-0000-0000-0000-000000000004","ВидЦены_Key":"00000000-0000-0000-0000-000000000002","Характеристика_Key":"00000000-0000-0000-0000-000000000000","Цена":120.50,"Валюта_Key":"00000000-0000-0000-0000-000000000006"}]}`), nil
+	}
 	if strings.HasPrefix(resource, "Document_ЧекККМ") && strings.Contains(resource, "(guid'") {
 		return []byte(`{"Ref_Key":"00000000-0000-0000-0000-000000000001","Number":"1","Date":"2026-09-23T00:00:00","Posted":true,"СуммаДокумента":10,"НомерЧекаККМ":"1","Запасы":[],"БезналичнаяОплата":[]}`), nil
 	}
@@ -142,8 +145,8 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(listed.Tools) != 47 {
-		t.Fatalf("got %d tools; want 47", len(listed.Tools))
+	if len(listed.Tools) != 48 {
+		t.Fatalf("got %d tools; want 48", len(listed.Tools))
 	}
 	for _, tool := range listed.Tools {
 		if tool.Annotations == nil {
@@ -177,6 +180,7 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 		{operations.ListCurrencies.Tool, map[string]any{}},
 		{operations.ListUnitTypes.Tool, map[string]any{}},
 		{operations.GetPrice.Tool, map[string]any{"product_id": "00000000-0000-0000-0000-000000000004", "price_type": "Retail", "as_of": "2026-09-23"}},
+		{operations.GetPriceDocument.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000005", "product_id": "00000000-0000-0000-0000-000000000004"}},
 		{operations.ListPrices.Tool, map[string]any{"price_type": "Retail", "group_id": "00000000-0000-0000-0000-000000000001", "as_of": "2026-09-23", "limit": 1}},
 		{operations.ListWarehouses.Tool, map[string]any{}},
 		{operations.GetStock.Tool, map[string]any{"product_id": "00000000-0000-0000-0000-000000000004"}},
@@ -220,6 +224,12 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 			data, err := json.Marshal(result.StructuredContent)
 			if err != nil || !strings.Contains(string(data), `"found":true`) || !strings.Contains(string(data), `"price":"120.50"`) {
 				t.Fatalf("price tool returned %s: %v", data, err)
+			}
+		}
+		if call.name == operations.GetPriceDocument.Tool {
+			data, err := json.Marshal(result.StructuredContent)
+			if err != nil || !strings.Contains(string(data), `"price":"120.50"`) || !strings.Contains(string(data), `"total":1`) {
+				t.Fatalf("price document tool returned %s: %v", data, err)
 			}
 		}
 		if call.name == operations.ListPrices.Tool {

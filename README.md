@@ -72,6 +72,7 @@ ln -s /path/to/1C-Fresh-MCP/bin/1c "$HOME/.local/bin/1c"
 1c list prices --price-type "Пример цены" --group GROUP_GUID --limit 20
 1c list unit-types
 1c get price PRODUCT_GUID --price-type "Пример цены" --as-of 2026-09-23
+1c get price-document DOCUMENT_GUID --product PRODUCT_GUID --limit 20
 1c list warehouses
 1c get stock PRODUCT_GUID --warehouse WAREHOUSE_GUID
 1c list products --limit 20
@@ -125,6 +126,8 @@ ln -s /path/to/1C-Fresh-MCP/bin/1c "$HOME/.local/bin/1c"
 
 `get price` ищет последнюю цену товара для указанного вида цен на дату `--as-of` (по умолчанию сегодня). Команда учитывает только проведённые документы без пометки на удаление. Без `--characteristic GUID` ищется цена без характеристики; для варианта передайте его GUID. Если цены нет, результат содержит `found: false`. JSON включает точную десятичную строку цены, ID валюты и, если справочник доступен, её код и символ, а также ID, дату и номер строки документа-источника. Поиск просматривает историю документов и может занять время.
 
+`get price-document` читает документ по `source_document_id` из результата `get price` или `list prices`. Показывает дату, состояние проведения и строки с ID товара, вида цен, характеристики, валюты и точной десятичной ценой. `--product PRODUCT_GUID` оставляет строки одного товара; `--limit` и `--offset` делят строки на страницы. Команда читает документ и не изменяет его.
+
 `list warehouses` показывает склады и розничные точки из справочника структурных единиц. `get stock` показывает текущие остатки товара по складам; `--warehouse` ограничивает ответ одним складом, `--characteristic` — одной характеристикой. Количество берётся из виртуальной таблицы `AccumulationRegister_ЗапасыНаСкладах/Balance` и суммируется по характеристикам, партиям, ячейкам и организациям, если характеристика не выбрана. JSON также содержит исходные строки баланса и ID единицы измерения товара. Если 1С не находит описание единицы, её ID остаётся в результате. Это остаток на складе, а не обещание доступности товара для продажи.
 
 `create group` создаёт группу в корне каталога либо внутри группы, указанной через `--parent`. `update group` переименовывает группу или перемещает её через `--parent GROUP_GUID`; `--parent root` переносит группу в корень. `list counterparty-groups` показывает общие папки покупателей и поставщиков с путями и GUID. `create counterparty-group` создаёт такую папку; `update counterparty-group` переименовывает или перемещает её. Перед перемещением проверяется цепочка родителей, чтобы не создать цикл. `list product-categories` показывает действующие категории номенклатуры, их пути, типы и единицы по умолчанию. `create product` создаёт запас или услугу с единицей из `list unit-types`; для запаса требуется `--category` из списка категорий, а `--group` задаёт необязательную папку номенклатуры. ID единицы и категории проверяются до отправки запроса. `update product` меняет название, полное название (`--full-name`), артикул (`--article`) и/или группу (`--group GUID`) товара. Группа должна существовать и не быть помеченной на удаление. Пустая строка очищает полное название или артикул. `create customer` и `create supplier` создают контрагента с соответствующим признаком; полное название по умолчанию совпадает с названием, а `--parent` задаёт папку контрагентов. `update customer` и `update supplier` меняют название и/или полное название существующего контрагента с нужным признаком. Пустое `--full-name ""` очищает полное название. Эти команды **изменяют данные в действующей 1С**. Запись в действующую базу не проверялась. При неопределённом результате создания товара команда не повторяет POST: сначала найдите запись по названию или артикулу. Удаления и общего редактора OData пока нет.
@@ -167,7 +170,7 @@ bin/1c mcp
 | Чтение | Изменение |
 | --- | --- |
 | `check_connection` | `create_product_group` |
-| `list_product_groups`, `list_product_categories`, `list_product_characteristics`, `list_price_types`, `list_currencies`, `get_product_price`, `list_product_prices` | `update_product_group` |
+| `list_product_groups`, `list_product_categories`, `list_product_characteristics`, `list_price_types`, `list_currencies`, `get_product_price`, `get_price_document`, `list_product_prices` | `update_product_group` |
 | `list_counterparty_groups` | `create_counterparty_group`, `update_counterparty_group` |
 | `list_warehouses`, `get_product_stock`, `list_unit_types` | |
 | `find_nomenclature` | `create_product`, `update_product` |

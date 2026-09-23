@@ -71,6 +71,7 @@ Commands follow `1c VERB RESOURCE [OPTIONS]`. Use `--help` on a command for its 
 1c list prices --price-type "Example price" --group GROUP_GUID --limit 20
 1c list unit-types
 1c get price PRODUCT_GUID --price-type "Example price" --as-of 2026-09-23
+1c get price-document DOCUMENT_GUID --product PRODUCT_GUID --limit 20
 1c list warehouses
 1c get stock PRODUCT_GUID --warehouse WAREHOUSE_GUID
 1c list products --limit 20
@@ -126,6 +127,8 @@ Commands follow `1c VERB RESOURCE [OPTIONS]`. Use `--help` on a command for its 
 
 `get price` finds the latest price for a product and named price type as of `--as-of` (today by default). It uses posted, non-deleted documents. Omit `--characteristic GUID` for a price without a characteristic or pass a variant's GUID. When no price exists, the result has `found: false`. JSON includes the exact decimal price string, currency ID and, when the catalog is available, its code and symbol, plus source document ID, date, and line number. The command scans price document history, so it may take some time.
 
+`get price-document` reads the `source_document_id` from a `get price` or `list prices` result. It shows the document date, posting status, and price lines with product, price type, characteristic, and currency IDs plus exact decimal prices. `--product PRODUCT_GUID` filters to one product; `--limit` and `--offset` page through matching lines. This command does not modify the document.
+
 `list warehouses` shows warehouses and retail stores from the structural units catalog. `get stock` shows current product balances by warehouse; `--warehouse` selects one, and `--characteristic` selects a product characteristic. Quantities come from the `AccumulationRegister_ЗапасыНаСкладах/Balance` virtual table and are summed across characteristics, batches, cells, and organizations when no characteristic is selected. JSON also includes the source balance rows and product unit ID. If 1C cannot resolve the unit's description, its ID remains available. A stock balance does not promise that the product is available to sell.
 
 `create group` creates a group at the catalog root or under the group specified by `--parent`. `update group` renames a group or moves it with `--parent GROUP_GUID`; `--parent root` moves it to the catalog root. `list counterparty-groups` shows shared customer and supplier folders with paths and GUIDs. `create counterparty-group` creates one; `update counterparty-group` renames or moves it. Parent chains are checked to prevent cycles. `list product-categories` shows active product categories, paths, default types, and units. `create product` creates a stock item or service using a unit from `list unit-types`; stock requires `--category` from the category list, and `--group` selects an optional product group. Unit and category IDs are checked before the POST. `update product` changes a product's name, full name (`--full-name`), article (`--article`), and/or group (`--group GUID`). The group must exist and not be deletion-marked. An empty string clears the full name or article. `create customer` and `create supplier` create a counterparty with the matching role flag. The full name defaults to the name; `--parent` selects a counterparty folder. `update customer` and `update supplier` change the name and/or full name of an existing counterparty with the matching role. Pass `--full-name ""` to clear the full name. These commands **change live 1C data**. A live write has not been verified. If product creation has an uncertain result, the command does not retry the POST; search by name or article before trying again. Deletion and generic OData editing are not available yet.
@@ -160,7 +163,7 @@ Configure your MCP client to launch this command from the repository directory, 
 
 - `check_connection`
 - `list_product_groups`, `list_product_categories`, `list_product_characteristics`, `list_price_types`, and `list_currencies`
-- `get_product_price` and `list_product_prices`
+- `get_product_price`, `get_price_document`, and `list_product_prices`
 - `list_warehouses`, `get_product_stock`, and `list_unit_types`
 - `find_nomenclature`
 - `list_products` and `get_product`

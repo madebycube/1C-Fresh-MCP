@@ -113,6 +113,14 @@ var GetPrice = Spec{
 	Example:     "1c get price PRODUCT_GUID --price-type \"Пример цены\"",
 }
 
+var GetPriceDocument = Spec{
+	Command:     "get price-document",
+	Tool:        "get_price_document",
+	Description: "Inspect a price-setting document and its price lines.",
+	Usage:       "1c get price-document GUID [--product PRODUCT_GUID] [--limit N] [--offset N] [--json]",
+	Example:     "1c get price-document DOCUMENT_GUID --product PRODUCT_GUID",
+}
+
 var ListPrices = Spec{
 	Command:     "list prices",
 	Tool:        "list_product_prices",
@@ -387,4 +395,4 @@ var DescribeResource = Spec{
 	Advanced:    true,
 }
 
-var All = []Spec{Check, ListGroups, ListProductCategories, ListProductCharacteristics, CreateGroup, UpdateGroup, ListCounterpartyGroups, CreateCounterpartyGroup, UpdateCounterpartyGroup, ListPriceTypes, ListCurrencies, ListUnitTypes, GetPrice, ListPrices, ListWarehouses, GetStock, ListProducts, GetProduct, CreateProduct, SearchProducts, UpdateProduct, ListCustomers, SearchCustomers, GetCustomer, CreateCustomer, UpdateCustomer, ListSuppliers, SearchSuppliers, GetSupplier, CreateSupplier, UpdateSupplier, ListOrders, GetOrder, ListSales, GetSale, ListPurchases, GetPurchase, ListWarehouseDocuments, GetWarehouseDocument, ListMoneyAccounts, ListMoney, GetMoney, ListReceipts, GetReceipt, AuditUnpostedReceipts, SearchResources, DescribeResource}
+var All = []Spec{Check, ListGroups, ListProductCategories, ListProductCharacteristics, CreateGroup, UpdateGroup, ListCounterpartyGroups, CreateCounterpartyGroup, UpdateCounterpartyGroup, ListPriceTypes, ListCurrencies, ListUnitTypes, GetPrice, GetPriceDocument, ListPrices, ListWarehouses, GetStock, ListProducts, GetProduct, CreateProduct, SearchProducts, UpdateProduct, ListCustomers, SearchCustomers, GetCustomer, CreateCustomer, UpdateCustomer, ListSuppliers, SearchSuppliers, GetSupplier, CreateSupplier, UpdateSupplier, ListOrders, GetOrder, ListSales, GetSale, ListPurchases, GetPurchase, ListWarehouseDocuments, GetWarehouseDocument, ListMoneyAccounts, ListMoney, GetMoney, ListReceipts, GetReceipt, AuditUnpostedReceipts, SearchResources, DescribeResource}

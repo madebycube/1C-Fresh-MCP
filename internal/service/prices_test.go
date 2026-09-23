@@ -53,8 +53,45 @@ func (r priceReader) Get(_ context.Context, resource string, params url.Values, 
 		skip, _ := strconv.Atoi(params.Get("$skip"))
 		top, _ := strconv.Atoi(params.Get("$top"))
 		return json.Marshal(map[string]any{"value": r.documents[skip : skip+top]})
+	case strings.HasPrefix(resource, "Document_УстановкаЦенНоменклатуры("):
+		if len(r.documents) == 0 {
+			return nil, errors.New("price document not found")
+		}
+		return json.Marshal(r.documents[0])
 	}
 	return nil, nil
+}
+
+func TestGetPriceDocumentPagesAndFiltersLines(t *testing.T) {
+	id := salesID(30)
+	otherProduct := salesID(31)
+	reader := priceReader{documents: []map[string]any{{
+		"Ref_Key": id, "Date": "2026-09-23T10:00:00", "Posted": false, "DeletionMark": false,
+		"Запасы": []map[string]any{
+			{"LineNumber": "1", "Номенклатура_Key": priceTestProduct, "ВидЦены_Key": priceTestType, "Характеристика_Key": emptyGUID, "Цена": json.Number("10.125"), "Валюта_Key": priceTestCurrency},
+			{"LineNumber": "2", "Номенклатура_Key": otherProduct, "ВидЦены_Key": priceTestType, "Характеристика_Key": emptyGUID, "Цена": json.Number("20.20")},
+			{"LineNumber": "3", "Номенклатура_Key": priceTestProduct, "ВидЦены_Key": priceTestType, "Характеристика_Key": priceTestVariant, "Цена": json.Number("30.333")},
+		},
+	}}}
+	svc := Service{OData: reader}
+	first, err := svc.GetPriceDocument(context.Background(), id, priceTestProduct, 1, 0)
+	if err != nil || first.ID != id || first.Posted || first.Total != 2 || len(first.Lines) != 1 || first.Lines[0].LineNumber != 1 || first.Lines[0].Price != "10.125" || first.NextOffset == nil || *first.NextOffset != 1 {
+		t.Fatalf("first page: %+v, %v", first, err)
+	}
+	second, err := svc.GetPriceDocument(context.Background(), id, priceTestProduct, 1, *first.NextOffset)
+	if err != nil || second.Total != 2 || len(second.Lines) != 1 || second.Lines[0].LineNumber != 3 || second.Lines[0].CharacteristicID != priceTestVariant || second.NextOffset != nil {
+		t.Fatalf("second page: %+v, %v", second, err)
+	}
+	all, err := svc.GetPriceDocument(context.Background(), id, "", 20, 0)
+	if err != nil || all.Total != 3 || len(all.Lines) != 3 {
+		t.Fatalf("all lines: %+v, %v", all, err)
+	}
+	if _, err := svc.GetPriceDocument(context.Background(), "not-a-guid", "", 20, 0); err == nil {
+		t.Fatal("accepted invalid document ID")
+	}
+	if _, err := svc.GetPriceDocument(context.Background(), id, "", 101, 0); err == nil {
+		t.Fatal("accepted unbounded page")
+	}
 }
 
 func TestListPricesScansHistoryOnceForProductPage(t *testing.T) {
