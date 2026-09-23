@@ -190,11 +190,11 @@ func printHelp(out io.Writer) {
 		}
 	}
 	fmt.Fprintln(out, "\nExamples:")
-	fmt.Fprintln(out, "  1c list groups --name КЛИМОВО")
+	fmt.Fprintln(out, "  1c list groups --name \"Пример группы\"")
 	fmt.Fprintln(out, "  1c list price-types")
-	fmt.Fprintln(out, "  1c search products диван")
+	fmt.Fprintln(out, "  1c search products \"название товара\"")
 	fmt.Fprintln(out, "  1c list receipts --from 2026-09-01 --to 2026-09-07")
-	fmt.Fprintln(out, "\nGroups are product folders. Price types are labels such as Розничная; they are separate catalogs.")
+	fmt.Fprintln(out, "\nGroups are product folders. Price types are labels in a separate catalog.")
 	fmt.Fprintln(out, "Use --json for structured output. Commands read credentials from .env or ONEC_ODATA_* environment variables.")
 }
 
