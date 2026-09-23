@@ -49,6 +49,14 @@ var ListPriceTypes = Spec{
 	Example:     "1c list price-types",
 }
 
+var GetPrice = Spec{
+	Command:     "get price",
+	Tool:        "get_product_price",
+	Description: "Find a product's effective price for a named price type.",
+	Usage:       "1c get price PRODUCT_GUID --price-type NAME [--characteristic GUID] [--as-of YYYY-MM-DD] [--json]",
+	Example:     "1c get price PRODUCT_GUID --price-type \"Пример цены\"",
+}
+
 var SearchProducts = Spec{
 	Command:     "search products",
 	Tool:        "find_nomenclature",
@@ -123,4 +131,4 @@ var DescribeResource = Spec{
 	Advanced:    true,
 }
 
-var All = []Spec{Check, ListGroups, CreateGroup, UpdateGroup, ListPriceTypes, SearchProducts, UpdateProduct, ListOrders, GetOrder, ListReceipts, GetReceipt, AuditUnpostedReceipts, SearchResources, DescribeResource}
+var All = []Spec{Check, ListGroups, CreateGroup, UpdateGroup, ListPriceTypes, GetPrice, SearchProducts, UpdateProduct, ListOrders, GetOrder, ListReceipts, GetReceipt, AuditUnpostedReceipts, SearchResources, DescribeResource}

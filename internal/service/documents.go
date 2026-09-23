@@ -17,7 +17,7 @@ func (s Service) documentCount(ctx context.Context, plan config.DocumentResource
 	params := url.Values{
 		"$format":      {"json"},
 		"$inlinecount": {"allpages"},
-		"$filter":      {plan.DeletedField + " eq false"},
+		"$filter":      {documentFilter(plan)},
 		"$select":      {plan.DateField},
 		"$top":         {"1"},
 	}
@@ -38,13 +38,20 @@ func (s Service) documentCount(ctx context.Context, plan config.DocumentResource
 	return count, nil
 }
 
+func documentFilter(plan config.DocumentResource) string {
+	if plan.Filter != "" {
+		return plan.Filter
+	}
+	return plan.DeletedField + " eq false"
+}
+
 func (s Service) documentPage(ctx context.Context, plan config.DocumentResource, skip, top int) ([]map[string]json.RawMessage, error) {
 	if top == 0 {
 		return []map[string]json.RawMessage{}, nil
 	}
 	params := url.Values{
 		"$format":  {"json"},
-		"$filter":  {plan.DeletedField + " eq false"},
+		"$filter":  {documentFilter(plan)},
 		"$select":  {sourceFields(plan.Fields)},
 		"$orderby": {plan.DateField + " asc,Ref_Key asc"},
 		"$skip":    {strconv.Itoa(skip)},
@@ -66,7 +73,7 @@ func (s Service) documentPage(ctx context.Context, plan config.DocumentResource,
 func (s Service) documentDateAt(ctx context.Context, plan config.DocumentResource, index int) (string, error) {
 	params := url.Values{
 		"$format":  {"json"},
-		"$filter":  {plan.DeletedField + " eq false"},
+		"$filter":  {documentFilter(plan)},
 		"$select":  {plan.DateField},
 		"$orderby": {plan.DateField + " asc,Ref_Key asc"},
 		"$skip":    {strconv.Itoa(index)},

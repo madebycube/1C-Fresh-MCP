@@ -2,6 +2,7 @@ package mcpserver
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/url"
 	"strings"
@@ -33,6 +34,9 @@ func (stubReader) Get(_ context.Context, resource string, params url.Values, _ i
 	}
 	if params.Get("$inlinecount") != "" {
 		return []byte(`{"odata.count":"1","value":[]}`), nil
+	}
+	if resource == "Document_УстановкаЦенНоменклатуры" {
+		return []byte(`{"value":[{"Ref_Key":"00000000-0000-0000-0000-000000000005","Date":"2026-09-23T12:00:00","Posted":true,"DeletionMark":false,"Запасы":[{"LineNumber":"1","Номенклатура_Key":"00000000-0000-0000-0000-000000000004","ВидЦены_Key":"00000000-0000-0000-0000-000000000002","Характеристика_Key":"00000000-0000-0000-0000-000000000000","Цена":120.50,"Валюта_Key":"00000000-0000-0000-0000-000000000006"}]}]}`), nil
 	}
 	if strings.HasPrefix(resource, "Document_ЧекККМ") && strings.Contains(resource, "(guid'") {
 		return []byte(`{"Ref_Key":"00000000-0000-0000-0000-000000000001","Number":"1","Date":"2026-09-23T00:00:00","Posted":true,"СуммаДокумента":10,"НомерЧекаККМ":"1","Запасы":[],"БезналичнаяОплата":[]}`), nil
@@ -77,8 +81,8 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(listed.Tools) != 14 {
-		t.Fatalf("got %d tools; want 14", len(listed.Tools))
+	if len(listed.Tools) != 15 {
+		t.Fatalf("got %d tools; want 15", len(listed.Tools))
 	}
 	for _, tool := range listed.Tools {
 		if tool.Annotations == nil {
@@ -104,6 +108,7 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 		{operations.CreateGroup.Tool, map[string]any{"name": "New group"}},
 		{operations.UpdateGroup.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000001", "name": "Renamed"}},
 		{operations.ListPriceTypes.Tool, map[string]any{}},
+		{operations.GetPrice.Tool, map[string]any{"product_id": "00000000-0000-0000-0000-000000000004", "price_type": "Retail", "as_of": "2026-09-23"}},
 		{operations.SearchProducts.Tool, map[string]any{"query": "Chair", "limit": 2}},
 		{operations.UpdateProduct.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000004", "article": "B"}},
 		{operations.ListOrders.Tool, map[string]any{"limit": 2}},
@@ -117,6 +122,12 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 		result, err := clientSession.CallTool(ctx, &mcp.CallToolParams{Name: call.name, Arguments: call.args})
 		if err != nil || result.IsError || result.StructuredContent == nil {
 			t.Fatalf("tool %s failed: %v, %+v", call.name, err, result)
+		}
+		if call.name == operations.GetPrice.Tool {
+			data, err := json.Marshal(result.StructuredContent)
+			if err != nil || !strings.Contains(string(data), `"found":true`) || !strings.Contains(string(data), `"price":"120.50"`) {
+				t.Fatalf("price tool returned %s: %v", data, err)
+			}
 		}
 	}
 }

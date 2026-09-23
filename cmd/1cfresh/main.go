@@ -79,6 +79,8 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		return runGroupUpdate(ctx, svc, commandArgs, out)
 	case operations.ListPriceTypes.Command:
 		return runPriceTypeList(ctx, svc, commandArgs, out)
+	case operations.GetPrice.Command:
+		return runPriceGet(ctx, svc, commandArgs, out)
 	case operations.SearchProducts.Command:
 		flags := flag.NewFlagSet("search products", flag.ContinueOnError)
 		flags.SetOutput(io.Discard)
@@ -171,7 +173,7 @@ func flat(value string) string {
 }
 
 func printHelp(out io.Writer) {
-	fmt.Fprintln(out, "1c reads products, groups, price types, orders, and receipts from 1C-Fresh.")
+	fmt.Fprintln(out, "1c reads products, groups, prices, orders, and receipts from 1C-Fresh.")
 	fmt.Fprintln(out, "Create and update commands write to 1C. 'Posted' means a document was processed in 1C; it is not a payment status.")
 	fmt.Fprintln(out, "\nUsage: 1c VERB RESOURCE [OPTIONS]")
 	fmt.Fprintln(out, "       1c COMMAND --help")

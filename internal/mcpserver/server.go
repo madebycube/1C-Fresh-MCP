@@ -58,6 +58,13 @@ type listPriceTypesOutput struct {
 	Count      int                 `json:"count"`
 }
 
+type getPriceInput struct {
+	ProductID        string `json:"product_id" jsonschema:"Product GUID from find_nomenclature"`
+	PriceType        string `json:"price_type" jsonschema:"Exact price type name from list_price_types"`
+	CharacteristicID string `json:"characteristic_id,omitempty" jsonschema:"Optional product characteristic GUID; omit for the default characteristic"`
+	AsOf             string `json:"as_of,omitempty" jsonschema:"Application date, YYYY-MM-DD; defaults to today"`
+}
+
 type searchResourcesInput struct {
 	Query string `json:"query" jsonschema:"Text to find in an OData resource name"`
 	Kind  string `json:"kind,omitempty" jsonschema:"Optional catalog, document, register, or other filter"`
@@ -137,6 +144,13 @@ func New(svc service.Service) *mcp.Server {
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ listPriceTypesInput) (*mcp.CallToolResult, listPriceTypesOutput, error) {
 		priceTypes, err := svc.ListPriceTypes(ctx)
 		return nil, listPriceTypesOutput{PriceTypes: priceTypes, Count: len(priceTypes)}, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.GetPrice.Tool, Description: operations.GetPrice.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input getPriceInput) (*mcp.CallToolResult, service.PriceQuote, error) {
+		quote, err := svc.GetPrice(ctx, input.ProductID, input.PriceType, input.CharacteristicID, input.AsOf)
+		return nil, quote, err
 	})
 	mcp.AddTool(server, &mcp.Tool{
 		Name: operations.SearchProducts.Tool, Description: operations.SearchProducts.Description,
