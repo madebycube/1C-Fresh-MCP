@@ -122,6 +122,13 @@ type getPriceInput struct {
 	AsOf             string `json:"as_of,omitempty" jsonschema:"Application date, YYYY-MM-DD; defaults to today"`
 }
 
+type getPriceDocumentInput struct {
+	ID        string `json:"id" jsonschema:"Price document GUID from get_product_price or list_product_prices"`
+	ProductID string `json:"product_id,omitempty" jsonschema:"Optional product GUID to filter lines"`
+	Limit     int    `json:"limit,omitempty" jsonschema:"Maximum lines, 1 to 100; defaults to 20"`
+	Offset    int    `json:"offset,omitempty" jsonschema:"Line offset from a previous get_price_document result"`
+}
+
 type listPricesInput struct {
 	PriceType        string `json:"price_type" jsonschema:"Exact price type name from list_price_types"`
 	GroupID          string `json:"group_id,omitempty" jsonschema:"Optional direct parent group GUID or root"`
@@ -375,6 +382,17 @@ func New(svc service.Service) *mcp.Server {
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, input getPriceInput) (*mcp.CallToolResult, service.PriceQuote, error) {
 		quote, err := svc.GetPrice(ctx, input.ProductID, input.PriceType, input.CharacteristicID, input.AsOf)
 		return nil, quote, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.GetPriceDocument.Tool, Description: operations.GetPriceDocument.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input getPriceDocumentInput) (*mcp.CallToolResult, service.PriceDocument, error) {
+		limit := input.Limit
+		if limit == 0 {
+			limit = 20
+		}
+		document, err := svc.GetPriceDocument(ctx, input.ID, input.ProductID, limit, input.Offset)
+		return nil, document, err
 	})
 	mcp.AddTool(server, &mcp.Tool{
 		Name: operations.ListPrices.Tool, Description: operations.ListPrices.Description,

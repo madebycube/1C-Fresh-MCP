@@ -32,6 +32,16 @@ func TestFlagsCanFollowPositionalArguments(t *testing.T) {
 	}
 }
 
+func TestPriceDocumentHelp(t *testing.T) {
+	var output bytes.Buffer
+	if err := run(context.Background(), []string{"get", "price-document", "--help"}, &output); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(output.String(), "1c get price-document GUID") {
+		t.Fatalf("unexpected help: %s", output.String())
+	}
+}
+
 func TestLegacyCommandsRemainAliases(t *testing.T) {
 	for legacy, canonical := range map[string]string{
 		"products search": "search products", "orders list": "list orders", "orders get": "get order",

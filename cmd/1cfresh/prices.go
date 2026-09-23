@@ -83,3 +83,41 @@ func runPriceGet(ctx context.Context, svc service.Service, args []string, out io
 	_, err = fmt.Fprintf(out, "%s: %s %s (type %s, as of %s; document %s at %s)\n", flat(quote.ProductName), quote.Price, flat(currency), flat(quote.PriceTypeName), quote.AsOf, quote.SourceDocumentID, quote.SourceDate)
 	return err
 }
+
+func runPriceDocumentGet(ctx context.Context, svc service.Service, args []string, out io.Writer) error {
+	flags := flag.NewFlagSet(operations.GetPriceDocument.Command, flag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+	product := flags.String("product", "", "optional product GUID")
+	limit := flags.Int("limit", 20, "maximum lines (1-100)")
+	offset := flags.Int("offset", 0, "line offset from the previous page")
+	asJSON := flags.Bool("json", false, "print JSON")
+	if err := parseFlags(flags, args); err != nil || flags.NArg() != 1 {
+		return errors.New("usage: " + operations.GetPriceDocument.Usage)
+	}
+	document, err := svc.GetPriceDocument(ctx, flags.Arg(0), *product, *limit, *offset)
+	if err != nil {
+		return err
+	}
+	if *asJSON {
+		return json.NewEncoder(out).Encode(document)
+	}
+	if _, err := fmt.Fprintf(out, "Price document %s at %s (posted: %t, deleted: %t; %d matching lines)\n", document.ID, document.Date, document.Posted, document.Deleted, document.Total); err != nil {
+		return err
+	}
+	writer := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
+	if _, err := fmt.Fprintln(writer, "LINE\tPRODUCT ID\tPRICE TYPE ID\tCHARACTERISTIC ID\tPRICE\tCURRENCY ID"); err != nil {
+		return err
+	}
+	for _, line := range document.Lines {
+		if _, err := fmt.Fprintf(writer, "%d\t%s\t%s\t%s\t%s\t%s\n", line.LineNumber, line.ProductID, line.PriceTypeID, line.CharacteristicID, line.Price, line.CurrencyID); err != nil {
+			return err
+		}
+	}
+	if err := writer.Flush(); err != nil {
+		return err
+	}
+	if document.NextOffset != nil {
+		_, err = fmt.Fprintf(out, "Next offset: %d\n", *document.NextOffset)
+	}
+	return err
+}

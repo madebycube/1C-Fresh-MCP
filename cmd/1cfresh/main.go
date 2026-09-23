@@ -95,6 +95,8 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		return runUnitTypeList(ctx, svc, commandArgs, out)
 	case operations.GetPrice.Command:
 		return runPriceGet(ctx, svc, commandArgs, out)
+	case operations.GetPriceDocument.Command:
+		return runPriceDocumentGet(ctx, svc, commandArgs, out)
 	case operations.ListPrices.Command:
 		return runPriceList(ctx, svc, commandArgs, out)
 	case operations.ListWarehouses.Command:
