@@ -2,7 +2,7 @@
 
 ![1C-Fresh CLI and MCP](Images/EnglishREADMEBanner.png)
 
-A Go CLI and local MCP server for a 1C-Fresh application. Both use the same OData client and support product groups, price types and lookups, products, warehouses and stock, customers and suppliers, sales and purchase documents, warehouse documents, money movements, cash receipts, and OData schema discovery. Writes currently cover product groups and selected product fields.
+A Go CLI and local MCP server for a 1C-Fresh application. Both use the same OData client and support product groups, counterparty folders, price types and lookups, products, warehouses and stock, customers and suppliers, sales and purchase documents, warehouse documents, money movements, cash receipts, and OData schema discovery. Writes cover product groups, counterparty folders, selected product fields, customers, and suppliers.
 
 ## Requirements
 
@@ -59,6 +59,9 @@ Commands follow `1c VERB RESOURCE [OPTIONS]`. Use `--help` on a command for its 
 1c create group --name "Подгруппа" --parent PARENT_GUID
 1c update group GROUP_GUID --name "Новое название"
 1c update group GROUP_GUID --parent PARENT_GUID
+1c list counterparty-groups
+1c create counterparty-group --name "Example partners"
+1c update counterparty-group FOLDER_GUID --parent root
 1c update product PRODUCT_GUID --name "New name" --article NEW-ARTICLE
 1c update product PRODUCT_GUID --group GROUP_GUID
 1c list price-types
@@ -74,7 +77,7 @@ Commands follow `1c VERB RESOURCE [OPTIONS]`. Use `--help` on a command for its 
 1c list customers --limit 20
 1c search customers "Example company"
 1c get customer CUSTOMER_GUID
-1c create customer --name "Example customer"
+1c create customer --name "Example customer" --parent FOLDER_GUID
 1c update customer CUSTOMER_GUID --name "New name"
 1c list suppliers --limit 20
 1c search suppliers "Example supplier"
@@ -112,7 +115,7 @@ Commands follow `1c VERB RESOURCE [OPTIONS]`. Use `--help` on a command for its 
 
 `list warehouses` shows warehouses and retail stores from the structural units catalog. `get stock` shows current product balances by warehouse; `--warehouse` selects one, and `--characteristic` selects a product characteristic. Quantities come from the `AccumulationRegister_ЗапасыНаСкладах/Balance` virtual table and are summed across characteristics, batches, cells, and organizations when no characteristic is selected. JSON also includes the source balance rows and product unit ID. If 1C cannot resolve the unit's description, its ID remains available. A stock balance does not promise that the product is available to sell.
 
-`create group` creates a group at the catalog root or under the group specified by `--parent`. `update group` renames a group or moves it with `--parent GROUP_GUID`; `--parent root` moves it to the catalog root. Parent chains are checked to prevent cycles. `update product` changes a product's name, full name (`--full-name`), article (`--article`), and/or group (`--group GUID`). The group must exist and not be deletion-marked. An empty string clears the full name or article. `create customer` and `create supplier` create a counterparty with the matching role flag. The full name defaults to the name; `--parent` selects a counterparty folder. `update customer` and `update supplier` change the name and/or full name of an existing counterparty with the matching role. Pass `--full-name ""` to clear the full name. These commands **change live 1C data**. A live write has not been verified. Product creation, deletion, and generic OData editing are not available yet.
+`create group` creates a group at the catalog root or under the group specified by `--parent`. `update group` renames a group or moves it with `--parent GROUP_GUID`; `--parent root` moves it to the catalog root. `list counterparty-groups` shows shared customer and supplier folders with paths and GUIDs. `create counterparty-group` creates one; `update counterparty-group` renames or moves it. Parent chains are checked to prevent cycles. `update product` changes a product's name, full name (`--full-name`), article (`--article`), and/or group (`--group GUID`). The group must exist and not be deletion-marked. An empty string clears the full name or article. `create customer` and `create supplier` create a counterparty with the matching role flag. The full name defaults to the name; `--parent` selects a counterparty folder. `update customer` and `update supplier` change the name and/or full name of an existing counterparty with the matching role. Pass `--full-name ""` to clear the full name. These commands **change live 1C data**. A live write has not been verified. Product creation, deletion, and generic OData editing are not available yet.
 
 `search resources` uses `1c search resources [--kind catalog|document|register|other] [--limit N] [--json] QUERY` to search OData metadata names by resource kind. `describe resource` uses `1c describe resource [--json] EXACT_NAME` to show schema fields for an exact OData resource name. These commands expose OData schema names and fields; they do not enumerate every screen in the 1C interface or provide generic reads of resource data.
 
@@ -146,6 +149,8 @@ Configure your MCP client to launch this command from the repository directory, 
 - `list_warehouses`, `get_product_stock`, and `list_unit_types`
 - `find_nomenclature`
 - `list_products` and `get_product`
+- `list_counterparty_groups`
+- `create_counterparty_group` and `update_counterparty_group` (write operations)
 - `update_product` (write operation)
 - `search_odata_resources` and `describe_odata_resource`
 - `list_customer_orders` and `get_customer_order`

@@ -109,6 +109,18 @@ var Customers = CatalogListResource{
 	},
 }
 
+var CounterpartyGroups = CatalogListResource{
+	Name: "Catalog_Контрагенты",
+	Fields: []FieldBinding{
+		{Output: "id", Source: "Ref_Key"},
+		{Output: "code", Source: "Code"},
+		{Output: "name", Source: "Description"},
+		{Output: "parent_id", Source: "Parent_Key"},
+		{Output: "is_folder", Source: "IsFolder"},
+		{Output: "deleted", Source: "DeletionMark"},
+	},
+}
+
 var MoneyAccounts = map[string]CatalogListResource{
 	"cash": {
 		Name: "Catalog_Кассы",

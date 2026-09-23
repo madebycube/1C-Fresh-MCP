@@ -41,6 +41,30 @@ var UpdateGroup = Spec{
 	Example:     "1c update group GROUP_GUID --parent PARENT_GUID",
 }
 
+var ListCounterpartyGroups = Spec{
+	Command:     "list counterparty-groups",
+	Tool:        "list_counterparty_groups",
+	Description: "List customer and supplier folders, paths, and 1C IDs.",
+	Usage:       "1c list counterparty-groups [--name TEXT] [--json]",
+	Example:     "1c list counterparty-groups",
+}
+
+var CreateCounterpartyGroup = Spec{
+	Command:     "create counterparty-group",
+	Tool:        "create_counterparty_group",
+	Description: "Create a customer and supplier folder in 1C.",
+	Usage:       "1c create counterparty-group --name NAME [--parent GUID] [--json]",
+	Example:     "1c create counterparty-group --name \"Example partners\"",
+}
+
+var UpdateCounterpartyGroup = Spec{
+	Command:     "update counterparty-group",
+	Tool:        "update_counterparty_group",
+	Description: "Rename or move a customer and supplier folder by 1C ID.",
+	Usage:       "1c update counterparty-group GUID [--name NAME] [--parent GUID|root] [--json]",
+	Example:     "1c update counterparty-group FOLDER_GUID --parent root",
+}
+
 var ListPriceTypes = Spec{
 	Command:     "list price-types",
 	Tool:        "list_price_types",
@@ -323,4 +347,4 @@ var DescribeResource = Spec{
 	Advanced:    true,
 }
 
-var All = []Spec{Check, ListGroups, CreateGroup, UpdateGroup, ListPriceTypes, ListUnitTypes, GetPrice, ListWarehouses, GetStock, ListProducts, GetProduct, SearchProducts, UpdateProduct, ListCustomers, SearchCustomers, GetCustomer, CreateCustomer, UpdateCustomer, ListSuppliers, SearchSuppliers, GetSupplier, CreateSupplier, UpdateSupplier, ListOrders, GetOrder, ListSales, GetSale, ListPurchases, GetPurchase, ListWarehouseDocuments, GetWarehouseDocument, ListMoneyAccounts, ListMoney, GetMoney, ListReceipts, GetReceipt, AuditUnpostedReceipts, SearchResources, DescribeResource}
+var All = []Spec{Check, ListGroups, CreateGroup, UpdateGroup, ListCounterpartyGroups, CreateCounterpartyGroup, UpdateCounterpartyGroup, ListPriceTypes, ListUnitTypes, GetPrice, ListWarehouses, GetStock, ListProducts, GetProduct, SearchProducts, UpdateProduct, ListCustomers, SearchCustomers, GetCustomer, CreateCustomer, UpdateCustomer, ListSuppliers, SearchSuppliers, GetSupplier, CreateSupplier, UpdateSupplier, ListOrders, GetOrder, ListSales, GetSale, ListPurchases, GetPurchase, ListWarehouseDocuments, GetWarehouseDocument, ListMoneyAccounts, ListMoney, GetMoney, ListReceipts, GetReceipt, AuditUnpostedReceipts, SearchResources, DescribeResource}
