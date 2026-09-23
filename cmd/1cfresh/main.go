@@ -97,6 +97,8 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		return runProductList(ctx, svc, commandArgs, out)
 	case operations.GetProduct.Command:
 		return runProductGet(ctx, svc, commandArgs, out)
+	case operations.CreateProduct.Command:
+		return runProductCreate(ctx, svc, commandArgs, out)
 	case operations.SearchProducts.Command:
 		flags := flag.NewFlagSet("search products", flag.ContinueOnError)
 		flags.SetOutput(io.Discard)
@@ -255,6 +257,7 @@ func printHelp(out io.Writer) {
 	fmt.Fprintln(out, "  1c list products --limit 20")
 	fmt.Fprintln(out, "  1c list products --group GROUP_GUID --limit 20")
 	fmt.Fprintln(out, "  1c get product PRODUCT_GUID")
+	fmt.Fprintln(out, "  1c create product --name \"Example item\" --type stock --unit UNIT_GUID")
 	fmt.Fprintln(out, "  1c search products \"название товара\"")
 	fmt.Fprintln(out, "  1c search customers \"Пример компании\"")
 	fmt.Fprintln(out, "  1c search suppliers \"Пример поставщика\"")

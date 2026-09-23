@@ -129,6 +129,14 @@ var GetProduct = Spec{
 	Example:     "1c get product PRODUCT_GUID",
 }
 
+var CreateProduct = Spec{
+	Command:     "create product",
+	Tool:        "create_product",
+	Description: "Create a stock item or service with an active classifier unit.",
+	Usage:       "1c create product --name NAME --type stock|service --unit UNIT_GUID [--full-name TEXT] [--article TEXT] [--group GROUP_GUID] [--json]",
+	Example:     "1c create product --name \"Example item\" --type stock --unit UNIT_GUID",
+}
+
 var UpdateProduct = Spec{
 	Command:     "update product",
 	Tool:        "update_product",
@@ -347,4 +355,4 @@ var DescribeResource = Spec{
 	Advanced:    true,
 }
 
-var All = []Spec{Check, ListGroups, CreateGroup, UpdateGroup, ListCounterpartyGroups, CreateCounterpartyGroup, UpdateCounterpartyGroup, ListPriceTypes, ListUnitTypes, GetPrice, ListWarehouses, GetStock, ListProducts, GetProduct, SearchProducts, UpdateProduct, ListCustomers, SearchCustomers, GetCustomer, CreateCustomer, UpdateCustomer, ListSuppliers, SearchSuppliers, GetSupplier, CreateSupplier, UpdateSupplier, ListOrders, GetOrder, ListSales, GetSale, ListPurchases, GetPurchase, ListWarehouseDocuments, GetWarehouseDocument, ListMoneyAccounts, ListMoney, GetMoney, ListReceipts, GetReceipt, AuditUnpostedReceipts, SearchResources, DescribeResource}
+var All = []Spec{Check, ListGroups, CreateGroup, UpdateGroup, ListCounterpartyGroups, CreateCounterpartyGroup, UpdateCounterpartyGroup, ListPriceTypes, ListUnitTypes, GetPrice, ListWarehouses, GetStock, ListProducts, GetProduct, CreateProduct, SearchProducts, UpdateProduct, ListCustomers, SearchCustomers, GetCustomer, CreateCustomer, UpdateCustomer, ListSuppliers, SearchSuppliers, GetSupplier, CreateSupplier, UpdateSupplier, ListOrders, GetOrder, ListSales, GetSale, ListPurchases, GetPurchase, ListWarehouseDocuments, GetWarehouseDocument, ListMoneyAccounts, ListMoney, GetMoney, ListReceipts, GetReceipt, AuditUnpostedReceipts, SearchResources, DescribeResource}

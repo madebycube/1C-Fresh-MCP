@@ -30,6 +30,15 @@ type getProductInput struct {
 	ID string `json:"id" jsonschema:"Product GUID from list_products or find_nomenclature"`
 }
 
+type createProductInput struct {
+	Name     string `json:"name" jsonschema:"Product name"`
+	FullName string `json:"full_name,omitempty" jsonschema:"Optional full name"`
+	Article  string `json:"article,omitempty" jsonschema:"Optional article"`
+	Type     string `json:"type" jsonschema:"stock or service"`
+	UnitID   string `json:"unit_id" jsonschema:"Active GUID from list_unit_types"`
+	GroupID  string `json:"group_id,omitempty" jsonschema:"Optional active product group GUID"`
+}
+
 type searchOutput struct {
 	Products []service.Product `json:"products"`
 	Count    int               `json:"count"`
@@ -361,6 +370,16 @@ func New(svc service.Service) *mcp.Server {
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, input getProductInput) (*mcp.CallToolResult, service.ProductDetail, error) {
 		product, err := svc.GetProduct(ctx, input.ID)
 		return nil, product, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.CreateProduct.Tool, Description: operations.CreateProduct.Description,
+		Annotations: &mcp.ToolAnnotations{DestructiveHint: &additive},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input createProductInput) (*mcp.CallToolResult, service.ProductCreation, error) {
+		created, err := svc.CreateProduct(ctx, service.ProductCreate{
+			Name: input.Name, FullName: input.FullName, Article: input.Article,
+			Type: input.Type, UnitID: input.UnitID, GroupID: input.GroupID,
+		})
+		return nil, created, err
 	})
 	mcp.AddTool(server, &mcp.Tool{
 		Name: operations.UpdateProduct.Tool, Description: operations.UpdateProduct.Description,
