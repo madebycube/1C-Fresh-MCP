@@ -32,6 +32,16 @@ type PriceType struct {
 	Inactive bool   `json:"inactive"`
 }
 
+type UnitType struct {
+	ID                        string `json:"id"`
+	Code                      string `json:"code"`
+	Name                      string `json:"name"`
+	FullName                  string `json:"full_name"`
+	InternationalAbbreviation string `json:"international_abbreviation"`
+	QuantityType              string `json:"quantity_type"`
+	Deleted                   bool   `json:"deleted"`
+}
+
 func (s Service) ListGroups(ctx context.Context, name string) ([]Group, error) {
 	rows, err := s.catalogRows(ctx, config.ProductGroups)
 	if err != nil {
@@ -108,6 +118,33 @@ func (s Service) ListPriceTypes(ctx context.Context) ([]PriceType, error) {
 		return types[i].Name < types[j].Name
 	})
 	return types, nil
+}
+
+func (s Service) ListUnitTypes(ctx context.Context) ([]UnitType, error) {
+	rows, err := s.catalogRows(ctx, config.UnitTypes)
+	if err != nil {
+		return nil, err
+	}
+	units := make([]UnitType, 0, len(rows))
+	for _, row := range rows {
+		if !catalogBoolean(row["DeletionMark"]) {
+			return nil, errors.New("invalid OData unit type deletion mark")
+		}
+		unit, err := bindFields[UnitType](row, config.UnitTypes.Fields)
+		if err != nil || !linkedGUID(unit.ID) || unit.Name == "" {
+			return nil, errors.New("invalid OData unit type")
+		}
+		if !unit.Deleted {
+			units = append(units, unit)
+		}
+	}
+	sort.Slice(units, func(i, j int) bool {
+		if units[i].Name == units[j].Name {
+			return units[i].ID < units[j].ID
+		}
+		return units[i].Name < units[j].Name
+	})
+	return units, nil
 }
 
 func catalogBoolean(value json.RawMessage) bool {

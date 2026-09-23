@@ -69,6 +69,19 @@ var PriceTypes = CatalogListResource{
 	},
 }
 
+var UnitTypes = CatalogListResource{
+	Name: "Catalog_КлассификаторЕдиницИзмерения",
+	Fields: []FieldBinding{
+		{Output: "id", Source: "Ref_Key"},
+		{Output: "code", Source: "Code"},
+		{Output: "name", Source: "Description"},
+		{Output: "full_name", Source: "НаименованиеПолное"},
+		{Output: "international_abbreviation", Source: "МеждународноеСокращение"},
+		{Output: "quantity_type", Source: "ТипИзмеряемойВеличины"},
+		{Output: "deleted", Source: "DeletionMark"},
+	},
+}
+
 var Warehouses = CatalogListResource{
 	Name: "Catalog_СтруктурныеЕдиницы",
 	Fields: []FieldBinding{

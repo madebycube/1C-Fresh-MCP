@@ -128,3 +128,33 @@ func runPriceTypeList(ctx context.Context, svc service.Service, args []string, o
 	_, err = fmt.Fprintf(out, "%d price types\n", len(priceTypes))
 	return err
 }
+
+func runUnitTypeList(ctx context.Context, svc service.Service, args []string, out io.Writer) error {
+	flags := flag.NewFlagSet(operations.ListUnitTypes.Command, flag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+	asJSON := flags.Bool("json", false, "print JSON")
+	if err := parseFlags(flags, args); err != nil || flags.NArg() != 0 {
+		return errors.New("usage: " + operations.ListUnitTypes.Usage)
+	}
+	units, err := svc.ListUnitTypes(ctx)
+	if err != nil {
+		return err
+	}
+	if *asJSON {
+		return json.NewEncoder(out).Encode(units)
+	}
+	writer := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
+	if _, err := fmt.Fprintln(writer, "CODE\tNAME\tFULL NAME\tSYMBOL\tQUANTITY TYPE\tID"); err != nil {
+		return err
+	}
+	for _, unit := range units {
+		if _, err := fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\t%s\n", flat(unit.Code), flat(unit.Name), flat(unit.FullName), flat(unit.InternationalAbbreviation), flat(unit.QuantityType), unit.ID); err != nil {
+			return err
+		}
+	}
+	if err := writer.Flush(); err != nil {
+		return err
+	}
+	_, err = fmt.Fprintf(out, "%d unit types\n", len(units))
+	return err
+}
