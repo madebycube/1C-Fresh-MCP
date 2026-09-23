@@ -17,6 +17,9 @@ func (o *orderReader) Check(context.Context) (int, error) { return 1, nil }
 func (o *orderReader) Get(_ context.Context, resource string, params url.Values, _ int64) ([]byte, error) {
 	o.resource = resource
 	o.params = params
+	if params.Get("$inlinecount") != "" {
+		return []byte(`{"odata.count":"1","value":[]}`), nil
+	}
 	if strings.Contains(resource, "(guid'") {
 		return []byte(`{"Ref_Key":"00000000-0000-0000-0000-000000000001","Number":"42","Date":"2026-09-23T10:00:00","Posted":false,"СуммаДокумента":99.50,"СостояниеЗаказа":"Открыт","Контрагент_Key":"00000000-0000-0000-0000-000000000002","Запасы":[{"LineNumber":"1","Номенклатура":"Chair","Количество":2,"ЕдиницаИзмерения":"шт","Цена":49.75,"Сумма":99.50,"Всего":99.50}]}`), nil
 	}
@@ -33,7 +36,7 @@ func TestListOrdersBuildsBoundedRecentQuery(t *testing.T) {
 		t.Fatalf("unexpected orders: %+v", orders)
 	}
 	filter := reader.params.Get("$filter")
-	if filter != "DeletionMark eq false" || reader.params.Get("$orderby") != "Date desc" || reader.params.Get("$top") != "5" {
+	if filter != "DeletionMark eq false" || reader.params.Get("$orderby") != "Date asc,Ref_Key asc" || reader.params.Get("$top") != "1" {
 		t.Fatalf("unexpected query: %v", reader.params)
 	}
 }
