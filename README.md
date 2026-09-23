@@ -2,7 +2,7 @@
 
 ![1C-Fresh: CLI и MCP](Images/READMEHeader.png)
 
-`1c` — CLI и локальный MCP-сервер на Go для работы с приложением 1С:Фреш через OData. У них общий клиент; операции с данными доступны через оба интерфейса. Сейчас доступны группы номенклатуры, виды и поиск цен, товары, склады и остатки, покупатели, заказы, счета на оплату, расходные накладные, возвраты покупателей, кассовые чеки и просмотр схемы OData. Запись реализована для групп номенклатуры и отдельных полей товаров.
+`1c` — CLI и локальный MCP-сервер на Go для работы с приложением 1С:Фреш через OData. У них общий клиент; операции с данными доступны через оба интерфейса. Сейчас доступны группы номенклатуры, виды и поиск цен, товары, склады и остатки, покупатели и поставщики, заказы, документы продаж и закупок, складские документы, кассовые чеки и просмотр схемы OData. Запись реализована для групп номенклатуры и отдельных полей товаров.
 
 ## Требования
 
@@ -68,12 +68,21 @@ ln -s /path/to/1C-Fresh-MCP/bin/1c "$HOME/.local/bin/1c"
 1c list customers --limit 20
 1c search customers "Пример компании"
 1c get customer CUSTOMER_GUID
+1c list suppliers --limit 20
+1c search suppliers "Пример поставщика"
+1c get supplier SUPPLIER_GUID
 1c list orders --limit 20
 1c get order --json ORDER_GUID
 1c list sales --kind shipment --limit 20
 1c list sales --kind return --customer CUSTOMER_GUID
 1c list sales --kind invoice --from 2026-09-01 --to 2026-09-30
 1c get sale --kind shipment DOCUMENT_GUID
+1c list purchases --kind order --limit 20
+1c list purchases --kind receipt --supplier SUPPLIER_GUID
+1c get purchase --kind receipt DOCUMENT_GUID
+1c list warehouse-docs --kind transfer --warehouse WAREHOUSE_GUID
+1c list warehouse-docs --kind stock-writeoff --limit 20
+1c get warehouse-doc --kind transfer DOCUMENT_GUID
 1c list receipts --kind sale --from 2026-09-01 --to 2026-09-07
 1c get receipt --kind refund --json RECEIPT_GUID
 1c audit receipts --from 2026-09-01 --before 2026-09-24 --json
@@ -90,6 +99,8 @@ ln -s /path/to/1C-Fresh-MCP/bin/1c "$HOME/.local/bin/1c"
 Поиск товаров проверяет название, полное название и артикул, исключает папки и помеченные на удаление записи и возвращает не более 50 результатов. Список заказов показывает до 100 последних заказов без пометки на удаление; просмотр заказа включает товарные строки. Список чеков принимает включительный диапазон до 31 дня, возвращает до 100 записей на страницу и поддерживает `--offset`. Детали чека включают товарные строки и безналичные платежи. В JSON суммы и количества представлены строками с десятичными числами, чтобы сохранить точность источника.
 
 `list customers` и `search customers` показывают контрагентов с признаком «Покупатель», исключая папки и помеченные на удаление записи. `list sales` читает счета на оплату (`invoice`), расходные накладные продажи (`shipment`) и приходные накладные с операцией возврата от покупателя (`return`). `--customer`, `--from` и `--to` ограничивают выборку; `--limit` и `--offset` делят её на страницы. `get sale` показывает дату, сумму, факт проведения, товарные строки и идентификаторы связанного заказа или документа-основания, когда 1С возвращает их с подходящим типом связи. `Posted` означает проведение документа, а не оплату. В проверенной базе ресурс счетов на оплату пуст; операции чтения счёта по GUID на живой записи пока не проверялись. Списки читают историю ресурсов и могут занять несколько секунд.
+
+`list suppliers` и `search suppliers` показывают контрагентов с признаком «Поставщик». `list purchases --kind order` читает заказы поставщикам, а `--kind receipt` — только приходные накладные с операцией «ПоступлениеОтПоставщика». `list warehouse-docs` читает заказы на перемещение (`transfer-order`), перемещения запасов с операцией «Перемещение» (`transfer`), оприходования (`stock-receipt`) и списания (`stock-writeoff`). `--supplier` и `--warehouse` выбирают записи по ID; для перемещения склад может быть исходным или конечным. Оба списка поддерживают даты, `--limit` и `--offset`. `get purchase` и `get warehouse-doc` показывают товарные строки и доступные ID связанных документов. `Posted` показывает проведение в 1С, а не получение товара или исполнение заказа. В проверенной базе заказов на перемещение нет, поэтому получение такого документа по GUID на живой записи не проверялось.
 
 ### Проверка непроведённых чеков
 
@@ -123,8 +134,11 @@ bin/1c mcp
 | `list_warehouses`, `get_product_stock` | |
 | `find_nomenclature` | `update_product` |
 | `list_customers`, `search_customers`, `get_customer` | |
+| `list_suppliers`, `search_suppliers`, `get_supplier` | |
 | `list_customer_orders`, `get_customer_order` | |
 | `list_sales_documents`, `get_sales_document` | |
+| `list_purchase_documents`, `get_purchase_document` | |
+| `list_warehouse_documents`, `get_warehouse_document` | |
 | `list_cash_receipts`, `get_cash_receipt` | |
 | `audit_unposted_receipts` | |
 | `search_odata_resources`, `describe_odata_resource` | |

@@ -117,15 +117,29 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 	case operations.GetOrder.Command:
 		return runOrderGet(ctx, svc, commandArgs, out)
 	case operations.ListCustomers.Command:
-		return runCustomerList(ctx, svc, commandArgs, out, false)
+		return runCustomerList(ctx, svc, commandArgs, out, false, "customer")
 	case operations.SearchCustomers.Command:
-		return runCustomerList(ctx, svc, commandArgs, out, true)
+		return runCustomerList(ctx, svc, commandArgs, out, true, "customer")
 	case operations.GetCustomer.Command:
-		return runCustomerGet(ctx, svc, commandArgs, out)
+		return runCustomerGet(ctx, svc, commandArgs, out, "customer")
+	case operations.ListSuppliers.Command:
+		return runCustomerList(ctx, svc, commandArgs, out, false, "supplier")
+	case operations.SearchSuppliers.Command:
+		return runCustomerList(ctx, svc, commandArgs, out, true, "supplier")
+	case operations.GetSupplier.Command:
+		return runCustomerGet(ctx, svc, commandArgs, out, "supplier")
 	case operations.ListSales.Command:
 		return runSalesList(ctx, svc, commandArgs, out)
 	case operations.GetSale.Command:
 		return runSalesGet(ctx, svc, commandArgs, out)
+	case operations.ListPurchases.Command:
+		return runOperationalList(ctx, svc, commandArgs, out, "purchase")
+	case operations.GetPurchase.Command:
+		return runOperationalGet(ctx, svc, commandArgs, out, "purchase")
+	case operations.ListWarehouseDocuments.Command:
+		return runOperationalList(ctx, svc, commandArgs, out, "warehouse")
+	case operations.GetWarehouseDocument.Command:
+		return runOperationalGet(ctx, svc, commandArgs, out, "warehouse")
 	case operations.ListReceipts.Command:
 		return runReceiptList(ctx, svc, commandArgs, out)
 	case operations.GetReceipt.Command:
@@ -187,8 +201,8 @@ func flat(value string) string {
 }
 
 func printHelp(out io.Writer) {
-	fmt.Fprintln(out, "1c reads products, groups, prices, customers, sales, orders, and receipts from 1C-Fresh.")
-	fmt.Fprintln(out, "Create and update commands write to 1C. 'Posted' means a document was processed in 1C; it is not a payment status.")
+	fmt.Fprintln(out, "1c reads products, groups, prices, customers, suppliers, sales, purchases, warehouse documents, and receipts from 1C-Fresh.")
+	fmt.Fprintln(out, "Create and update commands write to 1C. 'Posted' means a document was processed in 1C; it does not prove payment, receipt, or fulfillment.")
 	fmt.Fprintln(out, "\nUsage: 1c VERB RESOURCE [OPTIONS]")
 	fmt.Fprintln(out, "       1c COMMAND --help")
 	fmt.Fprintln(out, "\nCommands:")
@@ -210,7 +224,10 @@ func printHelp(out io.Writer) {
 	fmt.Fprintln(out, "  1c list price-types")
 	fmt.Fprintln(out, "  1c search products \"название товара\"")
 	fmt.Fprintln(out, "  1c search customers \"Пример компании\"")
+	fmt.Fprintln(out, "  1c search suppliers \"Пример поставщика\"")
 	fmt.Fprintln(out, "  1c list sales --kind shipment --limit 20")
+	fmt.Fprintln(out, "  1c list purchases --kind receipt --limit 20")
+	fmt.Fprintln(out, "  1c list warehouse-docs --kind transfer --limit 20")
 	fmt.Fprintln(out, "  1c list receipts --from 2026-09-01 --to 2026-09-07")
 	fmt.Fprintln(out, "\nGroups are product folders. Price types are labels in a separate catalog.")
 	fmt.Fprintln(out, "Use --json for structured output. Commands read credentials from .env or ONEC_ODATA_* environment variables.")

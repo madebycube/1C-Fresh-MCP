@@ -32,32 +32,24 @@ type CustomerPage struct {
 	Items      []Customer `json:"items"`
 }
 
-type SalesDocument struct {
-	Kind       string      `json:"kind"`
-	ID         string      `json:"id"`
-	Number     string      `json:"number"`
-	Date       string      `json:"date"`
-	Posted     bool        `json:"posted"`
-	Deleted    bool        `json:"deleted"`
-	Amount     Decimal     `json:"amount"`
-	CustomerID string      `json:"customer_id"`
-	Operation  string      `json:"operation,omitempty"`
-	OrderID    string      `json:"order_id,omitempty"`
-	OrderType  string      `json:"order_type,omitempty"`
-	BasisID    string      `json:"basis_id,omitempty"`
-	BasisType  string      `json:"basis_type,omitempty"`
-	Lines      []SalesLine `json:"lines,omitempty"`
-}
+type Supplier = Customer
+type SupplierPage = CustomerPage
 
-type SalesLine struct {
-	LineNumber string  `json:"line_number"`
-	ProductID  string  `json:"product_id"`
-	Quantity   Decimal `json:"quantity"`
-	Unit       string  `json:"unit"`
-	Price      Decimal `json:"price"`
-	Amount     Decimal `json:"amount"`
-	Total      Decimal `json:"total"`
-	VAT        Decimal `json:"vat"`
+type SalesDocument struct {
+	Kind       string         `json:"kind"`
+	ID         string         `json:"id"`
+	Number     string         `json:"number"`
+	Date       string         `json:"date"`
+	Posted     bool           `json:"posted"`
+	Deleted    bool           `json:"deleted"`
+	Amount     Decimal        `json:"amount"`
+	CustomerID string         `json:"customer_id"`
+	Operation  string         `json:"operation,omitempty"`
+	OrderID    string         `json:"order_id,omitempty"`
+	OrderType  string         `json:"order_type,omitempty"`
+	BasisID    string         `json:"basis_id,omitempty"`
+	BasisType  string         `json:"basis_type,omitempty"`
+	Lines      []DocumentLine `json:"lines,omitempty"`
 }
 
 type SalesDocumentPage struct {
@@ -72,6 +64,14 @@ type SalesDocumentPage struct {
 }
 
 func (s Service) ListCustomers(ctx context.Context, query string, limit, offset int) (CustomerPage, error) {
+	return s.listCounterparties(ctx, query, limit, offset, true)
+}
+
+func (s Service) ListSuppliers(ctx context.Context, query string, limit, offset int) (SupplierPage, error) {
+	return s.listCounterparties(ctx, query, limit, offset, false)
+}
+
+func (s Service) listCounterparties(ctx context.Context, query string, limit, offset int, buyer bool) (CustomerPage, error) {
 	if err := validateListPage(limit, offset); err != nil {
 		return CustomerPage{}, err
 	}
@@ -92,7 +92,7 @@ func (s Service) ListCustomers(ctx context.Context, query string, limit, offset 
 		if err != nil || !guidPattern.MatchString(customer.ID) {
 			return CustomerPage{}, errors.New("invalid OData customer")
 		}
-		if customer.Buyer == nil || !*customer.Buyer {
+		if buyer && (customer.Buyer == nil || !*customer.Buyer) || !buyer && (customer.Supplier == nil || !*customer.Supplier) {
 			continue
 		}
 		if needle == "" || strings.Contains(strings.ToLower(customer.Name), needle) || strings.Contains(strings.ToLower(customer.FullName), needle) || strings.Contains(strings.ToLower(customer.Code), needle) {
@@ -117,8 +117,16 @@ func (s Service) ListCustomers(ctx context.Context, query string, limit, offset 
 }
 
 func (s Service) GetCustomer(ctx context.Context, id string) (Customer, error) {
+	return s.getCounterparty(ctx, id, true)
+}
+
+func (s Service) GetSupplier(ctx context.Context, id string) (Supplier, error) {
+	return s.getCounterparty(ctx, id, false)
+}
+
+func (s Service) getCounterparty(ctx context.Context, id string, buyer bool) (Customer, error) {
 	if !guidPattern.MatchString(id) {
-		return Customer{}, errors.New("customer ID must be a GUID")
+		return Customer{}, errors.New("counterparty ID must be a GUID")
 	}
 	resource := config.Customers.Name + "(guid'" + strings.ToLower(id) + "')"
 	params := url.Values{"$format": {"json"}, "$select": {sourceFields(config.Customers.Fields)}}
@@ -137,8 +145,11 @@ func (s Service) GetCustomer(ctx context.Context, id string) (Customer, error) {
 	if err != nil || !strings.EqualFold(customer.ID, id) {
 		return Customer{}, errors.New("invalid OData customer")
 	}
-	if customer.Buyer == nil || !*customer.Buyer {
+	if buyer && (customer.Buyer == nil || !*customer.Buyer) {
 		return Customer{}, errors.New("record is not marked as a customer")
+	}
+	if !buyer && (customer.Supplier == nil || !*customer.Supplier) {
+		return Customer{}, errors.New("record is not marked as a supplier")
 	}
 	return customer, nil
 }
@@ -154,7 +165,7 @@ func (s Service) ListSalesDocuments(ctx context.Context, kind, customerID, from,
 	if customerID != "" && !guidPattern.MatchString(customerID) {
 		return SalesDocumentPage{}, errors.New("customer ID must be a GUID")
 	}
-	startDate, endDate, err := salesDateRange(from, to)
+	startDate, endDate, err := optionalDocumentDateRange(from, to)
 	if err != nil {
 		return SalesDocumentPage{}, err
 	}
@@ -215,9 +226,9 @@ func (s Service) GetSalesDocument(ctx context.Context, kind, id string) (SalesDo
 		if err := json.Unmarshal(raw, &lines); err != nil {
 			return SalesDocument{}, errors.New("invalid OData sales document lines")
 		}
-		doc.Lines = make([]SalesLine, 0, len(lines))
+		doc.Lines = make([]DocumentLine, 0, len(lines))
 		for _, row := range lines {
-			line, err := bindFields[SalesLine](row, plan.LineFields)
+			line, err := bindFields[DocumentLine](row, plan.LineFields)
 			if err != nil {
 				return SalesDocument{}, errors.New("invalid OData sales document line")
 			}
@@ -244,11 +255,11 @@ func salesDocument(row map[string]json.RawMessage, plan config.DocumentResource,
 		return SalesDocument{}, errors.New("invalid OData sales document")
 	}
 	doc.Kind = kind
-	if doc.OrderType != "StandardODATA.Document_ЗаказПокупателя" || !guidPattern.MatchString(doc.OrderID) {
+	if doc.OrderType != "StandardODATA.Document_ЗаказПокупателя" || !guidPattern.MatchString(doc.OrderID) || strings.EqualFold(doc.OrderID, emptyGUID) {
 		doc.OrderID = ""
 		doc.OrderType = ""
 	}
-	if doc.BasisType == "StandardODATA.Undefined" || !guidPattern.MatchString(doc.BasisID) {
+	if doc.BasisType == "StandardODATA.Undefined" || !guidPattern.MatchString(doc.BasisID) || strings.EqualFold(doc.BasisID, emptyGUID) {
 		doc.BasisID = ""
 		doc.BasisType = ""
 	}
@@ -266,7 +277,7 @@ func salesOperationMatches(doc SalesDocument) bool {
 	}
 }
 
-func salesDateRange(from, to string) (string, string, error) {
+func optionalDocumentDateRange(from, to string) (string, string, error) {
 	if from == "" && to == "" {
 		return "", "", nil
 	}

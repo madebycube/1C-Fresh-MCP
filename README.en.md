@@ -2,7 +2,7 @@
 
 ![1C-Fresh CLI and MCP](Images/EnglishREADMEBanner.png)
 
-A Go CLI and local MCP server for a 1C-Fresh application. Both use the same OData client and support product groups, price types and lookups, products, warehouses and stock, customers, orders, invoices, customer shipments and returns, cash receipts, and OData schema discovery. Writes currently cover product groups and selected product fields.
+A Go CLI and local MCP server for a 1C-Fresh application. Both use the same OData client and support product groups, price types and lookups, products, warehouses and stock, customers and suppliers, sales and purchase documents, warehouse documents, cash receipts, and OData schema discovery. Writes currently cover product groups and selected product fields.
 
 ## Requirements
 
@@ -67,6 +67,9 @@ Commands follow `1c VERB RESOURCE [OPTIONS]`. Use `--help` on a command for its 
 1c list customers --limit 20
 1c search customers "Example company"
 1c get customer CUSTOMER_GUID
+1c list suppliers --limit 20
+1c search suppliers "Example supplier"
+1c get supplier SUPPLIER_GUID
 1c search resources --kind catalog --limit 20 "Номенклатура"
 1c describe resource Catalog_Номенклатура
 1c list orders --limit 20
@@ -75,6 +78,12 @@ Commands follow `1c VERB RESOURCE [OPTIONS]`. Use `--help` on a command for its 
 1c list sales --kind return --customer CUSTOMER_GUID
 1c list sales --kind invoice --from 2026-09-01 --to 2026-09-30
 1c get sale --kind shipment DOCUMENT_GUID
+1c list purchases --kind order --limit 20
+1c list purchases --kind receipt --supplier SUPPLIER_GUID
+1c get purchase --kind receipt DOCUMENT_GUID
+1c list warehouse-docs --kind transfer --warehouse WAREHOUSE_GUID
+1c list warehouse-docs --kind stock-writeoff --limit 20
+1c get warehouse-doc --kind transfer DOCUMENT_GUID
 1c list receipts --kind sale --from 2026-09-01 --to 2026-09-07
 1c get receipt --kind refund --json RECEIPT_GUID
 1c audit receipts --from 2026-09-01 --before 2026-09-24 --json
@@ -93,6 +102,8 @@ Commands follow `1c VERB RESOURCE [OPTIONS]`. Use `--help` on a command for its 
 Product search checks product name, full name, and article, and excludes folders and deletion-marked products. It returns up to 50 matches. Order listing returns the latest non-deleted orders, up to 100; order details include product lines. Receipt listing accepts an inclusive date range of up to 31 days, returns up to 100 rows per page, and supports `--offset` for the next page. Receipt details include stock lines and cashless payments. JSON represents amounts and quantities as decimal strings to preserve source precision.
 
 `list customers` and `search customers` show counterparties marked as buyers, excluding folders and deletion-marked records. `list sales` reads invoices (`invoice`), customer shipments (`shipment`), and incoming goods documents whose operation is customer return (`return`). Use `--customer`, `--from`, and `--to` to narrow results, then `--limit` and `--offset` for paging. `get sale` includes date, amount, posting status, product lines, and linked order or source document IDs when 1C supplies a matching relationship type. `Posted` means the document was posted in 1C; it does not mean paid. The invoice resource is empty in the tested tenant, so lookup of a live invoice by GUID has not been verified. Listings scan resource history and may take several seconds.
+
+`list suppliers` and `search suppliers` show counterparties marked as suppliers. `list purchases --kind order` reads supplier orders, while `--kind receipt` selects incoming goods documents whose operation is supplier receipt. `list warehouse-docs` reads transfer orders (`transfer-order`), stock movements whose operation is transfer (`transfer`), stock receipts (`stock-receipt`), and stock writeoffs (`stock-writeoff`). Filter by supplier or warehouse ID; a transfer matches either its source or destination warehouse. Both lists support dates, `--limit`, and `--offset`. `get purchase` and `get warehouse-doc` include product lines and available linked document IDs. `Posted` indicates posting in 1C, not fulfillment or physical receipt. There are no transfer orders in the tested tenant, so getting one by GUID has not been verified live.
 
 ### Audit unposted receipts
 
@@ -119,7 +130,10 @@ Configure your MCP client to launch this command from the repository directory, 
 - `search_odata_resources` and `describe_odata_resource`
 - `list_customer_orders` and `get_customer_order`
 - `list_customers`, `search_customers`, and `get_customer`
+- `list_suppliers`, `search_suppliers`, and `get_supplier`
 - `list_sales_documents` and `get_sales_document`
+- `list_purchase_documents` and `get_purchase_document`
+- `list_warehouse_documents` and `get_warehouse_document`
 - `list_cash_receipts` and `get_cash_receipt`
 - `audit_unposted_receipts`
 - `create_product_group` and `update_product_group` (write operations)

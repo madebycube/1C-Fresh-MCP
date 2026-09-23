@@ -129,6 +129,30 @@ var GetCustomer = Spec{
 	Example:     "1c get customer CUSTOMER_GUID",
 }
 
+var ListSuppliers = Spec{
+	Command:     "list suppliers",
+	Tool:        "list_suppliers",
+	Description: "List suppliers with stable paging.",
+	Usage:       "1c list suppliers [--limit N] [--offset N] [--json]",
+	Example:     "1c list suppliers --limit 20",
+}
+
+var SearchSuppliers = Spec{
+	Command:     "search suppliers",
+	Tool:        "search_suppliers",
+	Description: "Find suppliers by name or code.",
+	Usage:       "1c search suppliers [--limit N] [--offset N] [--json] QUERY",
+	Example:     "1c search suppliers \"Пример поставщика\"",
+}
+
+var GetSupplier = Spec{
+	Command:     "get supplier",
+	Tool:        "get_supplier",
+	Description: "Show a supplier by 1C ID.",
+	Usage:       "1c get supplier [--json] GUID",
+	Example:     "1c get supplier SUPPLIER_GUID",
+}
+
 var ListSales = Spec{
 	Command:     "list sales",
 	Tool:        "list_sales_documents",
@@ -143,6 +167,38 @@ var GetSale = Spec{
 	Description: "Show an invoice, shipment, or return by 1C ID.",
 	Usage:       "1c get sale --kind invoice|shipment|return [--json] GUID",
 	Example:     "1c get sale --kind shipment DOCUMENT_GUID",
+}
+
+var ListPurchases = Spec{
+	Command:     "list purchases",
+	Tool:        "list_purchase_documents",
+	Description: "List supplier orders or goods receipts.",
+	Usage:       "1c list purchases --kind order|receipt [--supplier GUID] [--warehouse GUID] [--from YYYY-MM-DD --to YYYY-MM-DD] [--limit N] [--offset N] [--json]",
+	Example:     "1c list purchases --kind receipt --limit 20",
+}
+
+var GetPurchase = Spec{
+	Command:     "get purchase",
+	Tool:        "get_purchase_document",
+	Description: "Show a supplier order or goods receipt by 1C ID.",
+	Usage:       "1c get purchase --kind order|receipt [--json] GUID",
+	Example:     "1c get purchase --kind order DOCUMENT_GUID",
+}
+
+var ListWarehouseDocuments = Spec{
+	Command:     "list warehouse-docs",
+	Tool:        "list_warehouse_documents",
+	Description: "List transfer orders, transfers, stock receipts, or stock writeoffs.",
+	Usage:       "1c list warehouse-docs --kind transfer-order|transfer|stock-receipt|stock-writeoff [--warehouse GUID] [--from YYYY-MM-DD --to YYYY-MM-DD] [--limit N] [--offset N] [--json]",
+	Example:     "1c list warehouse-docs --kind transfer --limit 20",
+}
+
+var GetWarehouseDocument = Spec{
+	Command:     "get warehouse-doc",
+	Tool:        "get_warehouse_document",
+	Description: "Show a warehouse document and its product lines by 1C ID.",
+	Usage:       "1c get warehouse-doc --kind transfer-order|transfer|stock-receipt|stock-writeoff [--json] GUID",
+	Example:     "1c get warehouse-doc --kind transfer DOCUMENT_GUID",
 }
 
 var ListReceipts = Spec{
@@ -187,4 +243,4 @@ var DescribeResource = Spec{
 	Advanced:    true,
 }
 
-var All = []Spec{Check, ListGroups, CreateGroup, UpdateGroup, ListPriceTypes, GetPrice, ListWarehouses, GetStock, SearchProducts, UpdateProduct, ListCustomers, SearchCustomers, GetCustomer, ListOrders, GetOrder, ListSales, GetSale, ListReceipts, GetReceipt, AuditUnpostedReceipts, SearchResources, DescribeResource}
+var All = []Spec{Check, ListGroups, CreateGroup, UpdateGroup, ListPriceTypes, GetPrice, ListWarehouses, GetStock, SearchProducts, UpdateProduct, ListCustomers, SearchCustomers, GetCustomer, ListSuppliers, SearchSuppliers, GetSupplier, ListOrders, GetOrder, ListSales, GetSale, ListPurchases, GetPurchase, ListWarehouseDocuments, GetWarehouseDocument, ListReceipts, GetReceipt, AuditUnpostedReceipts, SearchResources, DescribeResource}
