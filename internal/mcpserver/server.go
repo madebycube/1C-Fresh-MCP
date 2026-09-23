@@ -51,6 +51,12 @@ type getReceiptInput struct {
 	ID   string `json:"id" jsonschema:"Receipt GUID"`
 }
 
+type auditUnpostedInput struct {
+	Kind   string `json:"kind,omitempty" jsonschema:"sale, refund, or both; defaults to both"`
+	From   string `json:"from" jsonschema:"First application date, YYYY-MM-DD"`
+	Before string `json:"before" jsonschema:"Exclusive application date cutoff, YYYY-MM-DD; range at most 31 days"`
+}
+
 func New(svc service.Service) *mcp.Server {
 	server := mcp.NewServer(&mcp.Implementation{Name: "1c-fresh", Version: "0.1.0"}, nil)
 	mcp.AddTool(server, &mcp.Tool{
@@ -94,6 +100,13 @@ func New(svc service.Service) *mcp.Server {
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, input getReceiptInput) (*mcp.CallToolResult, service.Receipt, error) {
 		receipt, err := svc.GetReceipt(ctx, input.Kind, input.ID)
 		return nil, receipt, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.AuditUnpostedReceipts.Tool, Description: operations.AuditUnpostedReceipts.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input auditUnpostedInput) (*mcp.CallToolResult, service.ReceiptAudit, error) {
+		report, err := svc.AuditUnpostedReceipts(ctx, input.Kind, input.From, input.Before)
+		return nil, report, err
 	})
 	return server
 }

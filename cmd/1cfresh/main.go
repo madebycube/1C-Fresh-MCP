@@ -36,7 +36,7 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		command += " " + args[1]
 		args = args[1:]
 	}
-	if command != operations.Check.Command && command != operations.SearchProducts.Command && command != operations.ListOrders.Command && command != operations.GetOrder.Command && command != operations.ListReceipts.Command && command != operations.GetReceipt.Command && command != "mcp" {
+	if command != operations.Check.Command && command != operations.SearchProducts.Command && command != operations.ListOrders.Command && command != operations.GetOrder.Command && command != operations.ListReceipts.Command && command != operations.GetReceipt.Command && command != operations.AuditUnpostedReceipts.Command && command != "mcp" {
 		return errors.New("unknown command; run '1cfresh help'")
 	}
 	cfg, err := config.Load()
@@ -97,6 +97,8 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		return runReceiptList(ctx, svc, args[1:], out)
 	case operations.GetReceipt.Command:
 		return runReceiptGet(ctx, svc, args[1:], out)
+	case operations.AuditUnpostedReceipts.Command:
+		return runReceiptAudit(ctx, svc, args[1:], out)
 	case "mcp":
 		if len(args) != 1 {
 			return errors.New("usage: 1cfresh mcp")

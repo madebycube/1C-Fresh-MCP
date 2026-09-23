@@ -54,8 +54,8 @@ func TestToolsAreReadOnlyAndCallable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(listed.Tools) != 6 {
-		t.Fatalf("got %d tools; want 6", len(listed.Tools))
+	if len(listed.Tools) != 7 {
+		t.Fatalf("got %d tools; want 7", len(listed.Tools))
 	}
 	for _, tool := range listed.Tools {
 		if tool.Annotations == nil || !tool.Annotations.ReadOnlyHint {
@@ -72,6 +72,7 @@ func TestToolsAreReadOnlyAndCallable(t *testing.T) {
 		{operations.GetOrder.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000001"}},
 		{operations.ListReceipts.Tool, map[string]any{"kind": "sale", "from": "2026-09-23", "to": "2026-09-23", "limit": 2}},
 		{operations.GetReceipt.Tool, map[string]any{"kind": "sale", "id": "00000000-0000-0000-0000-000000000001"}},
+		{operations.AuditUnpostedReceipts.Tool, map[string]any{"from": "2026-09-23", "before": "2026-09-24"}},
 	} {
 		result, err := clientSession.CallTool(ctx, &mcp.CallToolParams{Name: call.name, Arguments: call.args})
 		if err != nil || result.IsError || result.StructuredContent == nil {

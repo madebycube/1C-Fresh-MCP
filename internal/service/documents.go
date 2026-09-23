@@ -107,35 +107,12 @@ func (s Service) lowerBoundDate(ctx context.Context, plan config.DocumentResourc
 }
 
 func (s Service) dateRangePage(ctx context.Context, plan config.DocumentResource, from, to string, limit, offset int) ([]map[string]json.RawMessage, int, error) {
-	start, err := time.Parse("2006-01-02", from)
-	if err != nil {
-		return nil, 0, errors.New("from must be YYYY-MM-DD")
-	}
-	end, err := time.Parse("2006-01-02", to)
-	if err != nil {
-		return nil, 0, errors.New("to must be YYYY-MM-DD")
-	}
-	if end.Before(start) || end.Sub(start) > 30*24*time.Hour {
-		return nil, 0, errors.New("date range must be ordered and at most 31 calendar days")
-	}
 	if limit < 1 || limit > 100 || offset < 0 {
 		return nil, 0, errors.New("limit must be 1–100 and offset must be nonnegative")
 	}
-	count, err := s.documentCount(ctx, plan)
+	first, total, startText, endText, err := s.dateRangeBounds(ctx, plan, from, to)
 	if err != nil {
 		return nil, 0, err
-	}
-	first, err := s.lowerBoundDate(ctx, plan, count, start.Format("2006-01-02")+"T00:00:00")
-	if err != nil {
-		return nil, 0, err
-	}
-	last, err := s.lowerBoundDate(ctx, plan, count, end.AddDate(0, 0, 1).Format("2006-01-02")+"T00:00:00")
-	if err != nil {
-		return nil, 0, err
-	}
-	total := last - first
-	if total < 0 {
-		return nil, 0, errors.New("OData document dates are not ordered")
 	}
 	if offset >= total {
 		return []map[string]json.RawMessage{}, total, nil
@@ -147,20 +124,58 @@ func (s Service) dateRangePage(ctx context.Context, plan config.DocumentResource
 	if err != nil {
 		return nil, 0, err
 	}
-	if len(rows) != limit {
-		return nil, 0, fmt.Errorf("OData returned %d documents; expected %d", len(rows), limit)
+	if err := validateDocumentPage(rows, limit, plan.DateField, startText, endText); err != nil {
+		return nil, 0, err
+	}
+	return rows, total, nil
+}
+
+func (s Service) dateRangeBounds(ctx context.Context, plan config.DocumentResource, from, to string) (int, int, string, string, error) {
+	start, err := time.Parse("2006-01-02", from)
+	if err != nil {
+		return 0, 0, "", "", errors.New("from must be YYYY-MM-DD")
+	}
+	end, err := time.Parse("2006-01-02", to)
+	if err != nil {
+		return 0, 0, "", "", errors.New("to must be YYYY-MM-DD")
+	}
+	if end.Before(start) || end.Sub(start) > 30*24*time.Hour {
+		return 0, 0, "", "", errors.New("date range must be ordered and at most 31 calendar days")
+	}
+	count, err := s.documentCount(ctx, plan)
+	if err != nil {
+		return 0, 0, "", "", err
 	}
 	startText := start.Format("2006-01-02") + "T00:00:00"
 	endText := end.AddDate(0, 0, 1).Format("2006-01-02") + "T00:00:00"
+	first, err := s.lowerBoundDate(ctx, plan, count, startText)
+	if err != nil {
+		return 0, 0, "", "", err
+	}
+	last, err := s.lowerBoundDate(ctx, plan, count, endText)
+	if err != nil {
+		return 0, 0, "", "", err
+	}
+	total := last - first
+	if total < 0 {
+		return 0, 0, "", "", errors.New("OData document dates are not ordered")
+	}
+	return first, total, startText, endText, nil
+}
+
+func validateDocumentPage(rows []map[string]json.RawMessage, limit int, dateField, startText, endText string) error {
+	if len(rows) != limit {
+		return fmt.Errorf("OData returned %d documents; expected %d", len(rows), limit)
+	}
 	previous := ""
 	for _, row := range rows {
 		var date string
-		if err := json.Unmarshal(row[plan.DateField], &date); err != nil || date < startText || date >= endText || date < previous {
-			return nil, 0, errors.New("OData returned documents outside the requested date range or order")
+		if err := json.Unmarshal(row[dateField], &date); err != nil || date < startText || date >= endText || date < previous {
+			return errors.New("OData returned documents outside the requested date range or order")
 		}
 		previous = date
 	}
-	return rows, total, nil
+	return nil
 }
 
 func sourceFields(bindings []config.FieldBinding) string {
