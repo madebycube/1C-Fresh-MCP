@@ -41,15 +41,15 @@ If you copy the binary elsewhere, provide `ONEC_ENV_FILE` or the `ONEC_ODATA_*` 
 
 ### Prompt for an agent
 
-Copy this into a task for an agent with access to your computer and the private repository:
+Copy this into a task for an agent with access to your computer:
 
 ```text
-Install https://github.com/madebycube/1C-Fresh-MCP on my computer. Clone the repository using my GitHub access, build the CLI with go build -o bin/1c ./cmd/1cfresh, and symlink the built bin/1c into a directory on PATH so I can run 1c. Configure my MCP client to launch the absolute path to bin/1c with the mcp argument. Verify installation with 1c --help. Let me enter credentials using 1c login in the terminal; do not request my password in chat. After login, verify the connection with 1c check. If repository access or MCP client configuration is unavailable, identify the exact blocker.
+Install https://github.com/madebycube/1C-Fresh-MCP on my computer. Clone the repository, build the CLI with go build -o bin/1c ./cmd/1cfresh, and symlink the built bin/1c into a directory on PATH so I can run 1c. Configure my MCP client to launch the absolute path to bin/1c with the mcp argument. Verify installation with 1c --help. Let me enter credentials using 1c login in the terminal; do not request my password in chat. After login, verify the connection with 1c check. If repository access or MCP client configuration is unavailable, identify the exact blocker.
 ```
 
 ## CLI syntax
 
-Commands follow `1c VERB RESOURCE [OPTIONS]`. Use `--help` on a command for its usage and an example. Commands print readable tables by default; add `--json` for structured output.
+Commands follow `1c VERB RESOURCE [OPTIONS]`. `1c --help` lists topics, `1c help prices` lists price commands, and `1c help all` lists every command. Use `--help` on a command for its usage and an example. Commands print readable tables by default; add `--json` for structured output.
 
 ```sh
 1c check
