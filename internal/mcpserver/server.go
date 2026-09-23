@@ -137,14 +137,16 @@ type getOrderInput struct {
 }
 
 type listCustomersInput struct {
-	Limit  int `json:"limit,omitempty" jsonschema:"Maximum results, from 1 to 100; defaults to 20"`
-	Offset int `json:"offset,omitempty" jsonschema:"Offset within the customer list"`
+	Limit   int    `json:"limit,omitempty" jsonschema:"Maximum results, from 1 to 100; defaults to 20"`
+	Offset  int    `json:"offset,omitempty" jsonschema:"Offset within the customer list"`
+	GroupID string `json:"group_id,omitempty" jsonschema:"Optional direct counterparty folder GUID or root"`
 }
 
 type searchCustomersInput struct {
-	Query  string `json:"query" jsonschema:"Customer name or code substring"`
-	Limit  int    `json:"limit,omitempty" jsonschema:"Maximum results, from 1 to 100; defaults to 20"`
-	Offset int    `json:"offset,omitempty" jsonschema:"Offset within matching customers"`
+	Query   string `json:"query" jsonschema:"Customer name or code substring"`
+	Limit   int    `json:"limit,omitempty" jsonschema:"Maximum results, from 1 to 100; defaults to 20"`
+	Offset  int    `json:"offset,omitempty" jsonschema:"Offset within matching customers"`
+	GroupID string `json:"group_id,omitempty" jsonschema:"Optional direct counterparty folder GUID or root"`
 }
 
 type getCustomerInput struct {
@@ -391,7 +393,7 @@ func New(svc service.Service) *mcp.Server {
 		if limit == 0 {
 			limit = 20
 		}
-		page, err := svc.ListCustomers(ctx, "", limit, input.Offset)
+		page, err := svc.ListCustomersInGroup(ctx, "", limit, input.Offset, input.GroupID)
 		return nil, page, err
 	})
 	mcp.AddTool(server, &mcp.Tool{
@@ -402,7 +404,7 @@ func New(svc service.Service) *mcp.Server {
 		if limit == 0 {
 			limit = 20
 		}
-		page, err := svc.ListCustomers(ctx, input.Query, limit, input.Offset)
+		page, err := svc.ListCustomersInGroup(ctx, input.Query, limit, input.Offset, input.GroupID)
 		return nil, page, err
 	})
 	mcp.AddTool(server, &mcp.Tool{
@@ -434,7 +436,7 @@ func New(svc service.Service) *mcp.Server {
 		if limit == 0 {
 			limit = 20
 		}
-		page, err := svc.ListSuppliers(ctx, "", limit, input.Offset)
+		page, err := svc.ListSuppliersInGroup(ctx, "", limit, input.Offset, input.GroupID)
 		return nil, page, err
 	})
 	mcp.AddTool(server, &mcp.Tool{
@@ -445,7 +447,7 @@ func New(svc service.Service) *mcp.Server {
 		if limit == 0 {
 			limit = 20
 		}
-		page, err := svc.ListSuppliers(ctx, input.Query, limit, input.Offset)
+		page, err := svc.ListSuppliersInGroup(ctx, input.Query, limit, input.Offset, input.GroupID)
 		return nil, page, err
 	})
 	mcp.AddTool(server, &mcp.Tool{
