@@ -29,6 +29,9 @@ func (stubReader) Get(_ context.Context, resource string, params url.Values, _ i
 	if resource == "Catalog_КатегорииНоменклатуры" {
 		return []byte(`{"odata.count":"1","value":[{"Ref_Key":"00000000-0000-0000-0000-000000000014","Description":"Example category","Parent_Key":"00000000-0000-0000-0000-000000000000","IsFolder":false,"DeletionMark":false,"ТипНоменклатурыПоУмолчанию":"Запас","ЕдиницаИзмерения_Key":"00000000-0000-0000-0000-000000000013"}]}`), nil
 	}
+	if strings.HasPrefix(resource, "Catalog_КатегорииНоменклатуры(") {
+		return []byte(`{"Ref_Key":"00000000-0000-0000-0000-000000000014","Description":"Example category","IsFolder":false,"DeletionMark":false,"ТипНоменклатурыПоУмолчанию":"Запас"}`), nil
+	}
 	if resource == "Catalog_ХарактеристикиНоменклатуры" {
 		return []byte(`{"odata.count":"1","value":[{"Ref_Key":"00000000-0000-0000-0000-000000000015","Description":"Blue","Owner":"00000000-0000-0000-0000-000000000004","Owner_Type":"StandardODATA.Catalog_Номенклатура","DeletionMark":false,"Недействителен":false}]}`), nil
 	}
@@ -142,18 +145,18 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(listed.Tools) != 48 {
-		t.Fatalf("got %d tools; want 48", len(listed.Tools))
+	if len(listed.Tools) != 49 {
+		t.Fatalf("got %d tools; want 49", len(listed.Tools))
 	}
 	for _, tool := range listed.Tools {
 		if tool.Annotations == nil {
 			t.Fatalf("tool %s has no annotations", tool.Name)
 		}
-		write := tool.Name == operations.CreateGroup.Tool || tool.Name == operations.UpdateGroup.Tool || tool.Name == operations.CreateCounterpartyGroup.Tool || tool.Name == operations.UpdateCounterpartyGroup.Tool || tool.Name == operations.UpdateProduct.Tool || tool.Name == operations.CreateCustomer.Tool || tool.Name == operations.UpdateCustomer.Tool || tool.Name == operations.CreateSupplier.Tool || tool.Name == operations.UpdateSupplier.Tool
+		write := tool.Name == operations.CreateGroup.Tool || tool.Name == operations.UpdateGroup.Tool || tool.Name == operations.CreateCounterpartyGroup.Tool || tool.Name == operations.UpdateCounterpartyGroup.Tool || tool.Name == operations.CreateProduct.Tool || tool.Name == operations.UpdateProduct.Tool || tool.Name == operations.CreateCustomer.Tool || tool.Name == operations.UpdateCustomer.Tool || tool.Name == operations.CreateSupplier.Tool || tool.Name == operations.UpdateSupplier.Tool
 		if tool.Annotations.ReadOnlyHint == write {
 			t.Fatalf("tool %s has incorrect read-only annotation", tool.Name)
 		}
-		if (tool.Name == operations.CreateGroup.Tool || tool.Name == operations.CreateCounterpartyGroup.Tool || tool.Name == operations.CreateCustomer.Tool || tool.Name == operations.CreateSupplier.Tool) && (tool.Annotations.DestructiveHint == nil || *tool.Annotations.DestructiveHint) {
+		if (tool.Name == operations.CreateGroup.Tool || tool.Name == operations.CreateCounterpartyGroup.Tool || tool.Name == operations.CreateProduct.Tool || tool.Name == operations.CreateCustomer.Tool || tool.Name == operations.CreateSupplier.Tool) && (tool.Annotations.DestructiveHint == nil || *tool.Annotations.DestructiveHint) {
 			t.Fatalf("%s must be marked additive", tool.Name)
 		}
 		if (tool.Name == operations.UpdateGroup.Tool || tool.Name == operations.UpdateCounterpartyGroup.Tool || tool.Name == operations.UpdateCustomer.Tool || tool.Name == operations.UpdateSupplier.Tool) && !tool.Annotations.IdempotentHint {
@@ -185,6 +188,7 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 		{operations.SearchProducts.Tool, map[string]any{"query": "Chair", "limit": 2}},
 		{operations.ListProducts.Tool, map[string]any{"limit": 2, "group_id": "00000000-0000-0000-0000-000000000001"}},
 		{operations.GetProduct.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000004"}},
+		{operations.CreateProduct.Tool, map[string]any{"name": "Example item", "type": "stock", "unit_id": "00000000-0000-0000-0000-000000000013", "category_id": "00000000-0000-0000-0000-000000000014"}},
 		{operations.UpdateProduct.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000004", "article": "B", "group_id": "00000000-0000-0000-0000-000000000001"}},
 		{operations.ListOrders.Tool, map[string]any{"limit": 2, "offset": 0, "customer_id": "00000000-0000-0000-0000-000000000002", "from": "2026-09-23", "to": "2026-09-23"}},
 		{operations.GetOrder.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000001"}},

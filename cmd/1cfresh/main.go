@@ -124,6 +124,8 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		return runProductList(ctx, svc, commandArgs, out)
 	case operations.GetProduct.Command:
 		return runProductGet(ctx, svc, commandArgs, out)
+	case operations.CreateProduct.Command:
+		return runProductCreate(ctx, svc, commandArgs, out)
 	case operations.SearchProducts.Command:
 		flags := flag.NewFlagSet("search products", flag.ContinueOnError)
 		flags.SetOutput(io.Discard)

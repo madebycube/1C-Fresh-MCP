@@ -182,6 +182,14 @@ var GetProduct = Spec{
 	Example:     "1c get product PRODUCT_GUID",
 }
 
+var CreateProduct = Spec{
+	Command:     "create product",
+	Tool:        "create_product",
+	Description: "Create a stock item or service; stock requires an active category.",
+	Usage:       "1c create product --name NAME --type stock|service --unit UNIT_GUID [--category CATEGORY_GUID] [--full-name TEXT] [--article TEXT] [--group GROUP_GUID] [--json]",
+	Example:     "1c create product --name \"Example item\" --type stock --unit UNIT_GUID --category CATEGORY_GUID",
+}
+
 var UpdateProduct = Spec{
 	Command:     "update product",
 	Tool:        "update_product",
@@ -400,7 +408,7 @@ var DescribeResource = Spec{
 
 var Topics = []Topic{
 	{Name: "setup", Description: "Connection and local MCP server", Commands: []Spec{Check}},
-	{Name: "products", Description: "Products, groups, categories, and characteristics", Commands: []Spec{ListProducts, GetProduct, SearchProducts, UpdateProduct, ListGroups, CreateGroup, UpdateGroup, ListProductCategories, ListProductCharacteristics, ListUnitTypes}},
+	{Name: "products", Description: "Products, groups, categories, and characteristics", Commands: []Spec{ListProducts, GetProduct, SearchProducts, CreateProduct, UpdateProduct, ListGroups, CreateGroup, UpdateGroup, ListProductCategories, ListProductCharacteristics, ListUnitTypes}},
 	{Name: "prices", Description: "Price types, currencies, quotes, and source documents", Commands: []Spec{ListPriceTypes, ListCurrencies, GetPrice, ListPrices, ListPriceDocuments, GetPriceDocument}},
 	{Name: "inventory", Description: "Warehouses, stock, and warehouse documents", Commands: []Spec{ListWarehouses, GetStock, ListWarehouseDocuments, GetWarehouseDocument}},
 	{Name: "partners", Description: "Customer and supplier records and folders", Commands: []Spec{ListCounterpartyGroups, CreateCounterpartyGroup, UpdateCounterpartyGroup, ListCustomers, SearchCustomers, GetCustomer, CreateCustomer, UpdateCustomer, ListSuppliers, SearchSuppliers, GetSupplier, CreateSupplier, UpdateSupplier}},

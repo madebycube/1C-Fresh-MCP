@@ -2,7 +2,9 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"net/url"
 	"sort"
 	"strings"
 
@@ -71,4 +73,30 @@ func (s Service) ListProductCategories(ctx context.Context, name string) ([]Prod
 		return selected[i].Path < selected[j].Path
 	})
 	return selected, nil
+}
+
+func (s Service) readProductCategory(ctx context.Context, id string) (ProductCategory, error) {
+	if !linkedGUID(id) {
+		return ProductCategory{}, errors.New("category ID must be a nonzero GUID")
+	}
+	params := url.Values{"$format": {"json"}, "$select": {"Ref_Key,Description,IsFolder,DeletionMark,ТипНоменклатурыПоУмолчанию"}}
+	data, err := s.OData.Get(ctx, categoryResource(id), params, 1<<20)
+	if err != nil {
+		return ProductCategory{}, err
+	}
+	var row struct {
+		ID       string `json:"Ref_Key"`
+		Name     string `json:"Description"`
+		IsFolder *bool  `json:"IsFolder"`
+		Deleted  *bool  `json:"DeletionMark"`
+		Type     string `json:"ТипНоменклатурыПоУмолчанию"`
+	}
+	if err := json.Unmarshal(data, &row); err != nil || !strings.EqualFold(row.ID, id) || row.IsFolder == nil || row.Deleted == nil || *row.IsFolder || *row.Deleted {
+		return ProductCategory{}, errors.New("category ID must identify an active product category")
+	}
+	return ProductCategory{ID: row.ID, Name: row.Name, Type: row.Type}, nil
+}
+
+func categoryResource(id string) string {
+	return config.ProductCategories.Name + "(guid'" + strings.ToLower(id) + "')"
 }
