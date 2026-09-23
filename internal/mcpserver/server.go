@@ -25,6 +25,13 @@ type searchOutput struct {
 	Count    int               `json:"count"`
 }
 
+type updateProductInput struct {
+	ID       string  `json:"id" jsonschema:"Existing product GUID"`
+	Name     *string `json:"name,omitempty" jsonschema:"Replacement product name"`
+	FullName *string `json:"full_name,omitempty" jsonschema:"Replacement full name; empty string clears it"`
+	Article  *string `json:"article,omitempty" jsonschema:"Replacement article; empty string clears it"`
+}
+
 type listGroupsInput struct {
 	Name string `json:"name,omitempty" jsonschema:"Optional substring of a group name or path"`
 }
@@ -137,6 +144,13 @@ func New(svc service.Service) *mcp.Server {
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, input searchInput) (*mcp.CallToolResult, searchOutput, error) {
 		products, err := svc.SearchProducts(ctx, input.Query, input.Limit)
 		return nil, searchOutput{Products: products, Count: len(products)}, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.UpdateProduct.Tool, Description: operations.UpdateProduct.Description,
+		Annotations: &mcp.ToolAnnotations{IdempotentHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input updateProductInput) (*mcp.CallToolResult, service.ProductChange, error) {
+		change, err := svc.UpdateProduct(ctx, input.ID, service.ProductPatch{Name: input.Name, FullName: input.FullName, Article: input.Article})
+		return nil, change, err
 	})
 	mcp.AddTool(server, &mcp.Tool{
 		Name: operations.ListOrders.Tool, Description: operations.ListOrders.Description,

@@ -23,6 +23,9 @@ func (stubReader) Get(_ context.Context, resource string, params url.Values, _ i
 		return []byte(`{"odata.count":"1","value":[{"Ref_Key":"00000000-0000-0000-0000-000000000001","Description":"Furniture","Parent_Key":"00000000-0000-0000-0000-000000000000","IsFolder":true,"DeletionMark":false}]}`), nil
 	}
 	if strings.HasPrefix(resource, "Catalog_Номенклатура(") {
+		if strings.Contains(resource, "00000000-0000-0000-0000-000000000004") {
+			return []byte(`{"Ref_Key":"00000000-0000-0000-0000-000000000004","Description":"Chair","НаименованиеПолное":"Chair full","Артикул":"A","IsFolder":false,"DeletionMark":false,"DataVersion":"version-1"}`), nil
+		}
 		return []byte(`{"Ref_Key":"00000000-0000-0000-0000-000000000001","Description":"Furniture","Parent_Key":"00000000-0000-0000-0000-000000000000","IsFolder":true,"DeletionMark":false,"DataVersion":"version-1"}`), nil
 	}
 	if resource == "Catalog_ВидыЦен" {
@@ -74,14 +77,14 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(listed.Tools) != 13 {
-		t.Fatalf("got %d tools; want 13", len(listed.Tools))
+	if len(listed.Tools) != 14 {
+		t.Fatalf("got %d tools; want 14", len(listed.Tools))
 	}
 	for _, tool := range listed.Tools {
 		if tool.Annotations == nil {
 			t.Fatalf("tool %s has no annotations", tool.Name)
 		}
-		write := tool.Name == operations.CreateGroup.Tool || tool.Name == operations.UpdateGroup.Tool
+		write := tool.Name == operations.CreateGroup.Tool || tool.Name == operations.UpdateGroup.Tool || tool.Name == operations.UpdateProduct.Tool
 		if tool.Annotations.ReadOnlyHint == write {
 			t.Fatalf("tool %s has incorrect read-only annotation", tool.Name)
 		}
@@ -102,6 +105,7 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 		{operations.UpdateGroup.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000001", "name": "Renamed"}},
 		{operations.ListPriceTypes.Tool, map[string]any{}},
 		{operations.SearchProducts.Tool, map[string]any{"query": "Chair", "limit": 2}},
+		{operations.UpdateProduct.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000004", "article": "B"}},
 		{operations.ListOrders.Tool, map[string]any{"limit": 2}},
 		{operations.GetOrder.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000001"}},
 		{operations.ListReceipts.Tool, map[string]any{"kind": "sale", "from": "2026-09-23", "to": "2026-09-23", "limit": 2}},
