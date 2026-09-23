@@ -224,6 +224,7 @@ var PriceDocuments = DocumentResource{
 	DeletedField: "DeletionMark",
 	Fields: []FieldBinding{
 		{Output: "id", Source: "Ref_Key"},
+		{Output: "number", Source: "Number"},
 		{Output: "date", Source: "Date"},
 		{Output: "posted", Source: "Posted"},
 		{Output: "deleted", Source: "DeletionMark"},

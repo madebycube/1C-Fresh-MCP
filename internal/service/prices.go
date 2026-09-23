@@ -58,6 +58,7 @@ type PriceDocumentLine struct {
 
 type PriceDocument struct {
 	ID         string              `json:"id"`
+	Number     string              `json:"number"`
 	Date       string              `json:"date"`
 	Posted     bool                `json:"posted"`
 	Deleted    bool                `json:"deleted"`
@@ -68,11 +69,66 @@ type PriceDocument struct {
 	Lines      []PriceDocumentLine `json:"lines"`
 }
 
+type PriceDocumentSummary struct {
+	ID     string `json:"id"`
+	Number string `json:"number"`
+	Date   string `json:"date"`
+	Posted bool   `json:"posted"`
+}
+
+type PriceDocumentPage struct {
+	From       string                 `json:"from,omitempty"`
+	To         string                 `json:"to,omitempty"`
+	Posted     *bool                  `json:"posted,omitempty"`
+	Total      int                    `json:"total"`
+	Offset     int                    `json:"offset"`
+	NextOffset *int                   `json:"next_offset,omitempty"`
+	Items      []PriceDocumentSummary `json:"items"`
+}
+
 type priceDocument struct {
 	ID      string `json:"id"`
+	Number  string `json:"number"`
 	Date    string `json:"date"`
 	Posted  bool   `json:"posted"`
 	Deleted bool   `json:"deleted"`
+}
+
+func (s Service) ListPriceDocuments(ctx context.Context, from, to string, posted *bool, limit, offset int) (PriceDocumentPage, error) {
+	if err := validateListPage(limit, offset); err != nil {
+		return PriceDocumentPage{}, err
+	}
+	startDate, endDate, err := optionalDocumentDateRange(from, to)
+	if err != nil {
+		return PriceDocumentPage{}, err
+	}
+	rows, err := s.allDocumentRows(ctx, config.PriceDocuments)
+	if err != nil {
+		return PriceDocumentPage{}, err
+	}
+	page := PriceDocumentPage{From: from, To: to, Posted: posted, Offset: offset, Items: make([]PriceDocumentSummary, 0)}
+	for index := len(rows) - 1; index >= 0; index-- {
+		row := rows[index]
+		if !catalogBoolean(row["Posted"]) {
+			return PriceDocumentPage{}, errors.New("invalid OData price document posting status")
+		}
+		item, err := bindFields[priceDocument](row, config.PriceDocuments.Fields)
+		if err != nil || !linkedGUID(item.ID) {
+			return PriceDocumentPage{}, errors.New("invalid OData price document")
+		}
+		if startDate != "" && item.Date < startDate || endDate != "" && item.Date >= endDate || posted != nil && item.Posted != *posted {
+			continue
+		}
+		if page.Total >= offset && len(page.Items) < limit {
+			page.Items = append(page.Items, PriceDocumentSummary{ID: item.ID, Number: item.Number, Date: item.Date, Posted: item.Posted})
+		}
+		page.Total++
+	}
+	if offset+len(page.Items) < page.Total {
+		next := offset + len(page.Items)
+		page.NextOffset = &next
+	}
+	return page, nil
 }
 
 type priceLine struct {
@@ -116,7 +172,7 @@ func (s Service) GetPriceDocument(ctx context.Context, id, productID string, lim
 	if err := json.Unmarshal(row[plan.LinesField], &rows); err != nil || rows == nil {
 		return PriceDocument{}, errors.New("invalid price document lines")
 	}
-	result := PriceDocument{ID: header.ID, Date: header.Date, Posted: header.Posted, Deleted: header.Deleted, ProductID: productID, Offset: offset, Lines: make([]PriceDocumentLine, 0)}
+	result := PriceDocument{ID: header.ID, Number: header.Number, Date: header.Date, Posted: header.Posted, Deleted: header.Deleted, ProductID: productID, Offset: offset, Lines: make([]PriceDocumentLine, 0)}
 	for _, lineRow := range rows {
 		line, err := bindFields[priceLine](lineRow, plan.LineFields)
 		if err != nil {

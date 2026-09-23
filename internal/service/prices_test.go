@@ -94,6 +94,31 @@ func TestGetPriceDocumentPagesAndFiltersLines(t *testing.T) {
 	}
 }
 
+func TestListPriceDocumentsFiltersAndPages(t *testing.T) {
+	reader := priceReader{documents: []map[string]any{
+		{"Ref_Key": salesID(10), "Number": "10", "Date": "2026-09-20T10:00:00", "Posted": true, "DeletionMark": false},
+		{"Ref_Key": salesID(20), "Number": "20", "Date": "2026-09-22T10:00:00", "Posted": false, "DeletionMark": false},
+		{"Ref_Key": salesID(30), "Number": "30", "Date": "2026-09-23T10:00:00", "Posted": true, "DeletionMark": true},
+	}}
+	svc := Service{OData: reader}
+	first, err := svc.ListPriceDocuments(context.Background(), "", "", nil, 1, 0)
+	if err != nil || first.Total != 2 || len(first.Items) != 1 || first.Items[0].Number != "20" || first.Items[0].Posted || first.NextOffset == nil || *first.NextOffset != 1 {
+		t.Fatalf("first price document page: %+v, %v", first, err)
+	}
+	second, err := svc.ListPriceDocuments(context.Background(), "", "", nil, 1, 1)
+	if err != nil || len(second.Items) != 1 || second.Items[0].Number != "10" || second.NextOffset != nil {
+		t.Fatalf("second price document page: %+v, %v", second, err)
+	}
+	posted := false
+	filtered, err := svc.ListPriceDocuments(context.Background(), "2026-09-21", "2026-09-23", &posted, 20, 0)
+	if err != nil || filtered.Total != 1 || len(filtered.Items) != 1 || filtered.Items[0].ID != salesID(20) {
+		t.Fatalf("filtered price documents: %+v, %v", filtered, err)
+	}
+	if _, err := svc.ListPriceDocuments(context.Background(), "2026-09-21", "", nil, 20, 0); err == nil {
+		t.Fatal("accepted an unpaired date range")
+	}
+}
+
 func TestListPricesScansHistoryOnceForProductPage(t *testing.T) {
 	group := salesID(20)
 	secondProduct := salesID(4)
