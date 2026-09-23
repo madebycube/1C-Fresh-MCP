@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/url"
 	"strconv"
+	"strings"
 
 	"github.com/madebycube/1C-Fresh-MCP/internal/config"
 )
@@ -15,16 +16,38 @@ const productBrowseScanLimit = 500
 
 type ProductPage struct {
 	Offset     int       `json:"offset"`
+	GroupID    string    `json:"group_id,omitempty"`
 	Scanned    int       `json:"scanned"`
 	NextOffset *int      `json:"next_offset,omitempty"`
 	Items      []Product `json:"items"`
 }
 
 func (s Service) ListProducts(ctx context.Context, limit, offset int) (ProductPage, error) {
+	return s.ListProductsInGroup(ctx, limit, offset, "")
+}
+
+func (s Service) ListProductsInGroup(ctx context.Context, limit, offset int, groupID string) (ProductPage, error) {
 	if err := validateListPage(limit, offset); err != nil {
 		return ProductPage{}, err
 	}
-	page := ProductPage{Offset: offset, Items: make([]Product, 0, limit)}
+	if groupID != "" {
+		if groupID == "root" || strings.EqualFold(groupID, emptyGUID) {
+			groupID = emptyGUID
+		} else {
+			if !linkedGUID(groupID) {
+				return ProductPage{}, errors.New("group must be a group GUID or root")
+			}
+			group, err := s.readGroup(ctx, groupID)
+			if err != nil {
+				return ProductPage{}, err
+			}
+			if !strings.EqualFold(group.ID, groupID) || !group.IsFolder || group.Deleted {
+				return ProductPage{}, errors.New("group must be an active product group")
+			}
+			groupID = strings.ToLower(groupID)
+		}
+	}
+	page := ProductPage{Offset: offset, GroupID: groupID, Items: make([]Product, 0, limit)}
 	next := offset
 	for page.Scanned < productBrowseScanLimit && len(page.Items) < limit {
 		batchStart := next
@@ -56,7 +79,7 @@ func (s Service) ListProducts(ctx context.Context, limit, offset int) (ProductPa
 			}
 			next++
 			page.Scanned++
-			if string(row["IsFolder"]) == "false" && string(row["DeletionMark"]) == "false" {
+			if string(row["IsFolder"]) == "false" && string(row["DeletionMark"]) == "false" && (groupID == "" || strings.EqualFold(product.ParentID, groupID) || groupID == emptyGUID && product.ParentID == "") {
 				page.Items = append(page.Items, product)
 			}
 			if len(page.Items) == limit || page.Scanned == productBrowseScanLimit {

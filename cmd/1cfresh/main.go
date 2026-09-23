@@ -242,6 +242,7 @@ func printHelp(out io.Writer) {
 	fmt.Fprintln(out, "  1c update group GROUP_GUID --parent PARENT_GUID")
 	fmt.Fprintln(out, "  1c list price-types")
 	fmt.Fprintln(out, "  1c list products --limit 20")
+	fmt.Fprintln(out, "  1c list products --group GROUP_GUID --limit 20")
 	fmt.Fprintln(out, "  1c get product PRODUCT_GUID")
 	fmt.Fprintln(out, "  1c search products \"название товара\"")
 	fmt.Fprintln(out, "  1c search customers \"Пример компании\"")

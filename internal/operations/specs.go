@@ -84,9 +84,9 @@ var SearchProducts = Spec{
 var ListProducts = Spec{
 	Command:     "list products",
 	Tool:        "list_products",
-	Description: "Browse products with a bounded raw-catalog cursor.",
-	Usage:       "1c list products [--limit N] [--offset N] [--json]",
-	Example:     "1c list products --limit 20",
+	Description: "Browse products, optionally within one group, with a bounded raw-catalog cursor.",
+	Usage:       "1c list products [--group GROUP_GUID|root] [--limit N] [--offset N] [--json]",
+	Example:     "1c list products --group GROUP_GUID --limit 20",
 }
 
 var GetProduct = Spec{

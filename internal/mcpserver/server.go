@@ -21,8 +21,9 @@ type searchInput struct {
 }
 
 type listProductsInput struct {
-	Limit  int `json:"limit,omitempty" jsonschema:"Maximum products, 1 to 100; defaults to 20"`
-	Offset int `json:"offset,omitempty" jsonschema:"Raw catalog offset from a previous list_products result"`
+	Limit   int    `json:"limit,omitempty" jsonschema:"Maximum products, 1 to 100; defaults to 20"`
+	Offset  int    `json:"offset,omitempty" jsonschema:"Raw catalog offset from a previous list_products result"`
+	GroupID string `json:"group_id,omitempty" jsonschema:"Optional direct parent group GUID or root"`
 }
 
 type getProductInput struct {
@@ -300,7 +301,7 @@ func New(svc service.Service) *mcp.Server {
 		if limit == 0 {
 			limit = 20
 		}
-		page, err := svc.ListProducts(ctx, limit, input.Offset)
+		page, err := svc.ListProductsInGroup(ctx, limit, input.Offset, input.GroupID)
 		return nil, page, err
 	})
 	mcp.AddTool(server, &mcp.Tool{

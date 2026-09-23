@@ -10,13 +10,19 @@ import (
 )
 
 type productBrowseReader struct {
-	rows  []map[string]any
-	calls int
+	rows       []map[string]any
+	calls      int
+	groupCalls int
+	groupRow   string
 }
 
 func (*productBrowseReader) Check(context.Context) (int, error) { return 1, nil }
 
 func (reader *productBrowseReader) Get(_ context.Context, resource string, params url.Values, _ int64) ([]byte, error) {
+	if resource == nomenclatureResource(groupID) {
+		reader.groupCalls++
+		return []byte(reader.groupRow), nil
+	}
 	if resource != "Catalog_Номенклатура" || params.Get("$filter") != "" || params.Get("$orderby") != "Ref_Key asc" {
 		return nil, errors.New("unexpected product browse request")
 	}
@@ -33,6 +39,37 @@ func (reader *productBrowseReader) Get(_ context.Context, resource string, param
 		skip = len(reader.rows)
 	}
 	return json.Marshal(map[string]any{"value": reader.rows[skip:min(skip+top, len(reader.rows))]})
+}
+
+func TestListProductsInGroupUsesLocalFilterAndRawCursor(t *testing.T) {
+	rows := make([]map[string]any, 501)
+	for index := range rows {
+		rows[index] = browseRow(index+1, false, false)
+	}
+	rows[500]["Parent_Key"] = groupID
+	reader := &productBrowseReader{rows: rows, groupRow: `{"Ref_Key":"` + groupID + `","Description":"Destination","IsFolder":true,"DeletionMark":false}`}
+	svc := Service{OData: reader}
+	first, err := svc.ListProductsInGroup(context.Background(), 1, 0, groupID)
+	if err != nil || len(first.Items) != 0 || first.Scanned != 500 || first.NextOffset == nil || *first.NextOffset != 500 || first.GroupID != groupID || reader.groupCalls != 1 {
+		t.Fatalf("first group page: %+v, calls=%d, err=%v", first, reader.groupCalls, err)
+	}
+	second, err := svc.ListProductsInGroup(context.Background(), 1, *first.NextOffset, groupID)
+	if err != nil || len(second.Items) != 1 || second.Items[0].ID != salesID(501) || second.NextOffset != nil {
+		t.Fatalf("second group page: %+v, %v", second, err)
+	}
+	root, err := svc.ListProductsInGroup(context.Background(), 1, 0, "root")
+	if err != nil || len(root.Items) != 1 || root.Items[0].ID != salesID(1) || root.GroupID != emptyGUID {
+		t.Fatalf("root page: %+v, %v", root, err)
+	}
+	for _, invalid := range []string{"not-a-guid", emptyGUID[:35]} {
+		if _, err := svc.ListProductsInGroup(context.Background(), 1, 0, invalid); err == nil {
+			t.Fatalf("accepted invalid group %q", invalid)
+		}
+	}
+	reader.groupRow = `{"Ref_Key":"` + groupID + `","IsFolder":false,"DeletionMark":false}`
+	if _, err := svc.ListProductsInGroup(context.Background(), 1, 0, groupID); err == nil {
+		t.Fatal("accepted product as group")
+	}
 }
 
 func browseRow(index int, folder, deleted bool) map[string]any {
