@@ -1,6 +1,6 @@
 ![1C-Fresh CLI and MCP](Images/READMEHeader.png)
 
-A read-only Go command-line tool and local MCP server for a 1C-Fresh application. Both use the same OData client and support product groups, price types, products, customer orders, and cash receipts.
+A Go command-line tool and local read-only MCP server for a 1C-Fresh application. Both use the same OData client and support product groups, price types, products, customer orders, and cash receipts.
 
 ## Requirements
 
@@ -9,7 +9,9 @@ A read-only Go command-line tool and local MCP server for a 1C-Fresh application
 
 ## Configure
 
-Copy `.env.example` to `.env`, then set the URL and credentials:
+Run `1c login` after building the CLI. It prompts for `1C Link/Ссылка на 1C`, `User/Юзер`, and a hidden `Password/Пароль`, checks OData access, then saves `.env` with permissions limited to your account. Existing URL and user values are offered as defaults. A blank password keeps the saved one.
+
+For manual setup, copy `.env.example` to `.env`, then set the URL and credentials:
 
 ```dotenv
 ONEC_ODATA_BASE_URL=https://your-1cfresh-host/a/your-app/your-tenant
@@ -41,6 +43,7 @@ Commands follow `1c VERB RESOURCE [OPTIONS]`. Use `--help` on a command for its 
 
 ```sh
 1c check
+1c login
 1c list groups --name КЛИМОВО
 1c list price-types
 1c search products --limit 10 "диван"
