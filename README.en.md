@@ -2,7 +2,7 @@
 
 ![1C-Fresh CLI and MCP](Images/EnglishREADMEBanner.png)
 
-A Go CLI and local MCP server for a 1C-Fresh application. Both use the same OData client and support product groups, price types and lookups, products, warehouses and stock, customers and suppliers, sales and purchase documents, warehouse documents, cash receipts, and OData schema discovery. Writes currently cover product groups and selected product fields.
+A Go CLI and local MCP server for a 1C-Fresh application. Both use the same OData client and support product groups, price types and lookups, products, warehouses and stock, customers and suppliers, sales and purchase documents, warehouse documents, money movements, cash receipts, and OData schema discovery. Writes currently cover product groups and selected product fields.
 
 ## Requirements
 
@@ -84,6 +84,12 @@ Commands follow `1c VERB RESOURCE [OPTIONS]`. Use `--help` on a command for its 
 1c list warehouse-docs --kind transfer --warehouse WAREHOUSE_GUID
 1c list warehouse-docs --kind stock-writeoff --limit 20
 1c get warehouse-doc --kind transfer DOCUMENT_GUID
+1c list accounts --kind bank
+1c list accounts --kind cash
+1c list accounts --kind register
+1c list money --kind bank-in --account BANK_ACCOUNT_GUID --from 2026-09-01 --to 2026-09-07
+1c list money --kind card-payment --register REGISTER_GUID --from 2026-09-01 --to 2026-09-07
+1c get money --kind bank-in DOCUMENT_GUID
 1c list receipts --kind sale --from 2026-09-01 --to 2026-09-07
 1c get receipt --kind refund --json RECEIPT_GUID
 1c audit receipts --from 2026-09-01 --before 2026-09-24 --json
@@ -104,6 +110,8 @@ Product search checks product name, full name, and article, and excludes folders
 `list customers` and `search customers` show counterparties marked as buyers, excluding folders and deletion-marked records. `list sales` reads invoices (`invoice`), customer shipments (`shipment`), and incoming goods documents whose operation is customer return (`return`). Use `--customer`, `--from`, and `--to` to narrow results, then `--limit` and `--offset` for paging. `get sale` includes date, amount, posting status, product lines, and linked order or source document IDs when 1C supplies a matching relationship type. `Posted` means the document was posted in 1C; it does not mean paid. The invoice resource is empty in the tested tenant, so lookup of a live invoice by GUID has not been verified. Listings scan resource history and may take several seconds.
 
 `list suppliers` and `search suppliers` show counterparties marked as suppliers. `list purchases --kind order` reads supplier orders, while `--kind receipt` selects incoming goods documents whose operation is supplier receipt. `list warehouse-docs` reads transfer orders (`transfer-order`), stock movements whose operation is transfer (`transfer`), stock receipts (`stock-receipt`), and stock writeoffs (`stock-writeoff`). Filter by supplier or warehouse ID; a transfer matches either its source or destination warehouse. Both lists support dates, `--limit`, and `--offset`. `get purchase` and `get warehouse-doc` include product lines and available linked document IDs. `Posted` indicates posting in 1C, not fulfillment or physical receipt. There are no transfer orders in the tested tenant, so getting one by GUID has not been verified live.
+
+`list accounts` discovers cash desks (`cash`), organization-owned bank accounts (`bank`), and retail registers (`register`). `list money` reads cash receipts and disbursements (`cash-in`, `cash-out`), bank receipts and disbursements (`bank-in`, `bank-out`), card transactions (`card-payment`), and cash shifts (`cash-shift`). Supply an inclusive date range of at most 31 days and a cash desk, bank account, register, or terminal ID with `--account`, `--register`, or `--terminal`. `--limit` and `--offset` page results; `get money` reads a document by GUID. Payroll, tax, employee-payment, and unknown operation types are excluded. Fiscal receipts, card transactions, and bank settlements are distinct documents; `Posted` indicates 1C posting, not payment or reconciliation. These are read-only commands and may scan resource history for several seconds.
 
 ### Audit unposted receipts
 
@@ -134,6 +142,7 @@ Configure your MCP client to launch this command from the repository directory, 
 - `list_sales_documents` and `get_sales_document`
 - `list_purchase_documents` and `get_purchase_document`
 - `list_warehouse_documents` and `get_warehouse_document`
+- `list_money_accounts`, `list_money_documents`, and `get_money_document`
 - `list_cash_receipts` and `get_cash_receipt`
 - `audit_unposted_receipts`
 - `create_product_group` and `update_product_group` (write operations)

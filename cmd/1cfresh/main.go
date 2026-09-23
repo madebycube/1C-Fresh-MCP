@@ -140,6 +140,12 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		return runOperationalList(ctx, svc, commandArgs, out, "warehouse")
 	case operations.GetWarehouseDocument.Command:
 		return runOperationalGet(ctx, svc, commandArgs, out, "warehouse")
+	case operations.ListMoneyAccounts.Command:
+		return runMoneyAccountList(ctx, svc, commandArgs, out)
+	case operations.ListMoney.Command:
+		return runMoneyList(ctx, svc, commandArgs, out)
+	case operations.GetMoney.Command:
+		return runMoneyGet(ctx, svc, commandArgs, out)
 	case operations.ListReceipts.Command:
 		return runReceiptList(ctx, svc, commandArgs, out)
 	case operations.GetReceipt.Command:
@@ -201,7 +207,7 @@ func flat(value string) string {
 }
 
 func printHelp(out io.Writer) {
-	fmt.Fprintln(out, "1c reads products, groups, prices, customers, suppliers, sales, purchases, warehouse documents, and receipts from 1C-Fresh.")
+	fmt.Fprintln(out, "1c reads products, prices, stock, sales, purchases, warehouse, money, and retail data from 1C-Fresh.")
 	fmt.Fprintln(out, "Create and update commands write to 1C. 'Posted' means a document was processed in 1C; it does not prove payment, receipt, or fulfillment.")
 	fmt.Fprintln(out, "\nUsage: 1c VERB RESOURCE [OPTIONS]")
 	fmt.Fprintln(out, "       1c COMMAND --help")
@@ -228,6 +234,8 @@ func printHelp(out io.Writer) {
 	fmt.Fprintln(out, "  1c list sales --kind shipment --limit 20")
 	fmt.Fprintln(out, "  1c list purchases --kind receipt --limit 20")
 	fmt.Fprintln(out, "  1c list warehouse-docs --kind transfer --limit 20")
+	fmt.Fprintln(out, "  1c list accounts --kind bank")
+	fmt.Fprintln(out, "  1c list money --kind bank-in --from 2026-09-01 --to 2026-09-30 --account BANK_ACCOUNT_GUID")
 	fmt.Fprintln(out, "  1c list receipts --from 2026-09-01 --to 2026-09-07")
 	fmt.Fprintln(out, "\nGroups are product folders. Price types are labels in a separate catalog.")
 	fmt.Fprintln(out, "Use --json for structured output. Commands read credentials from .env or ONEC_ODATA_* environment variables.")

@@ -30,7 +30,7 @@ func (r salesReader) Get(_ context.Context, resource string, params url.Values, 
 		}
 	}
 	if params.Get("$inlinecount") != "" {
-		if name == "Catalog_Контрагенты" {
+		if name == "Catalog_Контрагенты" || name == "Catalog_БанковскиеСчета" {
 			skip, _ := strconv.Atoi(params.Get("$skip"))
 			return json.Marshal(map[string]any{"odata.count": strconv.Itoa(len(rows)), "value": rows[skip:min(skip+100, len(rows))]})
 		}

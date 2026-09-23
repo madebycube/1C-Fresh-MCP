@@ -96,6 +96,42 @@ var Customers = CatalogListResource{
 	},
 }
 
+var MoneyAccounts = map[string]CatalogListResource{
+	"cash": {
+		Name: "Catalog_Кассы",
+		Fields: []FieldBinding{
+			{Output: "id", Source: "Ref_Key"},
+			{Output: "code", Source: "Code"},
+			{Output: "name", Source: "Description"},
+			{Output: "deleted", Source: "DeletionMark"},
+			{Output: "inactive", Source: "Недействителен"},
+		},
+	},
+	"bank": {
+		Name: "Catalog_БанковскиеСчета",
+		Fields: []FieldBinding{
+			{Output: "id", Source: "Ref_Key"},
+			{Output: "code", Source: "Code"},
+			{Output: "name", Source: "Description"},
+			{Output: "deleted", Source: "DeletionMark"},
+			{Output: "inactive", Source: "Недействителен"},
+			{Output: "owner_id", Source: "Owner"},
+			{Output: "owner_type", Source: "Owner_Type"},
+			{Output: "bank_id", Source: "Банк_Key"},
+		},
+	},
+	"register": {
+		Name: "Catalog_КассыККМ",
+		Fields: []FieldBinding{
+			{Output: "id", Source: "Ref_Key"},
+			{Output: "code", Source: "Code"},
+			{Output: "name", Source: "Description"},
+			{Output: "deleted", Source: "DeletionMark"},
+			{Output: "warehouse_id", Source: "СтруктурнаяЕдиница_Key"},
+		},
+	},
+}
+
 type BalanceResource struct {
 	Name         string
 	ProductField string
@@ -327,6 +363,113 @@ var OperationalDocuments = map[string]DocumentResource{
 			{Output: "basis_type", Source: "ДокументОснование_Type"},
 		},
 		LinesField: "Запасы", LineFields: documentLineFields,
+	},
+}
+
+var MoneyDocuments = map[string]DocumentResource{
+	"cash-in": {
+		Name: "Document_ПоступлениеВКассу", DateField: "Date", DeletedField: "DeletionMark",
+		Fields: []FieldBinding{
+			{Output: "id", Source: "Ref_Key"},
+			{Output: "number", Source: "Number"},
+			{Output: "date", Source: "Date"},
+			{Output: "posted", Source: "Posted"},
+			{Output: "deleted", Source: "DeletionMark"},
+			{Output: "amount", Source: "СуммаДокумента"},
+			{Output: "operation", Source: "ВидОперации"},
+			{Output: "account_id", Source: "Касса_Key"},
+			{Output: "register_id", Source: "КассаККМ_Key"},
+			{Output: "counterparty_id", Source: "Контрагент_Key"},
+			{Output: "currency_id", Source: "ВалютаДенежныхСредств_Key"},
+			{Output: "basis_id", Source: "ДокументОснование"},
+			{Output: "basis_type", Source: "ДокументОснование_Type"},
+		},
+	},
+	"cash-out": {
+		Name: "Document_РасходИзКассы", DateField: "Date", DeletedField: "DeletionMark",
+		Fields: []FieldBinding{
+			{Output: "id", Source: "Ref_Key"},
+			{Output: "number", Source: "Number"},
+			{Output: "date", Source: "Date"},
+			{Output: "posted", Source: "Posted"},
+			{Output: "deleted", Source: "DeletionMark"},
+			{Output: "amount", Source: "СуммаДокумента"},
+			{Output: "operation", Source: "ВидОперации"},
+			{Output: "account_id", Source: "Касса_Key"},
+			{Output: "register_id", Source: "КассаККМ_Key"},
+			{Output: "counterparty_id", Source: "Контрагент_Key"},
+			{Output: "currency_id", Source: "ВалютаДенежныхСредств_Key"},
+			{Output: "basis_id", Source: "ДокументОснование"},
+			{Output: "basis_type", Source: "ДокументОснование_Type"},
+		},
+	},
+	"bank-in": {
+		Name: "Document_ПоступлениеНаСчет", DateField: "Date", DeletedField: "DeletionMark",
+		Fields: []FieldBinding{
+			{Output: "id", Source: "Ref_Key"},
+			{Output: "number", Source: "Number"},
+			{Output: "date", Source: "Date"},
+			{Output: "posted", Source: "Posted"},
+			{Output: "deleted", Source: "DeletionMark"},
+			{Output: "amount", Source: "СуммаДокумента"},
+			{Output: "operation", Source: "ВидОперации"},
+			{Output: "account_id", Source: "БанковскийСчет_Key"},
+			{Output: "register_id", Source: "КассаККМ_Key"},
+			{Output: "terminal_id", Source: "ЭквайринговыйТерминал_Key"},
+			{Output: "counterparty_id", Source: "Контрагент_Key"},
+			{Output: "currency_id", Source: "ВалютаДенежныхСредств_Key"},
+			{Output: "basis_id", Source: "ДокументОснование"},
+			{Output: "basis_type", Source: "ДокументОснование_Type"},
+		},
+	},
+	"bank-out": {
+		Name: "Document_РасходСоСчета", DateField: "Date", DeletedField: "DeletionMark",
+		Fields: []FieldBinding{
+			{Output: "id", Source: "Ref_Key"},
+			{Output: "number", Source: "Number"},
+			{Output: "date", Source: "Date"},
+			{Output: "posted", Source: "Posted"},
+			{Output: "deleted", Source: "DeletionMark"},
+			{Output: "amount", Source: "СуммаДокумента"},
+			{Output: "operation", Source: "ВидОперации"},
+			{Output: "account_id", Source: "БанковскийСчет_Key"},
+			{Output: "register_id", Source: "КассаККМ_Key"},
+			{Output: "terminal_id", Source: "ЭквайринговыйТерминал_Key"},
+			{Output: "counterparty_id", Source: "Контрагент_Key"},
+			{Output: "currency_id", Source: "ВалютаДенежныхСредств_Key"},
+			{Output: "basis_id", Source: "ДокументОснование"},
+			{Output: "basis_type", Source: "ДокументОснование_Type"},
+		},
+	},
+	"card-payment": {
+		Name: "Document_ОперацияПоПлатежнымКартам", DateField: "Date", DeletedField: "DeletionMark",
+		Fields: []FieldBinding{
+			{Output: "id", Source: "Ref_Key"},
+			{Output: "number", Source: "Number"},
+			{Output: "date", Source: "Date"},
+			{Output: "posted", Source: "Posted"},
+			{Output: "deleted", Source: "DeletionMark"},
+			{Output: "amount", Source: "СуммаДокумента"},
+			{Output: "operation", Source: "ВидОперации"},
+			{Output: "account_id", Source: "БанковскийСчет_Key"},
+			{Output: "register_id", Source: "КассаККМ_Key"},
+			{Output: "terminal_id", Source: "ЭквайринговыйТерминал_Key"},
+			{Output: "counterparty_id", Source: "Контрагент_Key"},
+			{Output: "currency_id", Source: "ВалютаДенежныхСредств_Key"},
+			{Output: "basis_id", Source: "ДокументОснование"},
+			{Output: "basis_type", Source: "ДокументОснование_Type"},
+		},
+	},
+	"cash-shift": {
+		Name: "Document_КассоваяСмена", DateField: "Date", DeletedField: "DeletionMark",
+		Fields: []FieldBinding{
+			{Output: "id", Source: "Ref_Key"},
+			{Output: "number", Source: "Number"},
+			{Output: "date", Source: "Date"},
+			{Output: "posted", Source: "Posted"},
+			{Output: "deleted", Source: "DeletionMark"},
+			{Output: "register_id", Source: "КассаККМ_Key"},
+		},
 	},
 }
 
