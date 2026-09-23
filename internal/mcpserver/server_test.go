@@ -35,8 +35,20 @@ func (stubReader) Get(_ context.Context, resource string, params url.Values, _ i
 	if resource == "Catalog_СтруктурныеЕдиницы" {
 		return []byte(`{"odata.count":"1","value":[{"Ref_Key":"00000000-0000-0000-0000-000000000006","Description":"Example warehouse","ТипСтруктурнойЕдиницы":"Склад","DeletionMark":false,"Недействителен":false}]}`), nil
 	}
+	if resource == "Catalog_Контрагенты" {
+		return []byte(`{"odata.count":"1","value":[{"Ref_Key":"00000000-0000-0000-0000-000000000007","Code":"C1","Description":"Example customer","IsFolder":false,"DeletionMark":false,"Недействителен":false,"Покупатель":true,"Поставщик":false}]}`), nil
+	}
+	if strings.HasPrefix(resource, "Catalog_Контрагенты(") {
+		return []byte(`{"Ref_Key":"00000000-0000-0000-0000-000000000007","Code":"C1","Description":"Example customer","IsFolder":false,"DeletionMark":false,"Недействителен":false,"Покупатель":true,"Поставщик":false}`), nil
+	}
 	if params.Get("$inlinecount") != "" {
 		return []byte(`{"odata.count":"1","value":[]}`), nil
+	}
+	if strings.HasPrefix(resource, "Document_РасходнаяНакладная(") {
+		return []byte(`{"Ref_Key":"00000000-0000-0000-0000-000000000008","Number":"S1","Date":"2026-09-23T00:00:00","Posted":true,"DeletionMark":false,"СуммаДокумента":120.50,"Контрагент_Key":"00000000-0000-0000-0000-000000000007","ВидОперации":"ПродажаПокупателю","Заказ":"00000000-0000-0000-0000-000000000001","Заказ_Type":"StandardODATA.Document_ЗаказПокупателя"}`), nil
+	}
+	if resource == "Document_РасходнаяНакладная" {
+		return []byte(`{"value":[{"Ref_Key":"00000000-0000-0000-0000-000000000008","Number":"S1","Date":"2026-09-23T00:00:00","Posted":true,"DeletionMark":false,"СуммаДокумента":120.50,"Контрагент_Key":"00000000-0000-0000-0000-000000000007","ВидОперации":"ПродажаПокупателю","Заказ":"00000000-0000-0000-0000-000000000001","Заказ_Type":"StandardODATA.Document_ЗаказПокупателя"}]}`), nil
 	}
 	if resource == "Document_УстановкаЦенНоменклатуры" {
 		return []byte(`{"value":[{"Ref_Key":"00000000-0000-0000-0000-000000000005","Date":"2026-09-23T12:00:00","Posted":true,"DeletionMark":false,"Запасы":[{"LineNumber":"1","Номенклатура_Key":"00000000-0000-0000-0000-000000000004","ВидЦены_Key":"00000000-0000-0000-0000-000000000002","Характеристика_Key":"00000000-0000-0000-0000-000000000000","Цена":120.50,"Валюта_Key":"00000000-0000-0000-0000-000000000006"}]}]}`), nil
@@ -88,8 +100,8 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(listed.Tools) != 17 {
-		t.Fatalf("got %d tools; want 17", len(listed.Tools))
+	if len(listed.Tools) != 22 {
+		t.Fatalf("got %d tools; want 22", len(listed.Tools))
 	}
 	for _, tool := range listed.Tools {
 		if tool.Annotations == nil {
@@ -122,6 +134,11 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 		{operations.UpdateProduct.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000004", "article": "B"}},
 		{operations.ListOrders.Tool, map[string]any{"limit": 2}},
 		{operations.GetOrder.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000001"}},
+		{operations.ListCustomers.Tool, map[string]any{"limit": 2}},
+		{operations.SearchCustomers.Tool, map[string]any{"query": "Example", "limit": 2}},
+		{operations.GetCustomer.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000007"}},
+		{operations.ListSales.Tool, map[string]any{"kind": "shipment", "limit": 2}},
+		{operations.GetSale.Tool, map[string]any{"kind": "shipment", "id": "00000000-0000-0000-0000-000000000008"}},
 		{operations.ListReceipts.Tool, map[string]any{"kind": "sale", "from": "2026-09-23", "to": "2026-09-23", "limit": 2}},
 		{operations.GetReceipt.Tool, map[string]any{"kind": "sale", "id": "00000000-0000-0000-0000-000000000001"}},
 		{operations.AuditUnpostedReceipts.Tool, map[string]any{"from": "2026-09-23", "before": "2026-09-24"}},

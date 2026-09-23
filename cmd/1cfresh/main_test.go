@@ -9,7 +9,7 @@ import (
 )
 
 func TestHelpExplainsCommandsWithoutCredentials(t *testing.T) {
-	for _, args := range [][]string{{"--help"}, {"login", "--help"}, {"list", "groups", "--help"}, {"create", "group", "--help"}, {"update", "group", "--help"}, {"update", "product", "--help"}, {"get", "price", "--help"}, {"list", "warehouses", "--help"}, {"get", "stock", "--help"}, {"help", "list", "price-types"}} {
+	for _, args := range [][]string{{"--help"}, {"login", "--help"}, {"list", "groups", "--help"}, {"create", "group", "--help"}, {"update", "group", "--help"}, {"update", "product", "--help"}, {"get", "price", "--help"}, {"list", "warehouses", "--help"}, {"get", "stock", "--help"}, {"list", "customers", "--help"}, {"search", "customers", "--help"}, {"get", "customer", "--help"}, {"list", "sales", "--help"}, {"get", "sale", "--help"}, {"help", "list", "price-types"}} {
 		var output bytes.Buffer
 		if err := run(context.Background(), args, &output); err != nil {
 			t.Fatalf("help %v: %v", args, err)

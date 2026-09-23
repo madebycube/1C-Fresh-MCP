@@ -101,6 +101,35 @@ type getOrderInput struct {
 	ID string `json:"id" jsonschema:"Customer order GUID"`
 }
 
+type listCustomersInput struct {
+	Limit  int `json:"limit,omitempty" jsonschema:"Maximum results, from 1 to 100; defaults to 20"`
+	Offset int `json:"offset,omitempty" jsonschema:"Offset within the customer list"`
+}
+
+type searchCustomersInput struct {
+	Query  string `json:"query" jsonschema:"Customer name or code substring"`
+	Limit  int    `json:"limit,omitempty" jsonschema:"Maximum results, from 1 to 100; defaults to 20"`
+	Offset int    `json:"offset,omitempty" jsonschema:"Offset within matching customers"`
+}
+
+type getCustomerInput struct {
+	ID string `json:"id" jsonschema:"Customer GUID"`
+}
+
+type listSalesInput struct {
+	Kind       string `json:"kind" jsonschema:"invoice, shipment, or return"`
+	CustomerID string `json:"customer_id,omitempty" jsonschema:"Optional customer GUID"`
+	From       string `json:"from,omitempty" jsonschema:"Optional first date YYYY-MM-DD; use with to"`
+	To         string `json:"to,omitempty" jsonschema:"Optional last date YYYY-MM-DD; use with from"`
+	Limit      int    `json:"limit,omitempty" jsonschema:"Maximum results, from 1 to 100; defaults to 20"`
+	Offset     int    `json:"offset,omitempty" jsonschema:"Offset within matching documents"`
+}
+
+type getSaleInput struct {
+	Kind string `json:"kind" jsonschema:"invoice, shipment, or return"`
+	ID   string `json:"id" jsonschema:"Sales document GUID"`
+}
+
 type listReceiptsInput struct {
 	Kind   string `json:"kind" jsonschema:"sale or refund"`
 	From   string `json:"from" jsonschema:"First application date, YYYY-MM-DD"`
@@ -206,6 +235,53 @@ func New(svc service.Service) *mcp.Server {
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, input getOrderInput) (*mcp.CallToolResult, service.Order, error) {
 		order, err := svc.GetOrder(ctx, input.ID)
 		return nil, order, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.ListCustomers.Tool, Description: operations.ListCustomers.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input listCustomersInput) (*mcp.CallToolResult, service.CustomerPage, error) {
+		limit := input.Limit
+		if limit == 0 {
+			limit = 20
+		}
+		page, err := svc.ListCustomers(ctx, "", limit, input.Offset)
+		return nil, page, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.SearchCustomers.Tool, Description: operations.SearchCustomers.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input searchCustomersInput) (*mcp.CallToolResult, service.CustomerPage, error) {
+		limit := input.Limit
+		if limit == 0 {
+			limit = 20
+		}
+		page, err := svc.ListCustomers(ctx, input.Query, limit, input.Offset)
+		return nil, page, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.GetCustomer.Tool, Description: operations.GetCustomer.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input getCustomerInput) (*mcp.CallToolResult, service.Customer, error) {
+		customer, err := svc.GetCustomer(ctx, input.ID)
+		return nil, customer, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.ListSales.Tool, Description: operations.ListSales.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input listSalesInput) (*mcp.CallToolResult, service.SalesDocumentPage, error) {
+		limit := input.Limit
+		if limit == 0 {
+			limit = 20
+		}
+		page, err := svc.ListSalesDocuments(ctx, input.Kind, input.CustomerID, input.From, input.To, limit, input.Offset)
+		return nil, page, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.GetSale.Tool, Description: operations.GetSale.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input getSaleInput) (*mcp.CallToolResult, service.SalesDocument, error) {
+		doc, err := svc.GetSalesDocument(ctx, input.Kind, input.ID)
+		return nil, doc, err
 	})
 	mcp.AddTool(server, &mcp.Tool{
 		Name: operations.ListReceipts.Tool, Description: operations.ListReceipts.Description,
