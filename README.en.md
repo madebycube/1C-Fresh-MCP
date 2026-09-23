@@ -71,6 +71,7 @@ Commands follow `1c VERB RESOURCE [OPTIONS]`. `1c --help` lists topics, `1c help
 1c list prices --price-type "Example price" --group GROUP_GUID --limit 20
 1c list unit-types
 1c get price PRODUCT_GUID --price-type "Example price" --as-of 2026-09-23
+1c list price-documents --posted false --limit 20
 1c get price-document DOCUMENT_GUID --product PRODUCT_GUID --limit 20
 1c list warehouses
 1c get stock PRODUCT_GUID --warehouse WAREHOUSE_GUID
@@ -127,7 +128,7 @@ Commands follow `1c VERB RESOURCE [OPTIONS]`. `1c --help` lists topics, `1c help
 
 `get price` finds the latest price for a product and named price type as of `--as-of` (today by default). It uses posted, non-deleted documents. Omit `--characteristic GUID` for a price without a characteristic or pass a variant's GUID. When no price exists, the result has `found: false`. JSON includes the exact decimal price string, currency ID and, when the catalog is available, its code and symbol, plus source document ID, date, and line number. The command scans price document history, so it may take some time.
 
-`get price-document` reads the `source_document_id` from a `get price` or `list prices` result. It shows the document date, posting status, and price lines with product, price type, characteristic, and currency IDs plus exact decimal prices. `--product PRODUCT_GUID` filters to one product; `--limit` and `--offset` page through matching lines. This command does not modify the document.
+`list price-documents` shows price-setting document numbers, dates, GUIDs, and posting status, newest first. Paired `--from` and `--to` bound a date range to 31 days; `--posted true|false` filters posted or unposted documents. `--limit` and `--offset` page through results. `get price-document` reads a GUID from the list or the `source_document_id` from a `get price` or `list prices` result. It shows the document number, date, posting status, and price lines with product, price type, characteristic, and currency IDs plus exact decimal prices. `--product PRODUCT_GUID` filters to one product; `--limit` and `--offset` page through matching lines. Both commands are read-only.
 
 `list warehouses` shows warehouses and retail stores from the structural units catalog. `get stock` shows current product balances by warehouse; `--warehouse` selects one, and `--characteristic` selects a product characteristic. Quantities come from the `AccumulationRegister_ЗапасыНаСкладах/Balance` virtual table and are summed across characteristics, batches, cells, and organizations when no characteristic is selected. JSON also includes the source balance rows and product unit ID. If 1C cannot resolve the unit's description, its ID remains available. A stock balance does not promise that the product is available to sell.
 
@@ -163,7 +164,7 @@ Configure your MCP client to launch this command from the repository directory, 
 
 - `check_connection`
 - `list_product_groups`, `list_product_categories`, `list_product_characteristics`, `list_price_types`, and `list_currencies`
-- `get_product_price`, `get_price_document`, and `list_product_prices`
+- `get_product_price`, `list_product_prices`, `list_price_documents`, and `get_price_document`
 - `list_warehouses`, `get_product_stock`, and `list_unit_types`
 - `find_nomenclature`
 - `list_products` and `get_product`

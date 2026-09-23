@@ -101,7 +101,7 @@ func runPriceDocumentGet(ctx context.Context, svc service.Service, args []string
 	if *asJSON {
 		return json.NewEncoder(out).Encode(document)
 	}
-	if _, err := fmt.Fprintf(out, "Price document %s at %s (posted: %t, deleted: %t; %d matching lines)\n", document.ID, document.Date, document.Posted, document.Deleted, document.Total); err != nil {
+	if _, err := fmt.Fprintf(out, "Price document %s (%s) at %s (posted: %t, deleted: %t; %d matching lines)\n", flat(document.Number), document.ID, document.Date, document.Posted, document.Deleted, document.Total); err != nil {
 		return err
 	}
 	writer := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
@@ -118,6 +118,57 @@ func runPriceDocumentGet(ctx context.Context, svc service.Service, args []string
 	}
 	if document.NextOffset != nil {
 		_, err = fmt.Fprintf(out, "Next offset: %d\n", *document.NextOffset)
+	}
+	return err
+}
+
+func runPriceDocumentList(ctx context.Context, svc service.Service, args []string, out io.Writer) error {
+	flags := flag.NewFlagSet(operations.ListPriceDocuments.Command, flag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+	from := flags.String("from", "", "start application date, YYYY-MM-DD")
+	to := flags.String("to", "", "end application date, YYYY-MM-DD")
+	postedValue := flags.String("posted", "any", "true, false, or any")
+	limit := flags.Int("limit", 20, "maximum documents (1-100)")
+	offset := flags.Int("offset", 0, "offset from the previous page")
+	asJSON := flags.Bool("json", false, "print JSON")
+	if err := parseFlags(flags, args); err != nil || flags.NArg() != 0 {
+		return errors.New("usage: " + operations.ListPriceDocuments.Usage)
+	}
+	var posted *bool
+	switch *postedValue {
+	case "true":
+		value := true
+		posted = &value
+	case "false":
+		value := false
+		posted = &value
+	case "any":
+	default:
+		return errors.New("posted must be true or false")
+	}
+	page, err := svc.ListPriceDocuments(ctx, *from, *to, posted, *limit, *offset)
+	if err != nil {
+		return err
+	}
+	if *asJSON {
+		return json.NewEncoder(out).Encode(page)
+	}
+	writer := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
+	if _, err := fmt.Fprintln(writer, "NUMBER\tDATE\tPOSTED\tDOCUMENT ID"); err != nil {
+		return err
+	}
+	for _, item := range page.Items {
+		if _, err := fmt.Fprintf(writer, "%s\t%s\t%t\t%s\n", flat(item.Number), item.Date, item.Posted, item.ID); err != nil {
+			return err
+		}
+	}
+	if err := writer.Flush(); err != nil {
+		return err
+	}
+	if page.NextOffset != nil {
+		_, err = fmt.Fprintf(out, "%d matching documents; next offset %d\n", page.Total, *page.NextOffset)
+	} else {
+		_, err = fmt.Fprintf(out, "%d matching documents\n", page.Total)
 	}
 	return err
 }

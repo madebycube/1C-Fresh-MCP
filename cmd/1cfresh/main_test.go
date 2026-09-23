@@ -72,6 +72,16 @@ func TestPriceDocumentHelp(t *testing.T) {
 	}
 }
 
+func TestPriceDocumentListHelp(t *testing.T) {
+	var output bytes.Buffer
+	if err := run(context.Background(), []string{"list", "price-documents", "--help"}, &output); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(output.String(), "1c list price-documents") {
+		t.Fatalf("unexpected help: %s", output.String())
+	}
+}
+
 func TestLegacyCommandsRemainAliases(t *testing.T) {
 	for legacy, canonical := range map[string]string{
 		"products search": "search products", "orders list": "list orders", "orders get": "get order",

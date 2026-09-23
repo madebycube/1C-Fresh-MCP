@@ -93,7 +93,7 @@ func (stubReader) Get(_ context.Context, resource string, params url.Values, _ i
 		return []byte(`{"value":[{"Ref_Key":"00000000-0000-0000-0000-000000000012","Number":"B1","Date":"2026-09-23T00:00:00","Posted":true,"DeletionMark":false,"СуммаДокумента":100,"ВидОперации":"ПоступлениеОплатыПоКартам","БанковскийСчет_Key":"00000000-0000-0000-0000-000000000011"}]}`), nil
 	}
 	if resource == "Document_УстановкаЦенНоменклатуры" {
-		return []byte(`{"value":[{"Ref_Key":"00000000-0000-0000-0000-000000000005","Date":"2026-09-23T12:00:00","Posted":true,"DeletionMark":false,"Запасы":[{"LineNumber":"1","Номенклатура_Key":"00000000-0000-0000-0000-000000000004","ВидЦены_Key":"00000000-0000-0000-0000-000000000002","Характеристика_Key":"00000000-0000-0000-0000-000000000000","Цена":120.50,"Валюта_Key":"00000000-0000-0000-0000-000000000006"}]}]}`), nil
+		return []byte(`{"value":[{"Ref_Key":"00000000-0000-0000-0000-000000000005","Number":"P1","Date":"2026-09-23T12:00:00","Posted":true,"DeletionMark":false,"Запасы":[{"LineNumber":"1","Номенклатура_Key":"00000000-0000-0000-0000-000000000004","ВидЦены_Key":"00000000-0000-0000-0000-000000000002","Характеристика_Key":"00000000-0000-0000-0000-000000000000","Цена":120.50,"Валюта_Key":"00000000-0000-0000-0000-000000000006"}]}]}`), nil
 	}
 	if strings.HasPrefix(resource, "Document_УстановкаЦенНоменклатуры(") {
 		return []byte(`{"Ref_Key":"00000000-0000-0000-0000-000000000005","Date":"2026-09-23T12:00:00","Posted":true,"DeletionMark":false,"Запасы":[{"LineNumber":"1","Номенклатура_Key":"00000000-0000-0000-0000-000000000004","ВидЦены_Key":"00000000-0000-0000-0000-000000000002","Характеристика_Key":"00000000-0000-0000-0000-000000000000","Цена":120.50,"Валюта_Key":"00000000-0000-0000-0000-000000000006"}]}`), nil
@@ -145,8 +145,8 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(listed.Tools) != 48 {
-		t.Fatalf("got %d tools; want 48", len(listed.Tools))
+	if len(listed.Tools) != 49 {
+		t.Fatalf("got %d tools; want 49", len(listed.Tools))
 	}
 	for _, tool := range listed.Tools {
 		if tool.Annotations == nil {
@@ -181,6 +181,7 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 		{operations.ListUnitTypes.Tool, map[string]any{}},
 		{operations.GetPrice.Tool, map[string]any{"product_id": "00000000-0000-0000-0000-000000000004", "price_type": "Retail", "as_of": "2026-09-23"}},
 		{operations.GetPriceDocument.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000005", "product_id": "00000000-0000-0000-0000-000000000004"}},
+		{operations.ListPriceDocuments.Tool, map[string]any{"from": "2026-09-23", "to": "2026-09-23", "posted": true, "limit": 1}},
 		{operations.ListPrices.Tool, map[string]any{"price_type": "Retail", "group_id": "00000000-0000-0000-0000-000000000001", "as_of": "2026-09-23", "limit": 1}},
 		{operations.ListWarehouses.Tool, map[string]any{}},
 		{operations.GetStock.Tool, map[string]any{"product_id": "00000000-0000-0000-0000-000000000004"}},
@@ -230,6 +231,12 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 			data, err := json.Marshal(result.StructuredContent)
 			if err != nil || !strings.Contains(string(data), `"price":"120.50"`) || !strings.Contains(string(data), `"total":1`) {
 				t.Fatalf("price document tool returned %s: %v", data, err)
+			}
+		}
+		if call.name == operations.ListPriceDocuments.Tool {
+			data, err := json.Marshal(result.StructuredContent)
+			if err != nil || !strings.Contains(string(data), `"number":"P1"`) || !strings.Contains(string(data), `"total":1`) {
+				t.Fatalf("price document list tool returned %s: %v", data, err)
 			}
 		}
 		if call.name == operations.ListPrices.Tool {

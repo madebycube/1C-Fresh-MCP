@@ -139,6 +139,14 @@ type getPriceDocumentInput struct {
 	Offset    int    `json:"offset,omitempty" jsonschema:"Line offset from a previous get_price_document result"`
 }
 
+type listPriceDocumentsInput struct {
+	From   string `json:"from,omitempty" jsonschema:"Start application date, YYYY-MM-DD; requires to"`
+	To     string `json:"to,omitempty" jsonschema:"End application date, YYYY-MM-DD; requires from"`
+	Posted *bool  `json:"posted,omitempty" jsonschema:"Optional posting status filter"`
+	Limit  int    `json:"limit,omitempty" jsonschema:"Maximum documents, 1 to 100; defaults to 20"`
+	Offset int    `json:"offset,omitempty" jsonschema:"Offset from a previous list_price_documents result"`
+}
+
 type listPricesInput struct {
 	PriceType        string `json:"price_type" jsonschema:"Exact price type name from list_price_types"`
 	GroupID          string `json:"group_id,omitempty" jsonschema:"Optional direct parent group GUID or root"`
@@ -403,6 +411,17 @@ func New(svc service.Service) *mcp.Server {
 		}
 		document, err := svc.GetPriceDocument(ctx, input.ID, input.ProductID, limit, input.Offset)
 		return nil, document, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.ListPriceDocuments.Tool, Description: operations.ListPriceDocuments.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input listPriceDocumentsInput) (*mcp.CallToolResult, service.PriceDocumentPage, error) {
+		limit := input.Limit
+		if limit == 0 {
+			limit = 20
+		}
+		page, err := svc.ListPriceDocuments(ctx, input.From, input.To, input.Posted, limit, input.Offset)
+		return nil, page, err
 	})
 	mcp.AddTool(server, &mcp.Tool{
 		Name: operations.ListPrices.Tool, Description: operations.ListPrices.Description,
