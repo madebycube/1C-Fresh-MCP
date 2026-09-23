@@ -54,13 +54,13 @@ Commands follow `1c VERB RESOURCE [OPTIONS]`. Use `--help` on a command for its 
 ```sh
 1c check
 1c login
-1c list groups --name КЛИМОВО
+1c list groups --name "Пример группы"
 1c create group --name "Новая группа"
 1c create group --name "Подгруппа" --parent PARENT_GUID
 1c update group GROUP_GUID --name "Новое название"
 1c update product PRODUCT_GUID --name "New name" --article NEW-ARTICLE
 1c list price-types
-1c search products --limit 10 "диван"
+1c search products --limit 10 "название товара"
 1c search resources --kind catalog --limit 20 "Номенклатура"
 1c describe resource Catalog_Номенклатура
 1c list orders --limit 20
@@ -70,7 +70,7 @@ Commands follow `1c VERB RESOURCE [OPTIONS]`. Use `--help` on a command for its 
 1c audit receipts --from 2026-09-01 --before 2026-09-24 --json
 ```
 
-`list groups` returns product folders and their IDs; `list price-types` returns price type names and IDs. A price type such as `Розничная` is separate from a product group such as `КЛИМОВО НОМЕНКЛАТУРА`. These commands do not retrieve prices from price documents.
+`list groups` returns product folders and their IDs; `list price-types` returns price type names and IDs. Product groups and price types are separate entities. These commands do not retrieve prices from price documents.
 
 `create group` creates a group at the catalog root or under the group specified by `--parent`. `update group` renames an existing group by GUID. `update product` changes a product's name, full name (`--full-name`), and/or article (`--article`); an empty string clears the full name or article. These commands **change live 1C data**. A live write has not been verified. Product creation, deletion, and generic OData editing are not available yet.
 

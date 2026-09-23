@@ -55,13 +55,13 @@ ln -s /path/to/1C-Fresh-MCP/bin/1c "$HOME/.local/bin/1c"
 ```sh
 1c login
 1c check
-1c list groups --name КЛИМОВО
+1c list groups --name "Пример группы"
 1c create group --name "Новая группа"
 1c create group --name "Подгруппа" --parent PARENT_GUID
 1c update group GROUP_GUID --name "Новое название"
 1c update product PRODUCT_GUID --name "Новое название" --article NEW-ARTICLE
 1c list price-types
-1c search products --limit 10 "диван"
+1c search products --limit 10 "название товара"
 1c list orders --limit 20
 1c get order --json ORDER_GUID
 1c list receipts --kind sale --from 2026-09-01 --to 2026-09-07
@@ -69,7 +69,7 @@ ln -s /path/to/1C-Fresh-MCP/bin/1c "$HOME/.local/bin/1c"
 1c audit receipts --from 2026-09-01 --before 2026-09-24 --json
 ```
 
-`list groups` показывает папки номенклатуры и их идентификаторы; `list price-types` — виды цен и их идентификаторы. Вид цены `Розничная` и группа `КЛИМОВО НОМЕНКЛАТУРА` — разные сущности. Эти команды не получают цены товаров из документов установки цен.
+`list groups` показывает папки номенклатуры и их идентификаторы; `list price-types` — виды цен и их идентификаторы. Группы товаров и виды цен — разные сущности. Эти команды не получают цены товаров из документов установки цен.
 
 `create group` создаёт группу в корне каталога либо внутри группы, указанной через `--parent`. `update group` переименовывает существующую группу по её GUID. `update product` меняет название, полное название (`--full-name`) и/или артикул (`--article`) товара; пустая строка очищает полное название или артикул. Эти команды **изменяют данные в действующей 1С**. Запись в действующую базу не проверялась. Создания товаров, удаления и общего редактора OData пока нет.
 

@@ -22,7 +22,7 @@ var ListGroups = Spec{
 	Tool:        "list_product_groups",
 	Description: "List product folders, their paths, and 1C IDs.",
 	Usage:       "1c list groups [--name TEXT] [--json]",
-	Example:     "1c list groups --name КЛИМОВО",
+	Example:     "1c list groups --name \"Пример группы\"",
 }
 
 var CreateGroup = Spec{
@@ -44,7 +44,7 @@ var UpdateGroup = Spec{
 var ListPriceTypes = Spec{
 	Command:     "list price-types",
 	Tool:        "list_price_types",
-	Description: "List price types such as Розничная and their 1C IDs.",
+	Description: "List price types and their 1C IDs.",
 	Usage:       "1c list price-types [--json]",
 	Example:     "1c list price-types",
 }
@@ -54,7 +54,7 @@ var SearchProducts = Spec{
 	Tool:        "find_nomenclature",
 	Description: "Find products by name or article.",
 	Usage:       "1c search products [--limit N] [--json] QUERY",
-	Example:     "1c search products диван",
+	Example:     "1c search products \"название товара\"",
 }
 
 var UpdateProduct = Spec{

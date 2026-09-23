@@ -31,31 +31,31 @@ func (r *catalogReader) Get(_ context.Context, resource string, params url.Value
 
 func TestListGroupsPathsAndSearchAcrossPages(t *testing.T) {
 	rows := make([]map[string]any, 0, 102)
-	rows = append(rows, map[string]any{"Ref_Key": "root", "Description": "КЛИМОВО НОМЕНКЛАТУРА", "IsFolder": true, "DeletionMark": false})
+	rows = append(rows, map[string]any{"Ref_Key": "root", "Description": "Пример группы", "IsFolder": true, "DeletionMark": false})
 	for index := 1; index < 101; index++ {
 		rows = append(rows, map[string]any{"Ref_Key": strconv.Itoa(index), "Description": "Other " + strconv.Itoa(index), "IsFolder": true, "DeletionMark": false})
 	}
 	rows = append(rows, map[string]any{"Ref_Key": "child", "Parent_Key": "root", "Description": "Столы", "IsFolder": true, "DeletionMark": true})
 	reader := &catalogReader{rows: map[string][]map[string]any{"Catalog_Номенклатура": rows}}
-	groups, err := (Service{OData: reader}).ListGroups(context.Background(), "климово")
+	groups, err := (Service{OData: reader}).ListGroups(context.Background(), "пример")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(groups) != 2 || groups[0].Path != "КЛИМОВО НОМЕНКЛАТУРА" || groups[1].Path != "КЛИМОВО НОМЕНКЛАТУРА / Столы" || !groups[1].Deleted || reader.calls != 2 {
+	if len(groups) != 2 || groups[0].Path != "Пример группы" || groups[1].Path != "Пример группы / Столы" || !groups[1].Deleted || reader.calls != 2 {
 		t.Fatalf("unexpected groups: %+v, calls %d", groups, reader.calls)
 	}
 }
 
 func TestListPriceTypesIncludesInactiveAndDeleted(t *testing.T) {
 	reader := &catalogReader{rows: map[string][]map[string]any{"Catalog_ВидыЦен": {
-		{"Ref_Key": "retail", "Description": "Розничная", "DeletionMark": false, "Недействителен": false},
+		{"Ref_Key": "example", "Description": "Пример цены", "DeletionMark": false, "Недействителен": false},
 		{"Ref_Key": "old", "Description": "Старая", "DeletionMark": true, "Недействителен": true},
 	}}}
 	types, err := (Service{OData: reader}).ListPriceTypes(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(types) != 2 || types[0].Name != "Розничная" || !types[1].Deleted || !types[1].Inactive {
+	if len(types) != 2 || types[0].Name != "Пример цены" || !types[1].Deleted || !types[1].Inactive {
 		t.Fatalf("unexpected types: %+v", types)
 	}
 }
