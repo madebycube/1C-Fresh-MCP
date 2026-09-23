@@ -84,9 +84,9 @@ var SearchProducts = Spec{
 var UpdateProduct = Spec{
 	Command:     "update product",
 	Tool:        "update_product",
-	Description: "Edit a product name, full name, or article by 1C ID.",
-	Usage:       "1c update product GUID [--name TEXT] [--full-name TEXT] [--article TEXT] [--json]",
-	Example:     "1c update product PRODUCT_GUID --article NEW-ARTICLE",
+	Description: "Edit a product name, full name, article, or group by 1C ID.",
+	Usage:       "1c update product GUID [--name TEXT] [--full-name TEXT] [--article TEXT] [--group GUID] [--json]",
+	Example:     "1c update product PRODUCT_GUID --group GROUP_GUID",
 }
 
 var ListOrders = Spec{

@@ -30,6 +30,7 @@ type updateProductInput struct {
 	Name     *string `json:"name,omitempty" jsonschema:"Replacement product name"`
 	FullName *string `json:"full_name,omitempty" jsonschema:"Replacement full name; empty string clears it"`
 	Article  *string `json:"article,omitempty" jsonschema:"Replacement article; empty string clears it"`
+	GroupID  *string `json:"group_id,omitempty" jsonschema:"Destination active product group GUID"`
 }
 
 type listGroupsInput struct {
@@ -285,7 +286,7 @@ func New(svc service.Service) *mcp.Server {
 		Name: operations.UpdateProduct.Tool, Description: operations.UpdateProduct.Description,
 		Annotations: &mcp.ToolAnnotations{IdempotentHint: true},
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, input updateProductInput) (*mcp.CallToolResult, service.ProductChange, error) {
-		change, err := svc.UpdateProduct(ctx, input.ID, service.ProductPatch{Name: input.Name, FullName: input.FullName, Article: input.Article})
+		change, err := svc.UpdateProduct(ctx, input.ID, service.ProductPatch{Name: input.Name, FullName: input.FullName, Article: input.Article, GroupID: input.GroupID})
 		return nil, change, err
 	})
 	mcp.AddTool(server, &mcp.Tool{
