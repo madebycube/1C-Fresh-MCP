@@ -18,11 +18,12 @@ func runProductList(ctx context.Context, svc service.Service, args []string, out
 	flags.SetOutput(io.Discard)
 	limit := flags.Int("limit", 20, "maximum products (1-100)")
 	offset := flags.Int("offset", 0, "raw catalog offset from the previous page")
+	group := flags.String("group", "", "direct parent group GUID or root")
 	asJSON := flags.Bool("json", false, "print JSON")
 	if err := parseFlags(flags, args); err != nil || flags.NArg() != 0 {
 		return errors.New("usage: " + operations.ListProducts.Usage)
 	}
-	page, err := svc.ListProducts(ctx, *limit, *offset)
+	page, err := svc.ListProductsInGroup(ctx, *limit, *offset, *group)
 	if err != nil {
 		return err
 	}

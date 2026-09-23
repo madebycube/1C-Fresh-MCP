@@ -155,7 +155,7 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 		{operations.ListWarehouses.Tool, map[string]any{}},
 		{operations.GetStock.Tool, map[string]any{"product_id": "00000000-0000-0000-0000-000000000004"}},
 		{operations.SearchProducts.Tool, map[string]any{"query": "Chair", "limit": 2}},
-		{operations.ListProducts.Tool, map[string]any{"limit": 2}},
+		{operations.ListProducts.Tool, map[string]any{"limit": 2, "group_id": "00000000-0000-0000-0000-000000000001"}},
 		{operations.GetProduct.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000004"}},
 		{operations.UpdateProduct.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000004", "article": "B", "group_id": "00000000-0000-0000-0000-000000000001"}},
 		{operations.ListOrders.Tool, map[string]any{"limit": 2}},
