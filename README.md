@@ -55,6 +55,7 @@ ln -s /path/to/1C-Fresh-MCP/bin/1c "$HOME/.local/bin/1c"
 ```sh
 1c login
 1c check
+1c list product-categories
 1c list groups --name "Пример группы"
 1c create group --name "Новая группа"
 1c create group --name "Подгруппа" --parent PARENT_GUID
@@ -111,6 +112,8 @@ ln -s /path/to/1C-Fresh-MCP/bin/1c "$HOME/.local/bin/1c"
 1c audit receipts --from 2026-09-01 --before 2026-09-24 --json
 ```
 
+`list product-categories` показывает действующие категории номенклатуры, их пути, типы и единицы по умолчанию.
+
 `list groups` показывает папки номенклатуры и их идентификаторы; `list price-types` — виды цен и их идентификаторы. `list unit-types` показывает элементы классификатора единиц измерения. ID базовой единицы товара из `get product` ссылается на этот классификатор в проверенной базе. Группы товаров и виды цен — разные сущности. Эти команды не получают цены товаров из документов установки цен.
 
 `list prices` показывает товары группы и действующие цены указанного вида на дату `--as-of`. Группу задают через `--group GROUP_GUID` или `--group root`; без группы просматривается весь каталог. Страницы используют смещение по исходным строкам каталога, как `list products`, и включают товары без цены с `found: false`. Каждая запись содержит код, артикул товара и документ-источник найденной цены. История документов установки цен читается один раз на страницу, а не отдельно для каждого товара.
@@ -159,7 +162,7 @@ bin/1c mcp
 | Чтение | Изменение |
 | --- | --- |
 | `check_connection` | `create_product_group` |
-| `list_product_groups`, `list_price_types`, `get_product_price`, `list_product_prices` | `update_product_group` |
+| `list_product_groups`, `list_product_categories`, `list_price_types`, `get_product_price`, `list_product_prices` | `update_product_group` |
 | `list_counterparty_groups` | `create_counterparty_group`, `update_counterparty_group` |
 | `list_warehouses`, `get_product_stock`, `list_unit_types` | |
 | `find_nomenclature` | `update_product` |
