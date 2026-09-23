@@ -25,6 +25,19 @@ type searchOutput struct {
 	Count    int               `json:"count"`
 }
 
+type listOrdersInput struct {
+	Limit int `json:"limit,omitempty" jsonschema:"Maximum results, from 1 to 100; defaults to 20"`
+}
+
+type listOrdersOutput struct {
+	Orders []service.Order `json:"orders"`
+	Count  int             `json:"count"`
+}
+
+type getOrderInput struct {
+	ID string `json:"id" jsonschema:"Customer order GUID"`
+}
+
 func New(svc service.Service) *mcp.Server {
 	server := mcp.NewServer(&mcp.Implementation{Name: "1c-fresh", Version: "0.1.0"}, nil)
 	mcp.AddTool(server, &mcp.Tool{
@@ -40,6 +53,20 @@ func New(svc service.Service) *mcp.Server {
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, input searchInput) (*mcp.CallToolResult, searchOutput, error) {
 		products, err := svc.SearchProducts(ctx, input.Query, input.Limit)
 		return nil, searchOutput{Products: products, Count: len(products)}, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.ListOrders.Tool, Description: operations.ListOrders.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input listOrdersInput) (*mcp.CallToolResult, listOrdersOutput, error) {
+		orders, err := svc.ListOrders(ctx, input.Limit)
+		return nil, listOrdersOutput{Orders: orders, Count: len(orders)}, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.GetOrder.Tool, Description: operations.GetOrder.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input getOrderInput) (*mcp.CallToolResult, service.Order, error) {
+		order, err := svc.GetOrder(ctx, input.ID)
+		return nil, order, err
 	})
 	return server
 }

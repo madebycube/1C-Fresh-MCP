@@ -32,11 +32,11 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		return nil
 	}
 	command := args[0]
-	if command == "products" && len(args) > 1 {
+	if (command == "products" || command == "orders") && len(args) > 1 {
 		command += " " + args[1]
 		args = args[1:]
 	}
-	if command != operations.Check.Command && command != operations.SearchProducts.Command && command != "mcp" {
+	if command != operations.Check.Command && command != operations.SearchProducts.Command && command != operations.ListOrders.Command && command != operations.GetOrder.Command && command != "mcp" {
 		return errors.New("unknown command; run '1cfresh help'")
 	}
 	cfg, err := config.Load()
@@ -89,6 +89,10 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 			}
 		}
 		return writer.Flush()
+	case operations.ListOrders.Command:
+		return runOrderList(ctx, svc, args[1:], out)
+	case operations.GetOrder.Command:
+		return runOrderGet(ctx, svc, args[1:], out)
 	case "mcp":
 		if len(args) != 1 {
 			return errors.New("usage: 1cfresh mcp")

@@ -18,4 +18,16 @@ var SearchProducts = Spec{
 	Description: "Find existing nomenclature by name or article; returns at most 50 items.",
 }
 
-var All = []Spec{Check, SearchProducts}
+var ListOrders = Spec{
+	Command:     "orders list",
+	Tool:        "list_customer_orders",
+	Description: "List recent customer orders without changing them; returns at most 100.",
+}
+
+var GetOrder = Spec{
+	Command:     "orders get",
+	Tool:        "get_customer_order",
+	Description: "Read one customer order and its stock line items by GUID.",
+}
+
+var All = []Spec{Check, SearchProducts, ListOrders, GetOrder}
