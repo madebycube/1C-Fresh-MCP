@@ -12,10 +12,10 @@ import (
 	"github.com/madebycube/1C-Fresh-MCP/internal/service"
 )
 
-func runCustomerList(ctx context.Context, svc service.Service, args []string, out io.Writer, search bool) error {
-	command := "list customers"
+func runCustomerList(ctx context.Context, svc service.Service, args []string, out io.Writer, search bool, role string) error {
+	command := "list " + role + "s"
 	if search {
-		command = "search customers"
+		command = "search " + role + "s"
 	}
 	flags := flag.NewFlagSet(command, flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
@@ -24,15 +24,21 @@ func runCustomerList(ctx context.Context, svc service.Service, args []string, ou
 	asJSON := flags.Bool("json", false, "print JSON")
 	if err := parseFlags(flags, args); err != nil || flags.NArg() != 0 && !search || flags.NArg() != 1 && search {
 		if search {
-			return errors.New("usage: 1c search customers [--limit N] [--offset N] [--json] QUERY")
+			return errors.New("usage: 1c search " + role + "s [--limit N] [--offset N] [--json] QUERY")
 		}
-		return errors.New("usage: 1c list customers [--limit N] [--offset N] [--json]")
+		return errors.New("usage: 1c list " + role + "s [--limit N] [--offset N] [--json]")
 	}
 	query := ""
 	if search {
 		query = flags.Arg(0)
 	}
-	page, err := svc.ListCustomers(ctx, query, *limit, *offset)
+	var page service.CustomerPage
+	var err error
+	if role == "supplier" {
+		page, err = svc.ListSuppliers(ctx, query, *limit, *offset)
+	} else {
+		page, err = svc.ListCustomers(ctx, query, *limit, *offset)
+	}
 	if err != nil {
 		return err
 	}
@@ -54,21 +60,27 @@ func runCustomerList(ctx context.Context, svc service.Service, args []string, ou
 	return printPageSummary(out, len(page.Items), page.Total, page.NextOffset)
 }
 
-func runCustomerGet(ctx context.Context, svc service.Service, args []string, out io.Writer) error {
-	flags := flag.NewFlagSet("get customer", flag.ContinueOnError)
+func runCustomerGet(ctx context.Context, svc service.Service, args []string, out io.Writer, role string) error {
+	flags := flag.NewFlagSet("get "+role, flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	asJSON := flags.Bool("json", false, "print JSON")
 	if err := parseFlags(flags, args); err != nil || flags.NArg() != 1 {
-		return errors.New("usage: 1c get customer [--json] GUID")
+		return errors.New("usage: 1c get " + role + " [--json] GUID")
 	}
-	customer, err := svc.GetCustomer(ctx, flags.Arg(0))
+	var customer service.Customer
+	var err error
+	if role == "supplier" {
+		customer, err = svc.GetSupplier(ctx, flags.Arg(0))
+	} else {
+		customer, err = svc.GetCustomer(ctx, flags.Arg(0))
+	}
 	if err != nil {
 		return err
 	}
 	if *asJSON {
 		return json.NewEncoder(out).Encode(customer)
 	}
-	_, err = fmt.Fprintf(out, "Customer %s\nFull name: %s\nCode: %s\nBuyer: %s\nSupplier: %s\nInactive: %s\nDeleted: %t\nID: %s\n", flat(customer.Name), flat(customer.FullName), flat(customer.Code), optionalBool(customer.Buyer), optionalBool(customer.Supplier), optionalBool(customer.Inactive), customer.Deleted, customer.ID)
+	_, err = fmt.Fprintf(out, "%s %s\nFull name: %s\nCode: %s\nBuyer: %s\nSupplier: %s\nInactive: %s\nDeleted: %t\nID: %s\n", role, flat(customer.Name), flat(customer.FullName), flat(customer.Code), optionalBool(customer.Buyer), optionalBool(customer.Supplier), optionalBool(customer.Inactive), customer.Deleted, customer.ID)
 	return err
 }
 
@@ -125,11 +137,15 @@ func runSalesGet(ctx context.Context, svc service.Service, args []string, out io
 	if _, err := fmt.Fprintf(out, "%s %s\nDate: %s\nOperation: %s\nPosted: %t\nDeleted: %t\nAmount: %s\nCustomer ID: %s\nOrder ID: %s\nBasis ID: %s\nBasis type: %s\nID: %s\n\n", doc.Kind, flat(doc.Number), flat(doc.Date), flat(doc.Operation), doc.Posted, doc.Deleted, doc.Amount, doc.CustomerID, doc.OrderID, doc.BasisID, doc.BasisType, doc.ID); err != nil {
 		return err
 	}
+	return printDocumentLines(out, doc.Lines)
+}
+
+func printDocumentLines(out io.Writer, lines []service.DocumentLine) error {
 	writer := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
 	if _, err := fmt.Fprintln(writer, "LINE\tPRODUCT ID\tQUANTITY\tUNIT\tPRICE\tAMOUNT\tTOTAL\tVAT"); err != nil {
 		return err
 	}
-	for _, line := range doc.Lines {
+	for _, line := range lines {
 		if _, err := fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", line.LineNumber, line.ProductID, line.Quantity, flat(line.Unit), line.Price, line.Amount, line.Total, line.VAT); err != nil {
 			return err
 		}

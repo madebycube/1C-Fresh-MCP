@@ -11,6 +11,17 @@ import (
 	"github.com/madebycube/1C-Fresh-MCP/internal/config"
 )
 
+type DocumentLine struct {
+	LineNumber string  `json:"line_number"`
+	ProductID  string  `json:"product_id"`
+	Quantity   Decimal `json:"quantity"`
+	Unit       string  `json:"unit"`
+	Price      Decimal `json:"price"`
+	Amount     Decimal `json:"amount"`
+	Total      Decimal `json:"total"`
+	VAT        Decimal `json:"vat"`
+}
+
 func (s Service) documentCount(ctx context.Context, plan config.DocumentResource) (int, error) {
 	params := url.Values{
 		"$format":      {"json"},

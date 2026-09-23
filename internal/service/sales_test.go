@@ -71,6 +71,16 @@ func TestCustomerPagingSearchAndGet(t *testing.T) {
 	if _, err := svc.GetCustomer(context.Background(), salesID(3)); err == nil {
 		t.Fatal("supplier-only record accepted as customer")
 	}
+	suppliers, err := svc.ListSuppliers(context.Background(), "", 20, 0)
+	if err != nil || suppliers.Total != 2 || suppliers.Items[0].Name != "Alpha" || suppliers.Items[1].Name != "Supplier" {
+		t.Fatalf("supplier list: %+v, %v", suppliers, err)
+	}
+	if _, err := svc.GetSupplier(context.Background(), salesID(3)); err != nil {
+		t.Fatalf("supplier detail: %v", err)
+	}
+	if _, err := svc.GetSupplier(context.Background(), salesID(1)); err == nil {
+		t.Fatal("buyer-only record accepted as supplier")
+	}
 }
 
 func TestSalesDocumentOperationsAndLinks(t *testing.T) {
