@@ -1,57 +1,97 @@
-# 1C-Fresh CLI and MCP
+![1C-Fresh CLI and MCP](Images/READMEHeader.png)
 
-A local, read-only interface to a 1C-Fresh application through its standard OData endpoint. The CLI and MCP server use the same service and OData client. OData resource names and field mappings live in `internal/config/resources.go`.
+A read-only Go command-line tool and local MCP server for a 1C-Fresh application. Both use the same OData client and support product groups, price types, products, customer orders, and cash receipts.
 
-## Setup
+## Requirements
 
-Requires Go 1.25 or newer. Copy `.env.example` to `.env` and set the application URL, username, and password. The existing `.env` file in this workspace is already ignored by Git. Process environment variables override file values. The CLI reads `.env` in the current directory, then the project `.env` when launched through a binary in the project's `bin` directory. Set `ONEC_ENV_FILE` to load a different file.
+- Go 1.25 or newer
+- A 1C-Fresh application URL and an account with access to its OData data
+
+## Configure
+
+Copy `.env.example` to `.env`, then set the URL and credentials:
+
+```dotenv
+ONEC_ODATA_BASE_URL=https://your-1cfresh-host/a/your-app/your-tenant
+ONEC_ODATA_USERNAME=your-username
+ONEC_ODATA_PASSWORD=your-password
+```
+
+Use the application URL, not an `/odata/` endpoint. Keep credentials out of source control; `.env` is ignored by Git. Environment variables override values in the file. Set `ONEC_ENV_FILE` to load a different file. By default, the CLI reads `.env` from the current directory. When run through a binary in this project's `bin` directory, it can also find the project `.env`.
+
+## Install
+
+Build the CLI from the repository root:
 
 ```sh
 go build -o bin/1c ./cmd/1cfresh
-bin/1c --help
-bin/1c check
-bin/1c list groups
-bin/1c list groups --name КЛИМОВО
-bin/1c list price-types
-bin/1c search products --limit 10 "диван"
-bin/1c list orders --limit 20
-bin/1c get order --json ORDER_GUID
-bin/1c list receipts --kind sale --from 2026-09-01 --to 2026-09-01
-bin/1c get receipt --kind refund --json RECEIPT_GUID
-bin/1c audit receipts --from 2026-09-01 --before 2026-09-24 --json
 ```
 
-To run `1c` from any directory, symlink `bin/1c` into a directory on `PATH`. The CLI follows the symlink to find the project `.env`. This workspace already has `~/.local/bin/1c` linked to the built binary.
+Run `bin/1c --help` to see the commands. To run `1c` from anywhere while using the project `.env`, symlink `bin/1c` into a directory on your `PATH`:
 
-The CLI uses `1c VERB RESOURCE` throughout. `1c COMMAND --help` explains a command without needing credentials. Earlier `products search`, `orders list`, `orders get`, and `receipts ...` forms still work as aliases. The CLI prints a table by default and JSON with `--json`.
+```sh
+ln -s /path/to/1C-Fresh-MCP/bin/1c "$HOME/.local/bin/1c"
+```
 
-Product groups are folders in `Catalog_Номенклатура`; price types are separate entries in `Catalog_ВидыЦен`. `Розничная` is a price type, while `КЛИМОВО НОМЕНКЛАТУРА` is a product group. The list commands return all accessible rows, including their 1C IDs and deletion or inactive flags. `list groups --name TEXT` matches group names and full paths. The website can use these IDs in `ONEC_ODATA_GROUP_REF_KEY` and its selected price type name in `ONEC_ODATA_PRICE_TYPE_NAME`. These commands do not list the actual price values in price documents.
+If you copy the binary elsewhere, provide `ONEC_ENV_FILE` or the `ONEC_ODATA_*` environment variables.
 
-Product searches inspect name, full name, and article, exclude folders and deletion-marked records, and return at most 50 products. Order listing returns the most recent non-deleted orders, up to 100; order lookup returns the stock line items. Receipt listing uses an inclusive application date range of at most 31 days, returns up to 100 records per page, and exposes `next_offset` in JSON for further pages. Receipt lookup includes stock lines and cashless payments. Amounts and quantities are decimal strings in JSON so their source precision is preserved. No command writes to 1C.
+## CLI syntax
 
-## Receipt audit
+Commands follow `1c VERB RESOURCE [OPTIONS]`. Use `--help` on a command for its usage and an example. Commands print readable tables by default; add `--json` for structured output.
 
-`audit receipts` and `audit_unposted_receipts` inspect the non-deleted `Document_ЧекККМ` (sale) and `Document_ЧекККМВозврат` (refund) resources. They report documents with `Posted=false` in the application date interval [`from`, `before`). The report includes the kind, document ID, number, date, posted status, amount, and available related IDs, plus the number of receipts inspected. For example, a sale receipt numbered `REDACTED` dated `2026-09-02T12:00:00` with `Posted=false` is a finding; a posted receipt on the same date is inspected but omitted. The application returns dates without a timezone offset, so the audit compares their calendar dates directly and makes no UTC conversion.
+```sh
+1c check
+1c list groups --name КЛИМОВО
+1c list price-types
+1c search products --limit 10 "диван"
+1c search resources --kind catalog --limit 20 "Номенклатура"
+1c describe resource Catalog_Номенклатура
+1c list orders --limit 20
+1c get order --json ORDER_GUID
+1c list receipts --kind sale --from 2026-09-01 --to 2026-09-07
+1c get receipt --kind refund --json RECEIPT_GUID
+1c audit receipts --from 2026-09-01 --before 2026-09-24 --json
+```
 
-An unposted receipt can be an intentional draft or a cancelled workflow; the audit identifies the status for review and does not infer an accounting error. Deleted documents are excluded. The interval is at most 31 calendar days, with at most 1,000 receipts across both kinds. Larger scans fail and require smaller intervals; there is no partial report.
+`list groups` returns product folders and their IDs; `list price-types` returns price type names and IDs. A price type such as `Розничная` is separate from a product group such as `КЛИМОВО НОМЕНКЛАТУРА`. These commands do not retrieve prices from price documents.
 
-## MCP
+`search resources` uses `1c search resources [--kind catalog|document|register|other] [--limit N] [--json] QUERY` to search OData metadata names by resource kind. `describe resource` uses `1c describe resource [--json] EXACT_NAME` to show schema fields for an exact OData resource name. These commands expose OData schema names and fields; they do not enumerate every screen in the 1C interface or provide generic reads of resource data.
 
-Run the binary as a local stdio MCP server:
+Product search checks product name, full name, and article, and excludes folders and deletion-marked products. It returns up to 50 matches. Order listing returns the latest non-deleted orders, up to 100; order details include product lines. Receipt listing accepts an inclusive date range of up to 31 days, returns up to 100 rows per page, and supports `--offset` for the next page. Receipt details include stock lines and cashless payments. JSON represents amounts and quantities as decimal strings to preserve source precision.
+
+### Audit unposted receipts
+
+`audit receipts` checks sale and refund receipts in the half-open application date interval `[--from, --before)`. It reports non-deleted receipts with `Posted=false`, including their kind, ID, number, date, amount, and available related IDs. The audit covers at most 31 calendar days and 1,000 receipts across both kinds; a larger scan fails without returning a partial report.
+
+An unposted receipt may be a draft or part of a cancelled workflow. The command reports status for review; it does not decide whether a receipt is an accounting error. The application returns dates without timezone offsets, so the audit compares calendar dates directly.
+
+## MCP server
+
+Run the server over stdio:
 
 ```sh
 bin/1c mcp
 ```
 
-Configure an MCP client to launch that command from this directory or provide the three `ONEC_ODATA_*` variables in the client configuration. The server exposes `check_connection`, `list_product_groups`, `list_price_types`, `find_nomenclature`, `list_customer_orders`, `get_customer_order`, `list_cash_receipts`, `get_cash_receipt`, and `audit_unposted_receipts`. All are read-only. No generic OData query, write, delete, or posting tool is exposed.
+Configure your MCP client to launch this command from the repository directory, or provide the three `ONEC_ODATA_*` variables in the client's environment. The server exposes these read-only tools:
 
-The current 1C application rejects OData filters on document `Date` with HTTP 500 and ignores descending date order. Order listing uses a count and the tail of the ascending date order. Receipt date ranges use count, indexed date lookups, and bounded pages; returned dates are checked before results are reported.
+- `check_connection`
+- `list_product_groups` and `list_price_types`
+- `find_nomenclature`
+- `search_odata_resources` and `describe_odata_resource`
+- `list_customer_orders` and `get_customer_order`
+- `list_cash_receipts` and `get_cash_receipt`
+- `audit_unposted_receipts`
+
+No generic OData query or tool for writing, deleting, or posting data is exposed.
 
 ## Development
+
+Run the Go tests and static checks from the repository root:
 
 ```sh
 go test ./...
 go vet ./...
 ```
 
-The OData client uses HTTPS, HTTP Basic authentication, a 30-second timeout, a response-size limit, and no redirects. Errors omit credentials and response bodies. The MCP server writes protocol data to stdout; CLI errors go to stderr.
+The OData client uses HTTPS, HTTP Basic authentication, a 30-second timeout, a response-size limit, and does not follow redirects. Errors omit credentials and response bodies. MCP protocol output goes to stdout; CLI errors go to stderr.

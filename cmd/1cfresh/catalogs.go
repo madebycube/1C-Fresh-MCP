@@ -17,7 +17,7 @@ func runGroupList(ctx context.Context, svc service.Service, args []string, out i
 	flags.SetOutput(io.Discard)
 	name := flags.String("name", "", "match this name or path")
 	asJSON := flags.Bool("json", false, "print JSON")
-	if err := flags.Parse(args); err != nil || flags.NArg() != 0 {
+	if err := parseFlags(flags, args); err != nil || flags.NArg() != 0 {
 		return errors.New("usage: 1c list groups [--name TEXT] [--json]")
 	}
 	groups, err := svc.ListGroups(ctx, *name)
@@ -47,7 +47,7 @@ func runPriceTypeList(ctx context.Context, svc service.Service, args []string, o
 	flags := flag.NewFlagSet("list price-types", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	asJSON := flags.Bool("json", false, "print JSON")
-	if err := flags.Parse(args); err != nil || flags.NArg() != 0 {
+	if err := parseFlags(flags, args); err != nil || flags.NArg() != 0 {
 		return errors.New("usage: 1c list price-types [--json]")
 	}
 	priceTypes, err := svc.ListPriceTypes(ctx)

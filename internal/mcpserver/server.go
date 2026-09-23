@@ -41,6 +41,16 @@ type listPriceTypesOutput struct {
 	Count      int                 `json:"count"`
 }
 
+type searchResourcesInput struct {
+	Query string `json:"query" jsonschema:"Text to find in an OData resource name"`
+	Kind  string `json:"kind,omitempty" jsonschema:"Optional catalog, document, register, or other filter"`
+	Limit int    `json:"limit,omitempty" jsonschema:"Maximum results, 1 to 200; defaults to 50"`
+}
+
+type describeResourceInput struct {
+	Name string `json:"name" jsonschema:"Exact OData entity-set name from search_odata_resources"`
+}
+
 type listOrdersInput struct {
 	Limit int `json:"limit,omitempty" jsonschema:"Maximum results, from 1 to 100; defaults to 20"`
 }
@@ -137,6 +147,20 @@ func New(svc service.Service) *mcp.Server {
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, input auditUnpostedInput) (*mcp.CallToolResult, service.ReceiptAudit, error) {
 		report, err := svc.AuditUnpostedReceipts(ctx, input.Kind, input.From, input.Before)
 		return nil, report, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.SearchResources.Tool, Description: operations.SearchResources.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input searchResourcesInput) (*mcp.CallToolResult, service.ResourceSearch, error) {
+		result, err := svc.SearchResources(ctx, input.Query, input.Kind, input.Limit)
+		return nil, result, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.DescribeResource.Tool, Description: operations.DescribeResource.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input describeResourceInput) (*mcp.CallToolResult, service.ResourceDetail, error) {
+		result, err := svc.DescribeResource(ctx, input.Name)
+		return nil, result, err
 	})
 	return server
 }

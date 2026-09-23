@@ -21,7 +21,7 @@ func runReceiptList(ctx context.Context, svc service.Service, args []string, out
 	limit := flags.Int("limit", 20, "maximum results (1-100)")
 	offset := flags.Int("offset", 0, "offset within matching receipts")
 	asJSON := flags.Bool("json", false, "print JSON")
-	if err := flags.Parse(args); err != nil || flags.NArg() != 0 || *from == "" || *to == "" {
+	if err := parseFlags(flags, args); err != nil || flags.NArg() != 0 || *from == "" || *to == "" {
 		return errors.New("usage: 1c list receipts --from YYYY-MM-DD --to YYYY-MM-DD [--kind sale|refund] [--limit N] [--offset N] [--json]")
 	}
 	page, err := svc.ListReceipts(ctx, *kind, *from, *to, *limit, *offset)
@@ -60,7 +60,7 @@ func runReceiptGet(ctx context.Context, svc service.Service, args []string, out 
 	flags.SetOutput(io.Discard)
 	kind := flags.String("kind", "sale", "sale or refund")
 	asJSON := flags.Bool("json", false, "print JSON")
-	if err := flags.Parse(args); err != nil || flags.NArg() != 1 {
+	if err := parseFlags(flags, args); err != nil || flags.NArg() != 1 {
 		return errors.New("usage: 1c get receipt [--kind sale|refund] [--json] GUID")
 	}
 	receipt, err := svc.GetReceipt(ctx, *kind, flags.Arg(0))
@@ -107,7 +107,7 @@ func runReceiptAudit(ctx context.Context, svc service.Service, args []string, ou
 	from := flags.String("from", "", "first date (YYYY-MM-DD)")
 	before := flags.String("before", "", "exclusive cutoff date (YYYY-MM-DD)")
 	asJSON := flags.Bool("json", false, "print JSON")
-	if err := flags.Parse(args); err != nil || flags.NArg() != 0 || *from == "" || *before == "" {
+	if err := parseFlags(flags, args); err != nil || flags.NArg() != 0 || *from == "" || *before == "" {
 		return errors.New("usage: 1c audit receipts --from YYYY-MM-DD --before YYYY-MM-DD [--kind sale|refund|both] [--json]")
 	}
 	report, err := svc.AuditUnpostedReceipts(ctx, *kind, *from, *before)

@@ -17,7 +17,7 @@ func runOrderList(ctx context.Context, svc service.Service, args []string, out i
 	flags.SetOutput(io.Discard)
 	limit := flags.Int("limit", 20, "maximum results (1-100)")
 	asJSON := flags.Bool("json", false, "print JSON")
-	if err := flags.Parse(args); err != nil || flags.NArg() != 0 {
+	if err := parseFlags(flags, args); err != nil || flags.NArg() != 0 {
 		return errors.New("usage: 1c list orders [--limit N] [--json]")
 	}
 	orders, err := svc.ListOrders(ctx, *limit)
@@ -43,7 +43,7 @@ func runOrderGet(ctx context.Context, svc service.Service, args []string, out io
 	flags := flag.NewFlagSet("get order", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	asJSON := flags.Bool("json", false, "print JSON")
-	if err := flags.Parse(args); err != nil || flags.NArg() != 1 {
+	if err := parseFlags(flags, args); err != nil || flags.NArg() != 1 {
 		return errors.New("usage: 1c get order [--json] GUID")
 	}
 	order, err := svc.GetOrder(ctx, flags.Arg(0))

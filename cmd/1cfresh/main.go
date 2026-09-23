@@ -53,7 +53,7 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		flags := flag.NewFlagSet("check", flag.ContinueOnError)
 		flags.SetOutput(io.Discard)
 		asJSON := flags.Bool("json", false, "print JSON")
-		if err := flags.Parse(commandArgs); err != nil || flags.NArg() != 0 {
+		if err := parseFlags(flags, commandArgs); err != nil || flags.NArg() != 0 {
 			return errors.New("usage: 1c check [--json]")
 		}
 		count, err := svc.Check(ctx)
@@ -77,7 +77,7 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		flags.SetOutput(io.Discard)
 		limit := flags.Int("limit", 20, "maximum results (1-50)")
 		asJSON := flags.Bool("json", false, "print JSON")
-		if err := flags.Parse(commandArgs); err != nil || flags.NArg() != 1 {
+		if err := parseFlags(flags, commandArgs); err != nil || flags.NArg() != 1 {
 			return errors.New("usage: 1c search products [--limit N] [--json] QUERY")
 		}
 		products, err := svc.SearchProducts(ctx, flags.Arg(0), *limit)
@@ -107,6 +107,10 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		return runReceiptGet(ctx, svc, commandArgs, out)
 	case operations.AuditUnpostedReceipts.Command:
 		return runReceiptAudit(ctx, svc, commandArgs, out)
+	case operations.SearchResources.Command:
+		return runResourceSearch(ctx, svc, commandArgs, out)
+	case operations.DescribeResource.Command:
+		return runResourceDescribe(ctx, svc, commandArgs, out)
 	case "mcp":
 		if len(commandArgs) != 0 {
 			return errors.New("usage: 1c mcp")
@@ -164,9 +168,17 @@ func printHelp(out io.Writer) {
 	fmt.Fprintln(out, "       1c COMMAND --help")
 	fmt.Fprintln(out, "\nCommands:")
 	for _, operation := range operations.All {
-		fmt.Fprintf(out, "  %-18s %s\n", operation.Command, operation.Description)
+		if !operation.Advanced {
+			fmt.Fprintf(out, "  %-18s %s\n", operation.Command, operation.Description)
+		}
 	}
 	fmt.Fprintln(out, "  mcp                Run the MCP server for AI clients.")
+	fmt.Fprintln(out, "\nExplore the raw 1C schema:")
+	for _, operation := range operations.All {
+		if operation.Advanced {
+			fmt.Fprintf(out, "  %-18s %s\n", operation.Command, operation.Description)
+		}
+	}
 	fmt.Fprintln(out, "\nExamples:")
 	fmt.Fprintln(out, "  1c list groups --name КЛИМОВО")
 	fmt.Fprintln(out, "  1c list price-types")
