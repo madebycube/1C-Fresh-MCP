@@ -68,8 +68,12 @@ func (s Service) CreateProduct(ctx context.Context, input ProductCreate) (Produc
 		if !linkedGUID(categoryID) {
 			return ProductCreation{}, errors.New("category ID must be a nonzero GUID")
 		}
-		if _, err := s.readProductCategory(ctx, categoryID); err != nil {
+		category, err := s.readProductCategory(ctx, categoryID)
+		if err != nil {
 			return ProductCreation{}, err
+		}
+		if category.Type != oneCType {
+			return ProductCreation{}, errors.New("category default type must match product type")
 		}
 		categoryID = strings.ToLower(categoryID)
 	}

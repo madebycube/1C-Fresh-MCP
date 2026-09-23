@@ -30,7 +30,7 @@ func (stubReader) Get(_ context.Context, resource string, params url.Values, _ i
 		return []byte(`{"odata.count":"1","value":[{"Ref_Key":"00000000-0000-0000-0000-000000000014","Description":"Example category","Parent_Key":"00000000-0000-0000-0000-000000000000","IsFolder":false,"DeletionMark":false,"ТипНоменклатурыПоУмолчанию":"Запас","ЕдиницаИзмерения_Key":"00000000-0000-0000-0000-000000000013"}]}`), nil
 	}
 	if strings.HasPrefix(resource, "Catalog_КатегорииНоменклатуры(") {
-		return []byte(`{"Ref_Key":"00000000-0000-0000-0000-000000000014","Description":"Example category","IsFolder":false,"DeletionMark":false}`), nil
+		return []byte(`{"Ref_Key":"00000000-0000-0000-0000-000000000014","Description":"Example category","IsFolder":false,"DeletionMark":false,"ТипНоменклатурыПоУмолчанию":"Запас"}`), nil
 	}
 	if resource == "Catalog_ХарактеристикиНоменклатуры" {
 		return []byte(`{"odata.count":"1","value":[{"Ref_Key":"00000000-0000-0000-0000-000000000015","Description":"Blue","Owner":"00000000-0000-0000-0000-000000000004","Owner_Type":"StandardODATA.Catalog_Номенклатура","DeletionMark":false,"Недействителен":false}]}`), nil

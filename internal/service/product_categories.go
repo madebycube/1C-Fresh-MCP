@@ -79,7 +79,7 @@ func (s Service) readProductCategory(ctx context.Context, id string) (ProductCat
 	if !linkedGUID(id) {
 		return ProductCategory{}, errors.New("category ID must be a nonzero GUID")
 	}
-	params := url.Values{"$format": {"json"}, "$select": {"Ref_Key,Description,IsFolder,DeletionMark"}}
+	params := url.Values{"$format": {"json"}, "$select": {"Ref_Key,Description,IsFolder,DeletionMark,ТипНоменклатурыПоУмолчанию"}}
 	data, err := s.OData.Get(ctx, categoryResource(id), params, 1<<20)
 	if err != nil {
 		return ProductCategory{}, err
@@ -89,11 +89,12 @@ func (s Service) readProductCategory(ctx context.Context, id string) (ProductCat
 		Name     string `json:"Description"`
 		IsFolder *bool  `json:"IsFolder"`
 		Deleted  *bool  `json:"DeletionMark"`
+		Type     string `json:"ТипНоменклатурыПоУмолчанию"`
 	}
 	if err := json.Unmarshal(data, &row); err != nil || !strings.EqualFold(row.ID, id) || row.IsFolder == nil || row.Deleted == nil || *row.IsFolder || *row.Deleted {
 		return ProductCategory{}, errors.New("category ID must identify an active product category")
 	}
-	return ProductCategory{ID: row.ID, Name: row.Name}, nil
+	return ProductCategory{ID: row.ID, Name: row.Name, Type: row.Type}, nil
 }
 
 func categoryResource(id string) string {

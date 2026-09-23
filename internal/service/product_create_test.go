@@ -54,7 +54,7 @@ func (stub *productCreateStub) Write(_ context.Context, method, resource string,
 func TestCreateProductLinksActiveClassifierUnitAndGroup(t *testing.T) {
 	stub := &productCreateStub{
 		groupRow:    `{"Ref_Key":"` + groupID + `","Description":"Furniture","IsFolder":true,"DeletionMark":false}`,
-		categoryRow: `{"Ref_Key":"44444444-4444-4444-4444-444444444444","Description":"Furniture","IsFolder":false,"DeletionMark":false}`,
+		categoryRow: `{"Ref_Key":"44444444-4444-4444-4444-444444444444","Description":"Furniture","IsFolder":false,"DeletionMark":false,"ТипНоменклатурыПоУмолчанию":"Запас"}`,
 		response:    []byte(`{"Ref_Key":"33333333-3333-3333-3333-333333333333"}`),
 	}
 	created, err := (Service{OData: stub}).CreateProduct(context.Background(), ProductCreate{
@@ -103,6 +103,10 @@ func TestCreateProductRejectsInvalidUnitAndGroup(t *testing.T) {
 	stub.categoryRow = `{"Ref_Key":"44444444-4444-4444-4444-444444444444","Description":"Folder","IsFolder":true,"DeletionMark":false}`
 	if _, err := svc.CreateProduct(context.Background(), input); err == nil || stub.writes != 0 {
 		t.Fatal("accepted a folder as product category")
+	}
+	stub.categoryRow = `{"Ref_Key":"44444444-4444-4444-4444-444444444444","Description":"Services","IsFolder":false,"DeletionMark":false,"ТипНоменклатурыПоУмолчанию":"Услуга"}`
+	if _, err := svc.CreateProduct(context.Background(), input); err == nil || stub.writes != 0 {
+		t.Fatal("accepted a service category for a stock item")
 	}
 }
 
