@@ -27,3 +27,37 @@ var Products = SearchResource{
 	FolderField:  "IsFolder",
 	DeletedField: "DeletionMark",
 }
+
+type DocumentResource struct {
+	Name         string
+	DateField    string
+	DeletedField string
+	Fields       []FieldBinding
+	LinesField   string
+	LineFields   []FieldBinding
+}
+
+var CustomerOrders = DocumentResource{
+	Name:         "Document_ЗаказПокупателя",
+	DateField:    "Date",
+	DeletedField: "DeletionMark",
+	Fields: []FieldBinding{
+		{Output: "id", Source: "Ref_Key"},
+		{Output: "number", Source: "Number"},
+		{Output: "date", Source: "Date"},
+		{Output: "posted", Source: "Posted"},
+		{Output: "state", Source: "СостояниеЗаказа"},
+		{Output: "amount", Source: "СуммаДокумента"},
+		{Output: "customer_id", Source: "Контрагент_Key"},
+	},
+	LinesField: "Запасы",
+	LineFields: []FieldBinding{
+		{Output: "line_number", Source: "LineNumber"},
+		{Output: "item", Source: "Номенклатура"},
+		{Output: "quantity", Source: "Количество"},
+		{Output: "unit", Source: "ЕдиницаИзмерения"},
+		{Output: "price", Source: "Цена"},
+		{Output: "amount", Source: "Сумма"},
+		{Output: "total", Source: "Всего"},
+	},
+}

@@ -3,6 +3,7 @@ package mcpserver
 import (
 	"context"
 	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/madebycube/1C-Fresh-MCP/internal/operations"
@@ -13,7 +14,13 @@ import (
 type stubReader struct{}
 
 func (stubReader) Check(context.Context) (int, error) { return 1221, nil }
-func (stubReader) Get(context.Context, string, url.Values, int64) ([]byte, error) {
+func (stubReader) Get(_ context.Context, resource string, _ url.Values, _ int64) ([]byte, error) {
+	if strings.HasPrefix(resource, "Document_ЗаказПокупателя(") {
+		return []byte(`{"Ref_Key":"00000000-0000-0000-0000-000000000001","Number":"1","Date":"2026-09-23T00:00:00","Posted":false,"СуммаДокумента":10,"Запасы":[]}`), nil
+	}
+	if resource == "Document_ЗаказПокупателя" {
+		return []byte(`{"value":[{"Ref_Key":"00000000-0000-0000-0000-000000000001","Number":"1","Date":"2026-09-23T00:00:00","Posted":false,"СуммаДокумента":10}]}`), nil
+	}
 	return []byte(`{"value":[{"Ref_Key":"item-1","Description":"Chair"}]}`), nil
 }
 
@@ -35,8 +42,8 @@ func TestToolsAreReadOnlyAndCallable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(listed.Tools) != 2 {
-		t.Fatalf("got %d tools; want 2", len(listed.Tools))
+	if len(listed.Tools) != 4 {
+		t.Fatalf("got %d tools; want 4", len(listed.Tools))
 	}
 	for _, tool := range listed.Tools {
 		if tool.Annotations == nil || !tool.Annotations.ReadOnlyHint {
@@ -49,6 +56,8 @@ func TestToolsAreReadOnlyAndCallable(t *testing.T) {
 	}{
 		{operations.Check.Tool, map[string]any{}},
 		{operations.SearchProducts.Tool, map[string]any{"query": "Chair", "limit": 2}},
+		{operations.ListOrders.Tool, map[string]any{"limit": 2}},
+		{operations.GetOrder.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000001"}},
 	} {
 		result, err := clientSession.CallTool(ctx, &mcp.CallToolParams{Name: call.name, Arguments: call.args})
 		if err != nil || result.IsError || result.StructuredContent == nil {
