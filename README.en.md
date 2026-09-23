@@ -149,6 +149,8 @@ Configure your MCP client to launch this command from the repository directory, 
 
 No generic OData query or tool for deleting or posting data is exposed.
 
+See the [access policy](docs/access-policy.md) for reporting, personnel, payroll, and tax boundaries.
+
 ## Development
 
 Run the Go tests and static checks from the repository root:
