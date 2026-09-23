@@ -20,6 +20,11 @@ type searchInput struct {
 	Limit int    `json:"limit,omitempty" jsonschema:"Maximum results, from 1 to 50; defaults to 20"`
 }
 
+type listProductsInput struct {
+	Limit  int `json:"limit,omitempty" jsonschema:"Maximum products, 1 to 100; defaults to 20"`
+	Offset int `json:"offset,omitempty" jsonschema:"Raw catalog offset from a previous list_products result"`
+}
+
 type searchOutput struct {
 	Products []service.Product `json:"products"`
 	Count    int               `json:"count"`
@@ -281,6 +286,17 @@ func New(svc service.Service) *mcp.Server {
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, input searchInput) (*mcp.CallToolResult, searchOutput, error) {
 		products, err := svc.SearchProducts(ctx, input.Query, input.Limit)
 		return nil, searchOutput{Products: products, Count: len(products)}, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.ListProducts.Tool, Description: operations.ListProducts.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input listProductsInput) (*mcp.CallToolResult, service.ProductPage, error) {
+		limit := input.Limit
+		if limit == 0 {
+			limit = 20
+		}
+		page, err := svc.ListProducts(ctx, limit, input.Offset)
+		return nil, page, err
 	})
 	mcp.AddTool(server, &mcp.Tool{
 		Name: operations.UpdateProduct.Tool, Description: operations.UpdateProduct.Description,
