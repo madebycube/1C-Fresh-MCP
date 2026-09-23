@@ -20,6 +20,9 @@ func (stubReader) Get(_ context.Context, resource string, params url.Values, _ i
 	if resource == "$metadata" {
 		return []byte(`<Schema Namespace="StandardODATA"><EntityType Name="Catalog_ВидыЦен"><Key><PropertyRef Name="Ref_Key"/></Key><Property Name="Ref_Key" Type="Edm.Guid" Nullable="false"/><Property Name="Description" Type="Edm.String"/></EntityType><EntityContainer><EntitySet Name="Catalog_ВидыЦен" EntityType="StandardODATA.Catalog_ВидыЦен"/></EntityContainer></Schema>`), nil
 	}
+	if resource == "Catalog_Номенклатура" && params.Get("$orderby") == "Ref_Key asc" {
+		return []byte(`{"value":[{"Ref_Key":"00000000-0000-0000-0000-000000000004","Code":"P1","Description":"Chair","IsFolder":false,"DeletionMark":false,"Parent_Key":"00000000-0000-0000-0000-000000000001"}]}`), nil
+	}
 	if resource == "Catalog_Номенклатура" {
 		return []byte(`{"odata.count":"1","value":[{"Ref_Key":"00000000-0000-0000-0000-000000000001","Description":"Furniture","Parent_Key":"00000000-0000-0000-0000-000000000000","IsFolder":true,"DeletionMark":false}]}`), nil
 	}
@@ -121,8 +124,8 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(listed.Tools) != 36 {
-		t.Fatalf("got %d tools; want 36", len(listed.Tools))
+	if len(listed.Tools) != 37 {
+		t.Fatalf("got %d tools; want 37", len(listed.Tools))
 	}
 	for _, tool := range listed.Tools {
 		if tool.Annotations == nil {
@@ -152,6 +155,7 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 		{operations.ListWarehouses.Tool, map[string]any{}},
 		{operations.GetStock.Tool, map[string]any{"product_id": "00000000-0000-0000-0000-000000000004"}},
 		{operations.SearchProducts.Tool, map[string]any{"query": "Chair", "limit": 2}},
+		{operations.ListProducts.Tool, map[string]any{"limit": 2}},
 		{operations.UpdateProduct.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000004", "article": "B", "group_id": "00000000-0000-0000-0000-000000000001"}},
 		{operations.ListOrders.Tool, map[string]any{"limit": 2}},
 		{operations.GetOrder.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000001"}},

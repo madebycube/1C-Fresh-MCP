@@ -85,6 +85,8 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		return runWarehouseList(ctx, svc, commandArgs, out)
 	case operations.GetStock.Command:
 		return runStockGet(ctx, svc, commandArgs, out)
+	case operations.ListProducts.Command:
+		return runProductList(ctx, svc, commandArgs, out)
 	case operations.SearchProducts.Command:
 		flags := flag.NewFlagSet("search products", flag.ContinueOnError)
 		flags.SetOutput(io.Discard)
@@ -236,6 +238,7 @@ func printHelp(out io.Writer) {
 	fmt.Fprintln(out, "\nExamples:")
 	fmt.Fprintln(out, "  1c list groups --name \"Пример группы\"")
 	fmt.Fprintln(out, "  1c list price-types")
+	fmt.Fprintln(out, "  1c list products --limit 20")
 	fmt.Fprintln(out, "  1c search products \"название товара\"")
 	fmt.Fprintln(out, "  1c search customers \"Пример компании\"")
 	fmt.Fprintln(out, "  1c search suppliers \"Пример поставщика\"")
