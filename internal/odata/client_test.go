@@ -48,3 +48,42 @@ func TestGetRejectsRedirect(t *testing.T) {
 		t.Fatalf("redirect followed or accepted: %v", err)
 	}
 }
+
+func TestWriteUsesJSONAndDataVersion(t *testing.T) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPatch || r.URL.Path != "/a/sbm/1/odata/standard.odata/Catalog_Номенклатура(guid'11111111-1111-1111-1111-111111111111')" || r.Header.Get("Content-Type") != "application/json; charset=utf-8" || r.Header.Get("If-Match") != "v1" {
+			t.Errorf("unexpected write request: %s %s", r.Method, r.URL.Path)
+		}
+		username, password, ok := r.BasicAuth()
+		if !ok || username != "user" || password != "top-secret" {
+			t.Error("missing authentication")
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+	base, _ := url.Parse(server.URL + "/a/sbm/1")
+	client := New(config.Config{BaseURL: base, Username: "user", Password: "top-secret"})
+	client.http = server.Client()
+	_, err := client.Write(context.Background(), http.MethodPatch, "Catalog_Номенклатура(guid'11111111-1111-1111-1111-111111111111')", []byte(`{"Description":"New"}`), "v1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.Write(context.Background(), http.MethodPatch, "Catalog_Номенклатура", []byte(`{}`), ""); err == nil {
+		t.Fatal("accepted a patch without a data version")
+	}
+}
+
+func TestWriteHidesResponseAndReportsConflict(t *testing.T) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusPreconditionFailed)
+		_, _ = w.Write([]byte("private record data"))
+	}))
+	defer server.Close()
+	base, _ := url.Parse(server.URL + "/a/sbm/1")
+	client := New(config.Config{BaseURL: base, Username: "user", Password: "top-secret"})
+	client.http = server.Client()
+	_, err := client.Write(context.Background(), http.MethodPatch, "Catalog_Номенклатура", []byte(`{}`), "old")
+	if err == nil || !strings.Contains(err.Error(), "changed") || strings.Contains(err.Error(), "private record data") {
+		t.Fatalf("unexpected conflict error: %v", err)
+	}
+}

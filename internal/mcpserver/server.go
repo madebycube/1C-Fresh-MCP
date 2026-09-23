@@ -34,6 +34,16 @@ type listGroupsOutput struct {
 	Count  int             `json:"count"`
 }
 
+type createGroupInput struct {
+	Name     string `json:"name" jsonschema:"Name for the new product group"`
+	ParentID string `json:"parent_id,omitempty" jsonschema:"Optional parent product group GUID; omit for root"`
+}
+
+type updateGroupInput struct {
+	ID   string `json:"id" jsonschema:"Existing product group GUID"`
+	Name string `json:"name" jsonschema:"Replacement product group name"`
+}
+
 type listPriceTypesInput struct{}
 
 type listPriceTypesOutput struct {
@@ -85,6 +95,7 @@ type auditUnpostedInput struct {
 
 func New(svc service.Service) *mcp.Server {
 	server := mcp.NewServer(&mcp.Implementation{Name: "1c-fresh", Version: "0.1.0"}, nil)
+	additive := false
 	mcp.AddTool(server, &mcp.Tool{
 		Name: operations.Check.Tool, Description: operations.Check.Description,
 		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
@@ -98,6 +109,20 @@ func New(svc service.Service) *mcp.Server {
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, input listGroupsInput) (*mcp.CallToolResult, listGroupsOutput, error) {
 		groups, err := svc.ListGroups(ctx, input.Name)
 		return nil, listGroupsOutput{Groups: groups, Count: len(groups)}, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.CreateGroup.Tool, Description: operations.CreateGroup.Description,
+		Annotations: &mcp.ToolAnnotations{DestructiveHint: &additive},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input createGroupInput) (*mcp.CallToolResult, service.GroupChange, error) {
+		change, err := svc.CreateGroup(ctx, input.Name, input.ParentID)
+		return nil, change, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.UpdateGroup.Tool, Description: operations.UpdateGroup.Description,
+		Annotations: &mcp.ToolAnnotations{IdempotentHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input updateGroupInput) (*mcp.CallToolResult, service.GroupChange, error) {
+		change, err := svc.UpdateGroup(ctx, input.ID, input.Name)
+		return nil, change, err
 	})
 	mcp.AddTool(server, &mcp.Tool{
 		Name: operations.ListPriceTypes.Tool, Description: operations.ListPriceTypes.Description,

@@ -73,6 +73,10 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		return err
 	case operations.ListGroups.Command:
 		return runGroupList(ctx, svc, commandArgs, out)
+	case operations.CreateGroup.Command:
+		return runGroupCreate(ctx, svc, commandArgs, out)
+	case operations.UpdateGroup.Command:
+		return runGroupUpdate(ctx, svc, commandArgs, out)
 	case operations.ListPriceTypes.Command:
 		return runPriceTypeList(ctx, svc, commandArgs, out)
 	case operations.SearchProducts.Command:
@@ -166,7 +170,7 @@ func flat(value string) string {
 
 func printHelp(out io.Writer) {
 	fmt.Fprintln(out, "1c reads products, groups, price types, orders, and receipts from 1C-Fresh.")
-	fmt.Fprintln(out, "Data commands are read-only. 'Posted' means a document was processed in 1C; it is not a payment status.")
+	fmt.Fprintln(out, "Create and update commands write to 1C. 'Posted' means a document was processed in 1C; it is not a payment status.")
 	fmt.Fprintln(out, "\nUsage: 1c VERB RESOURCE [OPTIONS]")
 	fmt.Fprintln(out, "       1c COMMAND --help")
 	fmt.Fprintln(out, "\nCommands:")
@@ -198,7 +202,7 @@ func printCommandHelp(out io.Writer, command string) {
 		return
 	}
 	if command == "mcp" {
-		fmt.Fprintln(out, "Run the read-only MCP server over stdio for an AI client.\n\nUsage: 1c mcp")
+		fmt.Fprintln(out, "Run the MCP server over stdio for an AI client. Read tools and product group write tools are available.\n\nUsage: 1c mcp")
 		return
 	}
 	for _, operation := range operations.All {
