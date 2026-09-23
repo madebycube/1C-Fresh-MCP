@@ -29,6 +29,9 @@ func (stubReader) Get(_ context.Context, resource string, params url.Values, _ i
 	if resource == "Catalog_КатегорииНоменклатуры" {
 		return []byte(`{"odata.count":"1","value":[{"Ref_Key":"00000000-0000-0000-0000-000000000014","Description":"Example category","Parent_Key":"00000000-0000-0000-0000-000000000000","IsFolder":false,"DeletionMark":false,"ТипНоменклатурыПоУмолчанию":"Запас","ЕдиницаИзмерения_Key":"00000000-0000-0000-0000-000000000013"}]}`), nil
 	}
+	if resource == "Catalog_ХарактеристикиНоменклатуры" {
+		return []byte(`{"odata.count":"1","value":[{"Ref_Key":"00000000-0000-0000-0000-000000000015","Description":"Blue","Owner":"00000000-0000-0000-0000-000000000004","Owner_Type":"StandardODATA.Catalog_Номенклатура","DeletionMark":false,"Недействителен":false}]}`), nil
+	}
 	if strings.HasPrefix(resource, "Catalog_Номенклатура(") {
 		if strings.Contains(resource, "00000000-0000-0000-0000-000000000004") {
 			return []byte(`{"Ref_Key":"00000000-0000-0000-0000-000000000004","Description":"Chair","НаименованиеПолное":"Chair full","Артикул":"A","ТипНоменклатуры":"Товар","ЕдиницаИзмерения_Key":"00000000-0000-0000-0000-000000000002","IsFolder":false,"DeletionMark":false,"DataVersion":"version-1"}`), nil
@@ -133,8 +136,8 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(listed.Tools) != 44 {
-		t.Fatalf("got %d tools; want 44", len(listed.Tools))
+	if len(listed.Tools) != 45 {
+		t.Fatalf("got %d tools; want 45", len(listed.Tools))
 	}
 	for _, tool := range listed.Tools {
 		if tool.Annotations == nil {
@@ -158,6 +161,7 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 		{operations.Check.Tool, map[string]any{}},
 		{operations.ListGroups.Tool, map[string]any{}},
 		{operations.ListProductCategories.Tool, map[string]any{}},
+		{operations.ListProductCharacteristics.Tool, map[string]any{}},
 		{operations.CreateGroup.Tool, map[string]any{"name": "New group"}},
 		{operations.UpdateGroup.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000001", "name": "Renamed", "parent_id": "root"}},
 		{operations.ListCounterpartyGroups.Tool, map[string]any{}},

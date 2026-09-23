@@ -33,6 +33,14 @@ var ListProductCategories = Spec{
 	Example:     "1c list product-categories",
 }
 
+var ListProductCharacteristics = Spec{
+	Command:     "list characteristics",
+	Tool:        "list_product_characteristics",
+	Description: "List active product characteristics and their 1C IDs.",
+	Usage:       "1c list characteristics [--product PRODUCT_GUID] [--name TEXT] [--json]",
+	Example:     "1c list characteristics --product PRODUCT_GUID",
+}
+
 var CreateGroup = Spec{
 	Command:     "create group",
 	Tool:        "create_product_group",
@@ -363,4 +371,4 @@ var DescribeResource = Spec{
 	Advanced:    true,
 }
 
-var All = []Spec{Check, ListGroups, ListProductCategories, CreateGroup, UpdateGroup, ListCounterpartyGroups, CreateCounterpartyGroup, UpdateCounterpartyGroup, ListPriceTypes, ListUnitTypes, GetPrice, ListPrices, ListWarehouses, GetStock, ListProducts, GetProduct, SearchProducts, UpdateProduct, ListCustomers, SearchCustomers, GetCustomer, CreateCustomer, UpdateCustomer, ListSuppliers, SearchSuppliers, GetSupplier, CreateSupplier, UpdateSupplier, ListOrders, GetOrder, ListSales, GetSale, ListPurchases, GetPurchase, ListWarehouseDocuments, GetWarehouseDocument, ListMoneyAccounts, ListMoney, GetMoney, ListReceipts, GetReceipt, AuditUnpostedReceipts, SearchResources, DescribeResource}
+var All = []Spec{Check, ListGroups, ListProductCategories, ListProductCharacteristics, CreateGroup, UpdateGroup, ListCounterpartyGroups, CreateCounterpartyGroup, UpdateCounterpartyGroup, ListPriceTypes, ListUnitTypes, GetPrice, ListPrices, ListWarehouses, GetStock, ListProducts, GetProduct, SearchProducts, UpdateProduct, ListCustomers, SearchCustomers, GetCustomer, CreateCustomer, UpdateCustomer, ListSuppliers, SearchSuppliers, GetSupplier, CreateSupplier, UpdateSupplier, ListOrders, GetOrder, ListSales, GetSale, ListPurchases, GetPurchase, ListWarehouseDocuments, GetWarehouseDocument, ListMoneyAccounts, ListMoney, GetMoney, ListReceipts, GetReceipt, AuditUnpostedReceipts, SearchResources, DescribeResource}
