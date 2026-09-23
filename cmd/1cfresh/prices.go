@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"strings"
 	"text/tabwriter"
 
 	"github.com/madebycube/1C-Fresh-MCP/internal/operations"
@@ -34,11 +35,12 @@ func runPriceList(ctx context.Context, svc service.Service, args []string, out i
 		return json.NewEncoder(out).Encode(page)
 	}
 	writer := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
-	if _, err := fmt.Fprintln(writer, "CODE\tARTICLE\tPRODUCT\tFOUND\tPRICE\tCURRENCY ID\tSOURCE DOCUMENT\tPRODUCT ID"); err != nil {
+	if _, err := fmt.Fprintln(writer, "CODE\tARTICLE\tPRODUCT\tFOUND\tPRICE\tCURRENCY\tCURRENCY ID\tSOURCE DOCUMENT\tPRODUCT ID"); err != nil {
 		return err
 	}
 	for _, quote := range page.Items {
-		if _, err := fmt.Fprintf(writer, "%s\t%s\t%s\t%t\t%s\t%s\t%s\t%s\n", flat(quote.ProductCode), flat(quote.ProductArticle), flat(quote.ProductName), quote.Found, quote.Price, quote.CurrencyID, quote.SourceDocumentID, quote.ProductID); err != nil {
+		currency := strings.TrimSpace(quote.CurrencyCode + " " + quote.CurrencySymbol)
+		if _, err := fmt.Fprintf(writer, "%s\t%s\t%s\t%t\t%s\t%s\t%s\t%s\t%s\n", flat(quote.ProductCode), flat(quote.ProductArticle), flat(quote.ProductName), quote.Found, quote.Price, flat(currency), quote.CurrencyID, quote.SourceDocumentID, quote.ProductID); err != nil {
 			return err
 		}
 	}
@@ -74,6 +76,10 @@ func runPriceGet(ctx context.Context, svc service.Service, args []string, out io
 		_, err = fmt.Fprintf(out, "No price for %s (%s), type %s, as of %s\n", flat(quote.ProductName), quote.ProductID, flat(quote.PriceTypeName), quote.AsOf)
 		return err
 	}
-	_, err = fmt.Fprintf(out, "%s: %s (type %s, as of %s; document %s at %s)\n", flat(quote.ProductName), quote.Price, flat(quote.PriceTypeName), quote.AsOf, quote.SourceDocumentID, quote.SourceDate)
+	currency := strings.TrimSpace(quote.CurrencyCode + " " + quote.CurrencySymbol)
+	if currency == "" {
+		currency = quote.CurrencyID
+	}
+	_, err = fmt.Fprintf(out, "%s: %s %s (type %s, as of %s; document %s at %s)\n", flat(quote.ProductName), quote.Price, flat(currency), flat(quote.PriceTypeName), quote.AsOf, quote.SourceDocumentID, quote.SourceDate)
 	return err
 }

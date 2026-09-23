@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
 	"strconv"
@@ -13,12 +14,14 @@ import (
 const priceTestProduct = "00000000-0000-0000-0000-000000000001"
 const priceTestType = "00000000-0000-0000-0000-000000000002"
 const priceTestVariant = "00000000-0000-0000-0000-000000000003"
+const priceTestCurrency = "00000000-0000-0000-0000-000000000004"
 
 type priceReader struct {
-	documents     []map[string]any
-	products      []map[string]any
-	groupID       string
-	documentPages *int
+	documents           []map[string]any
+	products            []map[string]any
+	groupID             string
+	documentPages       *int
+	currencyUnavailable bool
 }
 
 func (priceReader) Check(context.Context) (int, error) { return 1, nil }
@@ -35,6 +38,11 @@ func (r priceReader) Get(_ context.Context, resource string, params url.Values, 
 		return json.Marshal(map[string]any{"value": r.products[min(skip, len(r.products)):min(skip+top, len(r.products))]})
 	case resource == "Catalog_ВидыЦен":
 		return []byte(`{"odata.count":"1","value":[{"Ref_Key":"` + priceTestType + `","Description":"Example price","DeletionMark":false,"Недействителен":false}]}`), nil
+	case resource == "Catalog_Валюты":
+		if r.currencyUnavailable {
+			return nil, errors.New("currency catalog unavailable")
+		}
+		return []byte(`{"odata.count":"1","value":[{"Ref_Key":"` + priceTestCurrency + `","Code":"643","Description":"Ruble","СимвольноеПредставление":"₽","DeletionMark":false}]}`), nil
 	case resource == "Document_УстановкаЦенНоменклатуры":
 		if params.Get("$inlinecount") != "" {
 			return json.Marshal(map[string]any{"odata.count": strconv.Itoa(len(r.documents)), "value": []any{}})
@@ -70,7 +78,7 @@ func TestListPricesScansHistoryOnceForProductPage(t *testing.T) {
 	}
 	svc := Service{OData: reader}
 	first, err := svc.ListPrices(context.Background(), "Example price", group, "", "2026-09-23", 1, 0)
-	if err != nil || len(first.Items) != 1 || first.Items[0].ProductID != priceTestProduct || first.Items[0].ProductCode != "P001" || first.Items[0].ProductArticle != "A001" || first.Items[0].Price != "10.10" || first.NextOffset == nil || *first.NextOffset != 2 {
+	if err != nil || len(first.Items) != 1 || first.Items[0].ProductID != priceTestProduct || first.Items[0].ProductCode != "P001" || first.Items[0].ProductArticle != "A001" || first.Items[0].Price != "10.10" || first.Items[0].CurrencyCode != "643" || first.Items[0].CurrencySymbol != "₽" || first.NextOffset == nil || *first.NextOffset != 2 {
 		t.Fatalf("first price page: %+v, %v", first, err)
 	}
 	if documentPages != 1 {
@@ -91,7 +99,7 @@ func priceTestDocument(id, date string, posted, deleted bool, characteristic, am
 		"Ref_Key": id, "Date": date, "Posted": posted, "DeletionMark": deleted,
 		"Запасы": []map[string]any{{
 			"LineNumber": "1", "Номенклатура_Key": priceTestProduct, "ВидЦены_Key": priceTestType,
-			"Характеристика_Key": characteristic, "Цена": json.Number(amount),
+			"Характеристика_Key": characteristic, "Цена": json.Number(amount), "Валюта_Key": priceTestCurrency,
 		}},
 	}
 }
@@ -126,5 +134,15 @@ func TestGetPriceSelectsLatestPostedDocumentAndExactCharacteristic(t *testing.T)
 	before, err := svc.GetPrice(context.Background(), priceTestProduct, "Example price", "", "2025-12-31")
 	if err != nil || before.Found {
 		t.Fatalf("before first price: %+v, %v", before, err)
+	}
+}
+
+func TestGetPriceKeepsCurrencyIDWhenCatalogUnavailable(t *testing.T) {
+	reader := priceReader{currencyUnavailable: true, documents: []map[string]any{
+		priceTestDocument(salesID(30), "2026-09-23T10:00:00", true, false, emptyGUID, "12.34"),
+	}}
+	quote, err := (Service{OData: reader}).GetPrice(context.Background(), priceTestProduct, "Example price", "", "2026-09-23")
+	if err != nil || !quote.Found || quote.Price != "12.34" || quote.CurrencyID != priceTestCurrency || quote.CurrencyCode != "" {
+		t.Fatalf("quote without currency catalog: %+v, %v", quote, err)
 	}
 }

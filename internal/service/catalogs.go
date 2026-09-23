@@ -32,6 +32,14 @@ type PriceType struct {
 	Inactive bool   `json:"inactive"`
 }
 
+type Currency struct {
+	ID      string `json:"id"`
+	Code    string `json:"code"`
+	Name    string `json:"name"`
+	Symbol  string `json:"symbol"`
+	Deleted bool   `json:"deleted"`
+}
+
 type UnitType struct {
 	ID                        string `json:"id"`
 	Code                      string `json:"code"`
@@ -118,6 +126,33 @@ func (s Service) ListPriceTypes(ctx context.Context) ([]PriceType, error) {
 		return types[i].Name < types[j].Name
 	})
 	return types, nil
+}
+
+func (s Service) ListCurrencies(ctx context.Context) ([]Currency, error) {
+	rows, err := s.catalogRows(ctx, config.Currencies)
+	if err != nil {
+		return nil, err
+	}
+	items := make([]Currency, 0, len(rows))
+	for _, row := range rows {
+		if !catalogBoolean(row["DeletionMark"]) {
+			return nil, errors.New("invalid OData currency deletion mark")
+		}
+		item, err := bindFields[Currency](row, config.Currencies.Fields)
+		if err != nil || !linkedGUID(item.ID) || item.Code == "" || item.Name == "" {
+			return nil, errors.New("invalid OData currency")
+		}
+		if !item.Deleted {
+			items = append(items, item)
+		}
+	}
+	sort.Slice(items, func(i, j int) bool {
+		if items[i].Code == items[j].Code {
+			return items[i].ID < items[j].ID
+		}
+		return items[i].Code < items[j].Code
+	})
+	return items, nil
 }
 
 func (s Service) ListUnitTypes(ctx context.Context) ([]UnitType, error) {
