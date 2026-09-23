@@ -83,6 +83,45 @@ func TestCustomerPagingSearchAndGet(t *testing.T) {
 	}
 }
 
+func TestCounterpartyFolderScopeFiltersBeforePaging(t *testing.T) {
+	folderID := salesID(20)
+	otherID := salesID(21)
+	rows := []map[string]any{
+		{"Ref_Key": folderID, "Description": "Folder", "Parent_Key": emptyGUID, "IsFolder": true, "DeletionMark": false},
+		{"Ref_Key": otherID, "Description": "Other", "Parent_Key": emptyGUID, "IsFolder": true, "DeletionMark": false},
+		{"Ref_Key": salesID(1), "Description": "Beta", "Parent_Key": folderID, "IsFolder": false, "DeletionMark": false, "Покупатель": true, "Поставщик": false},
+		{"Ref_Key": salesID(2), "Description": "Alpha", "Parent_Key": folderID, "IsFolder": false, "DeletionMark": false, "Покупатель": true, "Поставщик": true},
+		{"Ref_Key": salesID(3), "Description": "Root", "Parent_Key": emptyGUID, "IsFolder": false, "DeletionMark": false, "Покупатель": true, "Поставщик": true},
+		{"Ref_Key": salesID(4), "Description": "Elsewhere", "Parent_Key": otherID, "IsFolder": false, "DeletionMark": false, "Покупатель": true, "Поставщик": true},
+	}
+	svc := Service{OData: salesReader{map[string][]map[string]any{"Catalog_Контрагенты": rows}}}
+	first, err := svc.ListCustomersInGroup(context.Background(), "", 1, 0, folderID)
+	if err != nil || first.GroupID != folderID || first.Total != 2 || len(first.Items) != 1 || first.Items[0].Name != "Alpha" || first.Items[0].ParentID != folderID || first.NextOffset == nil || *first.NextOffset != 1 {
+		t.Fatalf("first scoped page: %+v, %v", first, err)
+	}
+	second, err := svc.ListCustomersInGroup(context.Background(), "", 1, 1, folderID)
+	if err != nil || second.Total != 2 || len(second.Items) != 1 || second.Items[0].Name != "Beta" || second.NextOffset != nil {
+		t.Fatalf("second scoped page: %+v, %v", second, err)
+	}
+	suppliers, err := svc.ListSuppliersInGroup(context.Background(), "alpha", 20, 0, folderID)
+	if err != nil || suppliers.Total != 1 || suppliers.Items[0].Name != "Alpha" {
+		t.Fatalf("scoped supplier search: %+v, %v", suppliers, err)
+	}
+	root, err := svc.ListCustomersInGroup(context.Background(), "", 20, 0, "root")
+	if err != nil || root.Total != 1 || root.GroupID != emptyGUID || root.Items[0].Name != "Root" {
+		t.Fatalf("root scope: %+v, %v", root, err)
+	}
+	for _, invalid := range []string{"bad-guid", salesID(1)} {
+		if _, err := svc.ListCustomersInGroup(context.Background(), "", 20, 0, invalid); err == nil {
+			t.Fatalf("accepted invalid folder %s", invalid)
+		}
+	}
+	rows[0]["DeletionMark"] = true
+	if _, err := svc.ListCustomersInGroup(context.Background(), "", 20, 0, folderID); err == nil {
+		t.Fatal("accepted a deleted folder")
+	}
+}
+
 func TestSalesDocumentOperationsAndLinks(t *testing.T) {
 	rows := []map[string]any{
 		{"Ref_Key": salesID(1), "Date": "2026-09-03T12:00:00", "DeletionMark": false, "Posted": true, "Number": "S1", "СуммаДокумента": 99.50, "Контрагент_Key": salesID(9), "ВидОперации": "ПродажаПокупателю", "Заказ": salesID(7), "Заказ_Type": "StandardODATA.Document_ЗаказПокупателя", "ДокументОснование": "", "ДокументОснование_Type": "StandardODATA.Undefined", "Запасы": []map[string]any{{"LineNumber": "1", "Номенклатура_Key": salesID(10), "Количество": 2, "Цена": 49.75, "Сумма": 99.50, "Всего": 99.50, "СуммаНДС": 10}}},

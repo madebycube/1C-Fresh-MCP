@@ -156,16 +156,16 @@ var GetOrder = Spec{
 var ListCustomers = Spec{
 	Command:     "list customers",
 	Tool:        "list_customers",
-	Description: "List customers with stable paging.",
-	Usage:       "1c list customers [--limit N] [--offset N] [--json]",
-	Example:     "1c list customers --limit 20",
+	Description: "List customers, optionally in one counterparty folder, with stable paging.",
+	Usage:       "1c list customers [--group FOLDER_GUID|root] [--limit N] [--offset N] [--json]",
+	Example:     "1c list customers --group FOLDER_GUID --limit 20",
 }
 
 var SearchCustomers = Spec{
 	Command:     "search customers",
 	Tool:        "search_customers",
-	Description: "Find customers by name or code.",
-	Usage:       "1c search customers [--limit N] [--offset N] [--json] QUERY",
+	Description: "Find customers by name or code, optionally in one folder.",
+	Usage:       "1c search customers [--group FOLDER_GUID|root] [--limit N] [--offset N] [--json] QUERY",
 	Example:     "1c search customers \"Пример компании\"",
 }
 
@@ -196,16 +196,16 @@ var UpdateCustomer = Spec{
 var ListSuppliers = Spec{
 	Command:     "list suppliers",
 	Tool:        "list_suppliers",
-	Description: "List suppliers with stable paging.",
-	Usage:       "1c list suppliers [--limit N] [--offset N] [--json]",
+	Description: "List suppliers, optionally in one counterparty folder, with stable paging.",
+	Usage:       "1c list suppliers [--group FOLDER_GUID|root] [--limit N] [--offset N] [--json]",
 	Example:     "1c list suppliers --limit 20",
 }
 
 var SearchSuppliers = Spec{
 	Command:     "search suppliers",
 	Tool:        "search_suppliers",
-	Description: "Find suppliers by name or code.",
-	Usage:       "1c search suppliers [--limit N] [--offset N] [--json] QUERY",
+	Description: "Find suppliers by name or code, optionally in one folder.",
+	Usage:       "1c search suppliers [--group FOLDER_GUID|root] [--limit N] [--offset N] [--json] QUERY",
 	Example:     "1c search suppliers \"Пример поставщика\"",
 }
 

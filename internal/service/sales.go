@@ -17,6 +17,7 @@ type Customer struct {
 	Code     string `json:"code"`
 	Name     string `json:"name"`
 	FullName string `json:"full_name"`
+	ParentID string `json:"parent_id"`
 	IsFolder bool   `json:"is_folder"`
 	Deleted  bool   `json:"deleted"`
 	Inactive *bool  `json:"inactive"`
@@ -26,6 +27,7 @@ type Customer struct {
 
 type CustomerPage struct {
 	Query      string     `json:"query,omitempty"`
+	GroupID    string     `json:"group_id,omitempty"`
 	Total      int        `json:"total"`
 	Offset     int        `json:"offset"`
 	NextOffset *int       `json:"next_offset,omitempty"`
@@ -64,16 +66,41 @@ type SalesDocumentPage struct {
 }
 
 func (s Service) ListCustomers(ctx context.Context, query string, limit, offset int) (CustomerPage, error) {
-	return s.listCounterparties(ctx, query, limit, offset, true)
+	return s.ListCustomersInGroup(ctx, query, limit, offset, "")
 }
 
 func (s Service) ListSuppliers(ctx context.Context, query string, limit, offset int) (SupplierPage, error) {
-	return s.listCounterparties(ctx, query, limit, offset, false)
+	return s.ListSuppliersInGroup(ctx, query, limit, offset, "")
 }
 
-func (s Service) listCounterparties(ctx context.Context, query string, limit, offset int, buyer bool) (CustomerPage, error) {
+func (s Service) ListCustomersInGroup(ctx context.Context, query string, limit, offset int, groupID string) (CustomerPage, error) {
+	return s.listCounterparties(ctx, query, limit, offset, groupID, true)
+}
+
+func (s Service) ListSuppliersInGroup(ctx context.Context, query string, limit, offset int, groupID string) (SupplierPage, error) {
+	return s.listCounterparties(ctx, query, limit, offset, groupID, false)
+}
+
+func (s Service) listCounterparties(ctx context.Context, query string, limit, offset int, groupID string, buyer bool) (CustomerPage, error) {
 	if err := validateListPage(limit, offset); err != nil {
 		return CustomerPage{}, err
+	}
+	if groupID != "" {
+		if groupID == "root" || strings.EqualFold(groupID, emptyGUID) {
+			groupID = emptyGUID
+		} else {
+			if !linkedGUID(groupID) {
+				return CustomerPage{}, errors.New("group must be a counterparty folder GUID or root")
+			}
+			folder, err := s.readCounterpartyRecord(ctx, groupID)
+			if err != nil {
+				return CustomerPage{}, err
+			}
+			if folder.IsFolder == nil || !*folder.IsFolder || folder.Deleted == nil || *folder.Deleted {
+				return CustomerPage{}, errors.New("group must be an active counterparty folder")
+			}
+			groupID = strings.ToLower(groupID)
+		}
 	}
 	rows, err := s.catalogRows(ctx, config.Customers)
 	if err != nil {
@@ -95,6 +122,9 @@ func (s Service) listCounterparties(ctx context.Context, query string, limit, of
 		if buyer && (customer.Buyer == nil || !*customer.Buyer) || !buyer && (customer.Supplier == nil || !*customer.Supplier) {
 			continue
 		}
+		if groupID != "" && !strings.EqualFold(customer.ParentID, groupID) && !(groupID == emptyGUID && customer.ParentID == "") {
+			continue
+		}
 		if needle == "" || strings.Contains(strings.ToLower(customer.Name), needle) || strings.Contains(strings.ToLower(customer.FullName), needle) || strings.Contains(strings.ToLower(customer.Code), needle) {
 			customers = append(customers, customer)
 		}
@@ -106,7 +136,7 @@ func (s Service) listCounterparties(ctx context.Context, query string, limit, of
 		}
 		return first < second
 	})
-	page := CustomerPage{Query: query, Total: len(customers), Offset: offset, Items: make([]Customer, 0)}
+	page := CustomerPage{Query: query, GroupID: groupID, Total: len(customers), Offset: offset, Items: make([]Customer, 0)}
 	start := min(offset, len(customers))
 	end := start + min(limit, len(customers)-start)
 	page.Items = append(page.Items, customers[start:end]...)
