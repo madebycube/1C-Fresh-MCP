@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 	"time"
 
@@ -16,6 +17,8 @@ import (
 )
 
 const maxMetadataBytes = 16 << 20
+
+var guidPattern = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 
 type Client struct {
 	base     url.URL
@@ -42,6 +45,19 @@ func (c *Client) Get(ctx context.Context, resource string, params url.Values, ma
 	if resource == "" || strings.Contains(resource, "/") || strings.Contains(resource, "..") {
 		return nil, errors.New("invalid OData resource")
 	}
+	return c.get(ctx, resource, params, maxBytes)
+}
+
+func (c *Client) GetStockBalance(ctx context.Context, productID string, params url.Values, maxBytes int64) ([]byte, error) {
+	if !guidPattern.MatchString(productID) {
+		return nil, errors.New("product ID must be a GUID")
+	}
+	plan := config.WarehouseStock
+	resource := plan.Name + "/Balance(Condition='" + plan.ProductField + " eq guid''" + strings.ToLower(productID) + "''')"
+	return c.get(ctx, resource, params, maxBytes)
+}
+
+func (c *Client) get(ctx context.Context, resource string, params url.Values, maxBytes int64) ([]byte, error) {
 	u := c.base
 	u.Path = strings.TrimRight(u.Path, "/") + "/odata/standard.odata/" + resource
 	u.RawQuery = params.Encode()

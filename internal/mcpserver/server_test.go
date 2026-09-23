@@ -32,6 +32,9 @@ func (stubReader) Get(_ context.Context, resource string, params url.Values, _ i
 	if resource == "Catalog_ВидыЦен" {
 		return []byte(`{"odata.count":"1","value":[{"Ref_Key":"00000000-0000-0000-0000-000000000002","Description":"Retail","DeletionMark":false,"Недействителен":false}]}`), nil
 	}
+	if resource == "Catalog_СтруктурныеЕдиницы" {
+		return []byte(`{"odata.count":"1","value":[{"Ref_Key":"00000000-0000-0000-0000-000000000006","Description":"Example warehouse","ТипСтруктурнойЕдиницы":"Склад","DeletionMark":false,"Недействителен":false}]}`), nil
+	}
 	if params.Get("$inlinecount") != "" {
 		return []byte(`{"odata.count":"1","value":[]}`), nil
 	}
@@ -63,6 +66,10 @@ func (stubReader) Write(_ context.Context, method, _ string, _ []byte, _ string)
 	return nil, nil
 }
 
+func (stubReader) GetStockBalance(_ context.Context, productID string, _ url.Values, _ int64) ([]byte, error) {
+	return []byte(`{"odata.count":"1","value":[{"Номенклатура_Key":"` + productID + `","СтруктурнаяЕдиница_Key":"00000000-0000-0000-0000-000000000006","Характеристика_Key":"00000000-0000-0000-0000-000000000000","Организация_Key":"00000000-0000-0000-0000-000000000000","Партия_Key":"00000000-0000-0000-0000-000000000000","Ячейка_Key":"00000000-0000-0000-0000-000000000000","КоличествоBalance":3.5}]}`), nil
+}
+
 func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 	ctx := context.Background()
 	serverTransport, clientTransport := mcp.NewInMemoryTransports()
@@ -81,8 +88,8 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(listed.Tools) != 15 {
-		t.Fatalf("got %d tools; want 15", len(listed.Tools))
+	if len(listed.Tools) != 17 {
+		t.Fatalf("got %d tools; want 17", len(listed.Tools))
 	}
 	for _, tool := range listed.Tools {
 		if tool.Annotations == nil {
@@ -109,6 +116,8 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 		{operations.UpdateGroup.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000001", "name": "Renamed"}},
 		{operations.ListPriceTypes.Tool, map[string]any{}},
 		{operations.GetPrice.Tool, map[string]any{"product_id": "00000000-0000-0000-0000-000000000004", "price_type": "Retail", "as_of": "2026-09-23"}},
+		{operations.ListWarehouses.Tool, map[string]any{}},
+		{operations.GetStock.Tool, map[string]any{"product_id": "00000000-0000-0000-0000-000000000004"}},
 		{operations.SearchProducts.Tool, map[string]any{"query": "Chair", "limit": 2}},
 		{operations.UpdateProduct.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000004", "article": "B"}},
 		{operations.ListOrders.Tool, map[string]any{"limit": 2}},

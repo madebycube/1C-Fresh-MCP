@@ -65,6 +65,19 @@ type getPriceInput struct {
 	AsOf             string `json:"as_of,omitempty" jsonschema:"Application date, YYYY-MM-DD; defaults to today"`
 }
 
+type listWarehousesInput struct{}
+
+type listWarehousesOutput struct {
+	Warehouses []service.Warehouse `json:"warehouses"`
+	Count      int                 `json:"count"`
+}
+
+type getStockInput struct {
+	ProductID        string `json:"product_id" jsonschema:"Product GUID from find_nomenclature"`
+	WarehouseID      string `json:"warehouse_id,omitempty" jsonschema:"Optional warehouse GUID from list_warehouses"`
+	CharacteristicID string `json:"characteristic_id,omitempty" jsonschema:"Optional product characteristic GUID; omit for all characteristics"`
+}
+
 type searchResourcesInput struct {
 	Query string `json:"query" jsonschema:"Text to find in an OData resource name"`
 	Kind  string `json:"kind,omitempty" jsonschema:"Optional catalog, document, register, or other filter"`
@@ -151,6 +164,20 @@ func New(svc service.Service) *mcp.Server {
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, input getPriceInput) (*mcp.CallToolResult, service.PriceQuote, error) {
 		quote, err := svc.GetPrice(ctx, input.ProductID, input.PriceType, input.CharacteristicID, input.AsOf)
 		return nil, quote, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.ListWarehouses.Tool, Description: operations.ListWarehouses.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ listWarehousesInput) (*mcp.CallToolResult, listWarehousesOutput, error) {
+		warehouses, err := svc.ListWarehouses(ctx)
+		return nil, listWarehousesOutput{Warehouses: warehouses, Count: len(warehouses)}, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.GetStock.Tool, Description: operations.GetStock.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input getStockInput) (*mcp.CallToolResult, service.StockResult, error) {
+		stock, err := svc.GetStock(ctx, input.ProductID, input.WarehouseID, input.CharacteristicID)
+		return nil, stock, err
 	})
 	mcp.AddTool(server, &mcp.Tool{
 		Name: operations.SearchProducts.Tool, Description: operations.SearchProducts.Description,

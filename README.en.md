@@ -2,7 +2,7 @@
 
 ![1C-Fresh CLI and MCP](Images/EnglishREADMEBanner.png)
 
-A Go CLI and local MCP server for a 1C-Fresh application. Both use the same OData client and support product groups, price types and lookups, products, customer orders, cash receipts, and OData schema discovery. Writes currently cover product groups and selected product fields.
+A Go CLI and local MCP server for a 1C-Fresh application. Both use the same OData client and support product groups, price types and lookups, products, warehouses and stock, customer orders, cash receipts, and OData schema discovery. Writes currently cover product groups and selected product fields.
 
 ## Requirements
 
@@ -61,6 +61,8 @@ Commands follow `1c VERB RESOURCE [OPTIONS]`. Use `--help` on a command for its 
 1c update product PRODUCT_GUID --name "New name" --article NEW-ARTICLE
 1c list price-types
 1c get price PRODUCT_GUID --price-type "Пример цены" --as-of 2026-09-23
+1c list warehouses
+1c get stock PRODUCT_GUID --warehouse WAREHOUSE_GUID
 1c search products --limit 10 "название товара"
 1c search resources --kind catalog --limit 20 "Номенклатура"
 1c describe resource Catalog_Номенклатура
@@ -74,6 +76,8 @@ Commands follow `1c VERB RESOURCE [OPTIONS]`. Use `--help` on a command for its 
 `list groups` returns product folders and their IDs; `list price-types` returns price type names and IDs. Product groups and price types are separate entities. These commands do not retrieve prices from price documents.
 
 `get price` finds the latest price for a product and named price type as of `--as-of` (today by default). It uses posted, non-deleted documents. Omit `--characteristic GUID` for a price without a characteristic or pass a variant's GUID. When no price exists, the result has `found: false`. JSON includes the exact decimal price string, currency, and source document ID, date, and line number. The command scans price document history, so it may take some time.
+
+`list warehouses` shows warehouses and retail stores from the structural units catalog. `get stock` shows current product balances by warehouse; `--warehouse` selects one, and `--characteristic` selects a product characteristic. Quantities come from the `AccumulationRegister_ЗапасыНаСкладах/Balance` virtual table and are summed across characteristics, batches, cells, and organizations when no characteristic is selected. JSON also includes the source balance rows and product unit ID. If 1C cannot resolve the unit's description, its ID remains available. A stock balance does not promise that the product is available to sell.
 
 `create group` creates a group at the catalog root or under the group specified by `--parent`. `update group` renames an existing group by GUID. `update product` changes a product's name, full name (`--full-name`), and/or article (`--article`); an empty string clears the full name or article. These commands **change live 1C data**. A live write has not been verified. Product creation, deletion, and generic OData editing are not available yet.
 
@@ -100,6 +104,7 @@ Configure your MCP client to launch this command from the repository directory, 
 - `check_connection`
 - `list_product_groups` and `list_price_types`
 - `get_product_price`
+- `list_warehouses` and `get_product_stock`
 - `find_nomenclature`
 - `update_product` (write operation)
 - `search_odata_resources` and `describe_odata_resource`

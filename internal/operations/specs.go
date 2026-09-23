@@ -57,6 +57,22 @@ var GetPrice = Spec{
 	Example:     "1c get price PRODUCT_GUID --price-type \"Пример цены\"",
 }
 
+var ListWarehouses = Spec{
+	Command:     "list warehouses",
+	Tool:        "list_warehouses",
+	Description: "List warehouses and retail stores with their 1C IDs.",
+	Usage:       "1c list warehouses [--json]",
+	Example:     "1c list warehouses",
+}
+
+var GetStock = Spec{
+	Command:     "get stock",
+	Tool:        "get_product_stock",
+	Description: "Show current product stock by warehouse.",
+	Usage:       "1c get stock PRODUCT_GUID [--warehouse GUID] [--characteristic GUID] [--json]",
+	Example:     "1c get stock PRODUCT_GUID --warehouse WAREHOUSE_GUID",
+}
+
 var SearchProducts = Spec{
 	Command:     "search products",
 	Tool:        "find_nomenclature",
@@ -131,4 +147,4 @@ var DescribeResource = Spec{
 	Advanced:    true,
 }
 
-var All = []Spec{Check, ListGroups, CreateGroup, UpdateGroup, ListPriceTypes, GetPrice, SearchProducts, UpdateProduct, ListOrders, GetOrder, ListReceipts, GetReceipt, AuditUnpostedReceipts, SearchResources, DescribeResource}
+var All = []Spec{Check, ListGroups, CreateGroup, UpdateGroup, ListPriceTypes, GetPrice, ListWarehouses, GetStock, SearchProducts, UpdateProduct, ListOrders, GetOrder, ListReceipts, GetReceipt, AuditUnpostedReceipts, SearchResources, DescribeResource}
