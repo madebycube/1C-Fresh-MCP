@@ -60,6 +60,21 @@ func TestListPriceTypesIncludesInactiveAndDeleted(t *testing.T) {
 	}
 }
 
+func TestListUnitTypesReturnsActiveClassifierEntries(t *testing.T) {
+	reader := &catalogReader{rows: map[string][]map[string]any{"Catalog_КлассификаторЕдиницИзмерения": {
+		{"Ref_Key": groupID, "Code": "796", "Description": "шт", "НаименованиеПолное": "Штука", "МеждународноеСокращение": "pc", "ТипИзмеряемойВеличины": "Штука", "DeletionMark": false},
+		{"Ref_Key": childID, "Description": "old", "DeletionMark": true},
+	}}}
+	units, err := (Service{OData: reader}).ListUnitTypes(context.Background())
+	if err != nil || len(units) != 1 || units[0].Code != "796" || units[0].Name != "шт" || units[0].InternationalAbbreviation != "pc" {
+		t.Fatalf("unit types: %+v, %v", units, err)
+	}
+	reader.rows["Catalog_КлассификаторЕдиницИзмерения"] = []map[string]any{{"Ref_Key": groupID, "Description": "bad"}}
+	if _, err := (Service{OData: reader}).ListUnitTypes(context.Background()); err == nil {
+		t.Fatal("accepted a missing deletion mark")
+	}
+}
+
 func TestCatalogRejectsRepeatedIDAndBrokenGroup(t *testing.T) {
 	reader := &catalogReader{rows: map[string][]map[string]any{"Catalog_Номенклатура": {
 		{"Ref_Key": "same", "Description": "A", "IsFolder": true},

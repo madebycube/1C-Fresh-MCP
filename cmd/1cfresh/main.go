@@ -79,6 +79,8 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		return runGroupUpdate(ctx, svc, commandArgs, out)
 	case operations.ListPriceTypes.Command:
 		return runPriceTypeList(ctx, svc, commandArgs, out)
+	case operations.ListUnitTypes.Command:
+		return runUnitTypeList(ctx, svc, commandArgs, out)
 	case operations.GetPrice.Command:
 		return runPriceGet(ctx, svc, commandArgs, out)
 	case operations.ListWarehouses.Command:
@@ -241,6 +243,7 @@ func printHelp(out io.Writer) {
 	fmt.Fprintln(out, "  1c list groups --name \"Пример группы\"")
 	fmt.Fprintln(out, "  1c update group GROUP_GUID --parent PARENT_GUID")
 	fmt.Fprintln(out, "  1c list price-types")
+	fmt.Fprintln(out, "  1c list unit-types")
 	fmt.Fprintln(out, "  1c list products --limit 20")
 	fmt.Fprintln(out, "  1c list products --group GROUP_GUID --limit 20")
 	fmt.Fprintln(out, "  1c get product PRODUCT_GUID")

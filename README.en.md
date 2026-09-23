@@ -62,6 +62,7 @@ Commands follow `1c VERB RESOURCE [OPTIONS]`. Use `--help` on a command for its 
 1c update product PRODUCT_GUID --name "New name" --article NEW-ARTICLE
 1c update product PRODUCT_GUID --group GROUP_GUID
 1c list price-types
+1c list unit-types
 1c get price PRODUCT_GUID --price-type "Пример цены" --as-of 2026-09-23
 1c list warehouses
 1c get stock PRODUCT_GUID --warehouse WAREHOUSE_GUID
@@ -105,7 +106,7 @@ Commands follow `1c VERB RESOURCE [OPTIONS]`. Use `--help` on a command for its 
 1c audit receipts --from 2026-09-01 --before 2026-09-24 --json
 ```
 
-`list groups` returns product folders and their IDs; `list price-types` returns price type names and IDs. Product groups and price types are separate entities. These commands do not retrieve prices from price documents.
+`list groups` returns product folders and their IDs; `list price-types` returns price type names and IDs. `list unit-types` returns measurement-unit classifier entries; their IDs are not product base-unit IDs. Product groups and price types are separate entities. These commands do not retrieve prices from price documents.
 
 `get price` finds the latest price for a product and named price type as of `--as-of` (today by default). It uses posted, non-deleted documents. Omit `--characteristic GUID` for a price without a characteristic or pass a variant's GUID. When no price exists, the result has `found: false`. JSON includes the exact decimal price string, currency, and source document ID, date, and line number. The command scans price document history, so it may take some time.
 
@@ -142,7 +143,7 @@ Configure your MCP client to launch this command from the repository directory, 
 - `check_connection`
 - `list_product_groups` and `list_price_types`
 - `get_product_price`
-- `list_warehouses` and `get_product_stock`
+- `list_warehouses`, `get_product_stock`, and `list_unit_types`
 - `find_nomenclature`
 - `list_products` and `get_product`
 - `update_product` (write operation)

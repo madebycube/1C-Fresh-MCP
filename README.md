@@ -63,6 +63,7 @@ ln -s /path/to/1C-Fresh-MCP/bin/1c "$HOME/.local/bin/1c"
 1c update product PRODUCT_GUID --name "Новое название" --article NEW-ARTICLE
 1c update product PRODUCT_GUID --group GROUP_GUID
 1c list price-types
+1c list unit-types
 1c get price PRODUCT_GUID --price-type "Пример цены" --as-of 2026-09-23
 1c list warehouses
 1c get stock PRODUCT_GUID --warehouse WAREHOUSE_GUID
@@ -104,7 +105,7 @@ ln -s /path/to/1C-Fresh-MCP/bin/1c "$HOME/.local/bin/1c"
 1c audit receipts --from 2026-09-01 --before 2026-09-24 --json
 ```
 
-`list groups` показывает папки номенклатуры и их идентификаторы; `list price-types` — виды цен и их идентификаторы. Группы товаров и виды цен — разные сущности. Эти команды не получают цены товаров из документов установки цен.
+`list groups` показывает папки номенклатуры и их идентификаторы; `list price-types` — виды цен и их идентификаторы. `list unit-types` показывает элементы классификатора единиц измерения; их GUID не заменяют ID базовой единицы в карточке товара. Группы товаров и виды цен — разные сущности. Эти команды не получают цены товаров из документов установки цен.
 
 `get price` ищет последнюю цену товара для указанного вида цен на дату `--as-of` (по умолчанию сегодня). Команда учитывает только проведённые документы без пометки на удаление. Без `--characteristic GUID` ищется цена без характеристики; для варианта передайте его GUID. Если цены нет, результат содержит `found: false`. JSON включает точную десятичную строку цены, валюту и ID, дату и номер строки документа-источника. Поиск просматривает историю документов и может занять время.
 
@@ -149,7 +150,7 @@ bin/1c mcp
 | --- | --- |
 | `check_connection` | `create_product_group` |
 | `list_product_groups`, `list_price_types`, `get_product_price` | `update_product_group` |
-| `list_warehouses`, `get_product_stock` | |
+| `list_warehouses`, `get_product_stock`, `list_unit_types` | |
 | `find_nomenclature` | `update_product` |
 | `list_products`, `get_product` | |
 | `list_customers`, `search_customers`, `get_customer` | `create_customer`, `update_customer` |

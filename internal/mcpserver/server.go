@@ -65,6 +65,13 @@ type updateGroupInput struct {
 
 type listPriceTypesInput struct{}
 
+type listUnitTypesInput struct{}
+
+type listUnitTypesOutput struct {
+	UnitTypes []service.UnitType `json:"unit_types"`
+	Count     int                `json:"count"`
+}
+
 type listPriceTypesOutput struct {
 	PriceTypes []service.PriceType `json:"price_types"`
 	Count      int                 `json:"count"`
@@ -264,6 +271,13 @@ func New(svc service.Service) *mcp.Server {
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ listPriceTypesInput) (*mcp.CallToolResult, listPriceTypesOutput, error) {
 		priceTypes, err := svc.ListPriceTypes(ctx)
 		return nil, listPriceTypesOutput{PriceTypes: priceTypes, Count: len(priceTypes)}, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.ListUnitTypes.Tool, Description: operations.ListUnitTypes.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ listUnitTypesInput) (*mcp.CallToolResult, listUnitTypesOutput, error) {
+		units, err := svc.ListUnitTypes(ctx)
+		return nil, listUnitTypesOutput{UnitTypes: units, Count: len(units)}, err
 	})
 	mcp.AddTool(server, &mcp.Tool{
 		Name: operations.GetPrice.Tool, Description: operations.GetPrice.Description,
