@@ -25,6 +25,22 @@ type searchOutput struct {
 	Count    int               `json:"count"`
 }
 
+type listGroupsInput struct {
+	Name string `json:"name,omitempty" jsonschema:"Optional substring of a group name or path"`
+}
+
+type listGroupsOutput struct {
+	Groups []service.Group `json:"groups"`
+	Count  int             `json:"count"`
+}
+
+type listPriceTypesInput struct{}
+
+type listPriceTypesOutput struct {
+	PriceTypes []service.PriceType `json:"price_types"`
+	Count      int                 `json:"count"`
+}
+
 type listOrdersInput struct {
 	Limit int `json:"limit,omitempty" jsonschema:"Maximum results, from 1 to 100; defaults to 20"`
 }
@@ -65,6 +81,20 @@ func New(svc service.Service) *mcp.Server {
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ checkInput) (*mcp.CallToolResult, checkOutput, error) {
 		count, err := svc.Check(ctx)
 		return nil, checkOutput{OK: err == nil, Resources: count}, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.ListGroups.Tool, Description: operations.ListGroups.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input listGroupsInput) (*mcp.CallToolResult, listGroupsOutput, error) {
+		groups, err := svc.ListGroups(ctx, input.Name)
+		return nil, listGroupsOutput{Groups: groups, Count: len(groups)}, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.ListPriceTypes.Tool, Description: operations.ListPriceTypes.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ listPriceTypesInput) (*mcp.CallToolResult, listPriceTypesOutput, error) {
+		priceTypes, err := svc.ListPriceTypes(ctx)
+		return nil, listPriceTypesOutput{PriceTypes: priceTypes, Count: len(priceTypes)}, err
 	})
 	mcp.AddTool(server, &mcp.Tool{
 		Name: operations.SearchProducts.Tool, Description: operations.SearchProducts.Description,

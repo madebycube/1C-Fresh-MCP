@@ -39,6 +39,35 @@ type DocumentResource struct {
 	PaymentFields []FieldBinding
 }
 
+type CatalogListResource struct {
+	Name   string
+	Filter string
+	Fields []FieldBinding
+}
+
+var ProductGroups = CatalogListResource{
+	Name:   "Catalog_Номенклатура",
+	Filter: "IsFolder eq true",
+	Fields: []FieldBinding{
+		{Output: "id", Source: "Ref_Key"},
+		{Output: "code", Source: "Code"},
+		{Output: "name", Source: "Description"},
+		{Output: "parent_id", Source: "Parent_Key"},
+		{Output: "is_folder", Source: "IsFolder"},
+		{Output: "deleted", Source: "DeletionMark"},
+	},
+}
+
+var PriceTypes = CatalogListResource{
+	Name: "Catalog_ВидыЦен",
+	Fields: []FieldBinding{
+		{Output: "id", Source: "Ref_Key"},
+		{Output: "name", Source: "Description"},
+		{Output: "deleted", Source: "DeletionMark"},
+		{Output: "inactive", Source: "Недействителен"},
+	},
+}
+
 var CustomerOrders = DocumentResource{
 	Name:         "Document_ЗаказПокупателя",
 	DateField:    "Date",

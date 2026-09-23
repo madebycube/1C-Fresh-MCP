@@ -15,6 +15,12 @@ type stubReader struct{}
 
 func (stubReader) Check(context.Context) (int, error) { return 1221, nil }
 func (stubReader) Get(_ context.Context, resource string, params url.Values, _ int64) ([]byte, error) {
+	if resource == "Catalog_Номенклатура" {
+		return []byte(`{"odata.count":"1","value":[{"Ref_Key":"00000000-0000-0000-0000-000000000001","Description":"Furniture","Parent_Key":"00000000-0000-0000-0000-000000000000","IsFolder":true,"DeletionMark":false}]}`), nil
+	}
+	if resource == "Catalog_ВидыЦен" {
+		return []byte(`{"odata.count":"1","value":[{"Ref_Key":"00000000-0000-0000-0000-000000000002","Description":"Retail","DeletionMark":false,"Недействителен":false}]}`), nil
+	}
 	if params.Get("$inlinecount") != "" {
 		return []byte(`{"odata.count":"1","value":[]}`), nil
 	}
@@ -54,8 +60,8 @@ func TestToolsAreReadOnlyAndCallable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(listed.Tools) != 7 {
-		t.Fatalf("got %d tools; want 7", len(listed.Tools))
+	if len(listed.Tools) != 9 {
+		t.Fatalf("got %d tools; want 9", len(listed.Tools))
 	}
 	for _, tool := range listed.Tools {
 		if tool.Annotations == nil || !tool.Annotations.ReadOnlyHint {
@@ -67,6 +73,8 @@ func TestToolsAreReadOnlyAndCallable(t *testing.T) {
 		args map[string]any
 	}{
 		{operations.Check.Tool, map[string]any{}},
+		{operations.ListGroups.Tool, map[string]any{}},
+		{operations.ListPriceTypes.Tool, map[string]any{}},
 		{operations.SearchProducts.Tool, map[string]any{"query": "Chair", "limit": 2}},
 		{operations.ListOrders.Tool, map[string]any{"limit": 2}},
 		{operations.GetOrder.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000001"}},

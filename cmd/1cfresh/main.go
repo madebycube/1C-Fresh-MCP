@@ -21,23 +21,27 @@ import (
 
 func main() {
 	if err := run(context.Background(), os.Args[1:], os.Stdout); err != nil {
-		fmt.Fprintln(os.Stderr, "1cfresh:", err)
+		fmt.Fprintln(os.Stderr, "1c:", err)
 		os.Exit(1)
 	}
 }
 
 func run(ctx context.Context, args []string, out io.Writer) error {
-	if len(args) == 0 || args[0] == "help" || args[0] == "-h" || args[0] == "--help" {
+	if len(args) == 0 || args[0] == "-h" || args[0] == "--help" || len(args) == 1 && args[0] == "help" {
 		printHelp(out)
 		return nil
 	}
-	command := args[0]
-	if (command == "products" || command == "orders" || command == "receipts") && len(args) > 1 {
-		command += " " + args[1]
+	helpRequested := args[0] == "help"
+	if helpRequested {
 		args = args[1:]
 	}
-	if command != operations.Check.Command && command != operations.SearchProducts.Command && command != operations.ListOrders.Command && command != operations.GetOrder.Command && command != operations.ListReceipts.Command && command != operations.GetReceipt.Command && command != operations.AuditUnpostedReceipts.Command && command != "mcp" {
-		return errors.New("unknown command; run '1cfresh help'")
+	command, commandArgs := parseCommand(args)
+	if command == "" {
+		return errors.New("unknown command; run '1c --help'")
+	}
+	if helpRequested || len(commandArgs) == 1 && (commandArgs[0] == "--help" || commandArgs[0] == "-h") {
+		printCommandHelp(out, command)
+		return nil
 	}
 	cfg, err := config.Load()
 	if err != nil {
@@ -49,8 +53,8 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		flags := flag.NewFlagSet("check", flag.ContinueOnError)
 		flags.SetOutput(io.Discard)
 		asJSON := flags.Bool("json", false, "print JSON")
-		if err := flags.Parse(args[1:]); err != nil || flags.NArg() != 0 {
-			return errors.New("usage: 1cfresh check [--json]")
+		if err := flags.Parse(commandArgs); err != nil || flags.NArg() != 0 {
+			return errors.New("usage: 1c check [--json]")
 		}
 		count, err := svc.Check(ctx)
 		if err != nil {
@@ -64,13 +68,17 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		}
 		_, err = fmt.Fprintf(out, "OData connection OK; %d resources available\n", count)
 		return err
+	case operations.ListGroups.Command:
+		return runGroupList(ctx, svc, commandArgs, out)
+	case operations.ListPriceTypes.Command:
+		return runPriceTypeList(ctx, svc, commandArgs, out)
 	case operations.SearchProducts.Command:
-		flags := flag.NewFlagSet("products search", flag.ContinueOnError)
+		flags := flag.NewFlagSet("search products", flag.ContinueOnError)
 		flags.SetOutput(io.Discard)
 		limit := flags.Int("limit", 20, "maximum results (1-50)")
 		asJSON := flags.Bool("json", false, "print JSON")
-		if err := flags.Parse(args[1:]); err != nil || flags.NArg() != 1 {
-			return errors.New("usage: 1cfresh products search [--limit N] [--json] QUERY")
+		if err := flags.Parse(commandArgs); err != nil || flags.NArg() != 1 {
+			return errors.New("usage: 1c search products [--limit N] [--json] QUERY")
 		}
 		products, err := svc.SearchProducts(ctx, flags.Arg(0), *limit)
 		if err != nil {
@@ -90,22 +98,59 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		}
 		return writer.Flush()
 	case operations.ListOrders.Command:
-		return runOrderList(ctx, svc, args[1:], out)
+		return runOrderList(ctx, svc, commandArgs, out)
 	case operations.GetOrder.Command:
-		return runOrderGet(ctx, svc, args[1:], out)
+		return runOrderGet(ctx, svc, commandArgs, out)
 	case operations.ListReceipts.Command:
-		return runReceiptList(ctx, svc, args[1:], out)
+		return runReceiptList(ctx, svc, commandArgs, out)
 	case operations.GetReceipt.Command:
-		return runReceiptGet(ctx, svc, args[1:], out)
+		return runReceiptGet(ctx, svc, commandArgs, out)
 	case operations.AuditUnpostedReceipts.Command:
-		return runReceiptAudit(ctx, svc, args[1:], out)
+		return runReceiptAudit(ctx, svc, commandArgs, out)
 	case "mcp":
-		if len(args) != 1 {
-			return errors.New("usage: 1cfresh mcp")
+		if len(commandArgs) != 0 {
+			return errors.New("usage: 1c mcp")
 		}
 		return mcpserver.New(svc).Run(ctx, &mcp.StdioTransport{})
 	}
 	return nil
+}
+
+func parseCommand(args []string) (string, []string) {
+	if len(args) == 0 {
+		return "", nil
+	}
+	command := args[0]
+	remaining := args[1:]
+	if command != "check" && command != "mcp" {
+		if len(args) < 2 {
+			return "", nil
+		}
+		command = args[0] + " " + args[1]
+		remaining = args[2:]
+	}
+	aliases := map[string]string{
+		"products search":         operations.SearchProducts.Command,
+		"orders list":             operations.ListOrders.Command,
+		"orders get":              operations.GetOrder.Command,
+		"receipts list":           operations.ListReceipts.Command,
+		"receipts get":            operations.GetReceipt.Command,
+		"receipts audit-unposted": operations.AuditUnpostedReceipts.Command,
+		"list group":              operations.ListGroups.Command,
+		"list price-type":         operations.ListPriceTypes.Command,
+	}
+	if canonical, ok := aliases[command]; ok {
+		command = canonical
+	}
+	if command == "mcp" {
+		return command, remaining
+	}
+	for _, operation := range operations.All {
+		if operation.Command == command {
+			return command, remaining
+		}
+	}
+	return "", nil
 }
 
 func flat(value string) string {
@@ -113,13 +158,33 @@ func flat(value string) string {
 }
 
 func printHelp(out io.Writer) {
-	fmt.Fprintln(out, "Usage: 1cfresh COMMAND")
-	fmt.Fprintln(out)
+	fmt.Fprintln(out, "1c reads products, groups, price types, orders, and receipts from 1C-Fresh.")
+	fmt.Fprintln(out, "Every command is read-only. 'Posted' means a document was processed in 1C; it is not a payment status.")
+	fmt.Fprintln(out, "\nUsage: 1c VERB RESOURCE [OPTIONS]")
+	fmt.Fprintln(out, "       1c COMMAND --help")
+	fmt.Fprintln(out, "\nCommands:")
 	for _, operation := range operations.All {
-		fmt.Fprintf(out, "  %-22s %s\n", operation.Command, operation.Description)
+		fmt.Fprintf(out, "  %-18s %s\n", operation.Command, operation.Description)
 	}
-	fmt.Fprintln(out, "  mcp                    Run the MCP server over stdio.")
-	fmt.Fprintln(out)
-	fmt.Fprintln(out, "Environment: ONEC_ODATA_BASE_URL, ONEC_ODATA_USERNAME, ONEC_ODATA_PASSWORD")
-	fmt.Fprintln(out, "Reads .env in the working directory; ONEC_ENV_FILE selects another file.")
+	fmt.Fprintln(out, "  mcp                Run the MCP server for AI clients.")
+	fmt.Fprintln(out, "\nExamples:")
+	fmt.Fprintln(out, "  1c list groups --name КЛИМОВО")
+	fmt.Fprintln(out, "  1c list price-types")
+	fmt.Fprintln(out, "  1c search products диван")
+	fmt.Fprintln(out, "  1c list receipts --from 2026-09-01 --to 2026-09-07")
+	fmt.Fprintln(out, "\nGroups are product folders. Price types are labels such as Розничная; they are separate catalogs.")
+	fmt.Fprintln(out, "Use --json for structured output. Commands read credentials from .env or ONEC_ODATA_* environment variables.")
+}
+
+func printCommandHelp(out io.Writer, command string) {
+	if command == "mcp" {
+		fmt.Fprintln(out, "Run the read-only MCP server over stdio for an AI client.\n\nUsage: 1c mcp")
+		return
+	}
+	for _, operation := range operations.All {
+		if operation.Command == command {
+			fmt.Fprintf(out, "%s\n\nUsage: %s\nExample: %s\n", operation.Description, operation.Usage, operation.Example)
+			return
+		}
+	}
 }

@@ -13,7 +13,7 @@ import (
 )
 
 func runReceiptList(ctx context.Context, svc service.Service, args []string, out io.Writer) error {
-	flags := flag.NewFlagSet("receipts list", flag.ContinueOnError)
+	flags := flag.NewFlagSet("list receipts", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	kind := flags.String("kind", "sale", "sale or refund")
 	from := flags.String("from", "", "first date (YYYY-MM-DD)")
@@ -22,7 +22,7 @@ func runReceiptList(ctx context.Context, svc service.Service, args []string, out
 	offset := flags.Int("offset", 0, "offset within matching receipts")
 	asJSON := flags.Bool("json", false, "print JSON")
 	if err := flags.Parse(args); err != nil || flags.NArg() != 0 || *from == "" || *to == "" {
-		return errors.New("usage: 1cfresh receipts list --from YYYY-MM-DD --to YYYY-MM-DD [--kind sale|refund] [--limit N] [--offset N] [--json]")
+		return errors.New("usage: 1c list receipts --from YYYY-MM-DD --to YYYY-MM-DD [--kind sale|refund] [--limit N] [--offset N] [--json]")
 	}
 	page, err := svc.ListReceipts(ctx, *kind, *from, *to, *limit, *offset)
 	if err != nil {
@@ -56,12 +56,12 @@ func runReceiptList(ctx context.Context, svc service.Service, args []string, out
 }
 
 func runReceiptGet(ctx context.Context, svc service.Service, args []string, out io.Writer) error {
-	flags := flag.NewFlagSet("receipts get", flag.ContinueOnError)
+	flags := flag.NewFlagSet("get receipt", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	kind := flags.String("kind", "sale", "sale or refund")
 	asJSON := flags.Bool("json", false, "print JSON")
 	if err := flags.Parse(args); err != nil || flags.NArg() != 1 {
-		return errors.New("usage: 1cfresh receipts get [--kind sale|refund] [--json] GUID")
+		return errors.New("usage: 1c get receipt [--kind sale|refund] [--json] GUID")
 	}
 	receipt, err := svc.GetReceipt(ctx, *kind, flags.Arg(0))
 	if err != nil {
@@ -101,14 +101,14 @@ func runReceiptGet(ctx context.Context, svc service.Service, args []string, out 
 }
 
 func runReceiptAudit(ctx context.Context, svc service.Service, args []string, out io.Writer) error {
-	flags := flag.NewFlagSet("receipts audit-unposted", flag.ContinueOnError)
+	flags := flag.NewFlagSet("audit receipts", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	kind := flags.String("kind", "both", "sale, refund, or both")
 	from := flags.String("from", "", "first date (YYYY-MM-DD)")
 	before := flags.String("before", "", "exclusive cutoff date (YYYY-MM-DD)")
 	asJSON := flags.Bool("json", false, "print JSON")
 	if err := flags.Parse(args); err != nil || flags.NArg() != 0 || *from == "" || *before == "" {
-		return errors.New("usage: 1cfresh receipts audit-unposted --from YYYY-MM-DD --before YYYY-MM-DD [--kind sale|refund|both] [--json]")
+		return errors.New("usage: 1c audit receipts --from YYYY-MM-DD --before YYYY-MM-DD [--kind sale|refund|both] [--json]")
 	}
 	report, err := svc.AuditUnpostedReceipts(ctx, *kind, *from, *before)
 	if err != nil {
