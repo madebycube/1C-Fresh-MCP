@@ -48,13 +48,13 @@ func (stubReader) Get(_ context.Context, resource string, params url.Values, _ i
 		if params.Get("$select") == "Date" {
 			return []byte(`{"value":[{"Date":"2026-09-23T00:00:00"}]}`), nil
 		}
-		return []byte(`{"value":[{"Ref_Key":"00000000-0000-0000-0000-000000000001","Number":"1","Date":"2026-09-23T00:00:00","Posted":true,"СуммаДокумента":10,"НомерЧекаККМ":"1"}]}`), nil
+		return []byte(`{"value":[{"Ref_Key":"00000000-0000-0000-0000-000000000001","Number":"1","Date":"2026-09-23T00:00:00","Posted":true,"DeletionMark":false,"СуммаДокумента":10,"НомерЧекаККМ":"1"}]}`), nil
 	}
 	if strings.HasPrefix(resource, "Document_ЗаказПокупателя(") {
 		return []byte(`{"Ref_Key":"00000000-0000-0000-0000-000000000001","Number":"1","Date":"2026-09-23T00:00:00","Posted":false,"СуммаДокумента":10,"Запасы":[]}`), nil
 	}
 	if resource == "Document_ЗаказПокупателя" {
-		return []byte(`{"value":[{"Ref_Key":"00000000-0000-0000-0000-000000000001","Number":"1","Date":"2026-09-23T00:00:00","Posted":false,"СуммаДокумента":10}]}`), nil
+		return []byte(`{"value":[{"Ref_Key":"00000000-0000-0000-0000-000000000001","Number":"1","Date":"2026-09-23T00:00:00","Posted":false,"DeletionMark":false,"СуммаДокумента":10}]}`), nil
 	}
 	return []byte(`{"value":[{"Ref_Key":"item-1","Description":"Chair"}]}`), nil
 }

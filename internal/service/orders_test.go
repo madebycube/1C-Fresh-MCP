@@ -23,7 +23,7 @@ func (o *orderReader) Get(_ context.Context, resource string, params url.Values,
 	if strings.Contains(resource, "(guid'") {
 		return []byte(`{"Ref_Key":"00000000-0000-0000-0000-000000000001","Number":"42","Date":"2026-09-23T10:00:00","Posted":false,"СуммаДокумента":99.50,"СостояниеЗаказа":"Открыт","Контрагент_Key":"00000000-0000-0000-0000-000000000002","Запасы":[{"LineNumber":"1","Номенклатура":"Chair","Количество":2,"ЕдиницаИзмерения":"шт","Цена":49.75,"Сумма":99.50,"Всего":99.50}]}`), nil
 	}
-	return []byte(`{"value":[{"Ref_Key":"00000000-0000-0000-0000-000000000001","Number":"42","Date":"2026-09-23T10:00:00","Posted":false,"СуммаДокумента":99.50}]}`), nil
+	return []byte(`{"value":[{"Ref_Key":"00000000-0000-0000-0000-000000000001","Number":"42","Date":"2026-09-23T10:00:00","Posted":false,"DeletionMark":false,"СуммаДокумента":99.50}]}`), nil
 }
 
 func TestListOrdersBuildsBoundedRecentQuery(t *testing.T) {
@@ -35,8 +35,7 @@ func TestListOrdersBuildsBoundedRecentQuery(t *testing.T) {
 	if len(orders) != 1 || orders[0].Amount.String() != "99.50" {
 		t.Fatalf("unexpected orders: %+v", orders)
 	}
-	filter := reader.params.Get("$filter")
-	if filter != "DeletionMark eq false" || reader.params.Get("$orderby") != "Date asc,Ref_Key asc" || reader.params.Get("$top") != "1" {
+	if reader.params.Get("$filter") != "" || reader.params.Get("$orderby") != "Ref_Key asc" || reader.params.Get("$top") != "1" {
 		t.Fatalf("unexpected query: %v", reader.params)
 	}
 }

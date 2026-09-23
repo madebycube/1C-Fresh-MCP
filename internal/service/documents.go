@@ -4,11 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/url"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/madebycube/1C-Fresh-MCP/internal/config"
 )
@@ -43,146 +41,6 @@ func documentFilter(plan config.DocumentResource) string {
 		return plan.Filter
 	}
 	return plan.DeletedField + " eq false"
-}
-
-func (s Service) documentPage(ctx context.Context, plan config.DocumentResource, skip, top int) ([]map[string]json.RawMessage, error) {
-	if top == 0 {
-		return []map[string]json.RawMessage{}, nil
-	}
-	params := url.Values{
-		"$format":  {"json"},
-		"$filter":  {documentFilter(plan)},
-		"$select":  {sourceFields(plan.Fields)},
-		"$orderby": {plan.DateField + " asc,Ref_Key asc"},
-		"$skip":    {strconv.Itoa(skip)},
-		"$top":     {strconv.Itoa(top)},
-	}
-	data, err := s.OData.Get(ctx, plan.Name, params, 4<<20)
-	if err != nil {
-		return nil, err
-	}
-	var response struct {
-		Value []map[string]json.RawMessage `json:"value"`
-	}
-	if err := json.Unmarshal(data, &response); err != nil || response.Value == nil {
-		return nil, errors.New("invalid OData document response")
-	}
-	return response.Value, nil
-}
-
-func (s Service) documentDateAt(ctx context.Context, plan config.DocumentResource, index int) (string, error) {
-	params := url.Values{
-		"$format":  {"json"},
-		"$filter":  {documentFilter(plan)},
-		"$select":  {plan.DateField},
-		"$orderby": {plan.DateField + " asc,Ref_Key asc"},
-		"$skip":    {strconv.Itoa(index)},
-		"$top":     {"1"},
-	}
-	data, err := s.OData.Get(ctx, plan.Name, params, 1<<20)
-	if err != nil {
-		return "", err
-	}
-	var response struct {
-		Value []map[string]json.RawMessage `json:"value"`
-	}
-	if err := json.Unmarshal(data, &response); err != nil || len(response.Value) != 1 {
-		return "", errors.New("invalid OData document date")
-	}
-	var date string
-	if err := json.Unmarshal(response.Value[0][plan.DateField], &date); err != nil || len(date) < 19 {
-		return "", errors.New("invalid OData document date")
-	}
-	return date, nil
-}
-
-func (s Service) lowerBoundDate(ctx context.Context, plan config.DocumentResource, count int, target string) (int, error) {
-	low, high := 0, count
-	for low < high {
-		mid := low + (high-low)/2
-		date, err := s.documentDateAt(ctx, plan, mid)
-		if err != nil {
-			return 0, err
-		}
-		if date >= target {
-			high = mid
-		} else {
-			low = mid + 1
-		}
-	}
-	return low, nil
-}
-
-func (s Service) dateRangePage(ctx context.Context, plan config.DocumentResource, from, to string, limit, offset int) ([]map[string]json.RawMessage, int, error) {
-	if limit < 1 || limit > 100 || offset < 0 {
-		return nil, 0, errors.New("limit must be 1–100 and offset must be nonnegative")
-	}
-	first, total, startText, endText, err := s.dateRangeBounds(ctx, plan, from, to)
-	if err != nil {
-		return nil, 0, err
-	}
-	if offset >= total {
-		return []map[string]json.RawMessage{}, total, nil
-	}
-	if limit > total-offset {
-		limit = total - offset
-	}
-	rows, err := s.documentPage(ctx, plan, first+offset, limit)
-	if err != nil {
-		return nil, 0, err
-	}
-	if err := validateDocumentPage(rows, limit, plan.DateField, startText, endText); err != nil {
-		return nil, 0, err
-	}
-	return rows, total, nil
-}
-
-func (s Service) dateRangeBounds(ctx context.Context, plan config.DocumentResource, from, to string) (int, int, string, string, error) {
-	start, err := time.Parse("2006-01-02", from)
-	if err != nil {
-		return 0, 0, "", "", errors.New("from must be YYYY-MM-DD")
-	}
-	end, err := time.Parse("2006-01-02", to)
-	if err != nil {
-		return 0, 0, "", "", errors.New("to must be YYYY-MM-DD")
-	}
-	if end.Before(start) || end.Sub(start) > 30*24*time.Hour {
-		return 0, 0, "", "", errors.New("date range must be ordered and at most 31 calendar days")
-	}
-	count, err := s.documentCount(ctx, plan)
-	if err != nil {
-		return 0, 0, "", "", err
-	}
-	startText := start.Format("2006-01-02") + "T00:00:00"
-	endText := end.AddDate(0, 0, 1).Format("2006-01-02") + "T00:00:00"
-	first, err := s.lowerBoundDate(ctx, plan, count, startText)
-	if err != nil {
-		return 0, 0, "", "", err
-	}
-	last, err := s.lowerBoundDate(ctx, plan, count, endText)
-	if err != nil {
-		return 0, 0, "", "", err
-	}
-	total := last - first
-	if total < 0 {
-		return 0, 0, "", "", errors.New("OData document dates are not ordered")
-	}
-	return first, total, startText, endText, nil
-}
-
-func validateDocumentPage(rows []map[string]json.RawMessage, limit int, dateField, startText, endText string) error {
-	if len(rows) != limit {
-		return fmt.Errorf("OData returned %d documents; expected %d", len(rows), limit)
-	}
-	previous := ""
-	for _, row := range rows {
-		var date string
-		if err := json.Unmarshal(row[dateField], &date); err != nil || date < startText || date >= endText || date < previous {
-			return errors.New("OData returned documents outside the requested date range or order")
-		}
-		previous = date
-	}
-	return nil
 }
 
 func sourceFields(bindings []config.FieldBinding) string {

@@ -72,10 +72,20 @@ func (s Service) ListReceipts(ctx context.Context, kind, from, to string, limit,
 	if limit == 0 {
 		limit = 20
 	}
-	rows, total, err := s.dateRangePage(ctx, plan, from, to, limit, offset)
+	if limit < 1 || limit > 100 || offset < 0 {
+		return ReceiptPage{}, errors.New("limit must be 1–100 and offset must be nonnegative")
+	}
+	start, end, err := documentDateRange(from, to)
 	if err != nil {
 		return ReceiptPage{}, err
 	}
+	all, err := s.allDocumentRows(ctx, plan)
+	if err != nil {
+		return ReceiptPage{}, err
+	}
+	selected := selectedDocumentRows(all, plan.DateField, start, end)
+	total := len(selected)
+	rows := selected[min(offset, total):min(offset+limit, total)]
 	page := ReceiptPage{Kind: kind, From: from, To: to, Total: total, Offset: offset, Items: make([]Receipt, 0, len(rows))}
 	for _, row := range rows {
 		receipt, err := bindFields[Receipt](row, plan.Fields)

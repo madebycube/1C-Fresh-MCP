@@ -29,7 +29,7 @@ func (r *receiptReader) Get(_ context.Context, resource string, params url.Value
 	top, _ := strconv.Atoi(params.Get("$top"))
 	rows := make([]map[string]any, 0)
 	for index := skip; index < skip+top && index < len(r.dates); index++ {
-		rows = append(rows, map[string]any{"Ref_Key": "00000000-0000-0000-0000-00000000000" + strconv.Itoa(index), "Number": strconv.Itoa(index), "Date": r.dates[index], "Posted": true, "СуммаДокумента": 10, "НомерЧекаККМ": strconv.Itoa(index)})
+		rows = append(rows, map[string]any{"Ref_Key": "00000000-0000-0000-0000-00000000000" + strconv.Itoa(index), "Number": strconv.Itoa(index), "Date": r.dates[index], "Posted": true, "DeletionMark": false, "СуммаДокумента": 10, "НомерЧекаККМ": strconv.Itoa(index)})
 	}
 	data, _ := json.Marshal(map[string]any{"value": rows})
 	return data, nil

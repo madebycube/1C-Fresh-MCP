@@ -43,44 +43,35 @@ func (s Service) AuditUnpostedReceipts(ctx context.Context, kind, from, before s
 		Findings: make([]Receipt, 0),
 	}
 	to := cutoff.AddDate(0, 0, -1).Format("2006-01-02")
+	startText, endText, err := documentDateRange(from, to)
+	if err != nil {
+		return ReceiptAudit{}, err
+	}
 	for _, receiptKind := range kinds {
 		plan, _ := receiptPlan(receiptKind)
-		first, total, startText, endText, err := s.dateRangeBounds(ctx, plan, from, to)
+		all, err := s.allDocumentRows(ctx, plan)
 		if err != nil {
 			return ReceiptAudit{}, err
 		}
+		rows := selectedDocumentRows(all, plan.DateField, startText, endText)
+		total := len(rows)
 		if total > maxAuditReceipts-report.Inspected {
 			return ReceiptAudit{}, errors.New("audit range exceeds 1000 receipts; narrow the dates")
 		}
-		previous := ""
-		for offset := 0; offset < total; offset += 100 {
-			limit := min(100, total-offset)
-			rows, err := s.documentPage(ctx, plan, first+offset, limit)
+		for _, row := range rows {
+			if posted := string(row["Posted"]); posted != "true" && posted != "false" {
+				return ReceiptAudit{}, errors.New("invalid OData receipt posted status")
+			}
+			receipt, err := bindFields[Receipt](row, plan.Fields)
 			if err != nil {
-				return ReceiptAudit{}, err
+				return ReceiptAudit{}, errors.New("invalid OData receipt fields")
 			}
-			if err := validateDocumentPage(rows, limit, plan.DateField, startText, endText); err != nil {
-				return ReceiptAudit{}, err
+			if receipt.ID == "" || receipt.Date == "" {
+				return ReceiptAudit{}, errors.New("invalid OData receipt identity or date")
 			}
-			for _, row := range rows {
-				if posted := string(row["Posted"]); posted != "true" && posted != "false" {
-					return ReceiptAudit{}, errors.New("invalid OData receipt posted status")
-				}
-				receipt, err := bindFields[Receipt](row, plan.Fields)
-				if err != nil {
-					return ReceiptAudit{}, errors.New("invalid OData receipt fields")
-				}
-				if receipt.ID == "" || receipt.Date == "" {
-					return ReceiptAudit{}, errors.New("invalid OData receipt identity or date")
-				}
-				if receipt.Date < previous {
-					return ReceiptAudit{}, errors.New("OData returned documents outside the requested date order")
-				}
-				previous = receipt.Date
-				if !receipt.Posted {
-					receipt.Kind = receiptKind
-					report.Findings = append(report.Findings, receipt)
-				}
+			if !receipt.Posted {
+				receipt.Kind = receiptKind
+				report.Findings = append(report.Findings, receipt)
 			}
 		}
 		report.Inspected += total
