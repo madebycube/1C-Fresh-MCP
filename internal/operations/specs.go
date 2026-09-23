@@ -89,6 +89,14 @@ var GetPrice = Spec{
 	Example:     "1c get price PRODUCT_GUID --price-type \"Пример цены\"",
 }
 
+var ListPrices = Spec{
+	Command:     "list prices",
+	Tool:        "list_product_prices",
+	Description: "List effective prices for a bounded page of products.",
+	Usage:       "1c list prices --price-type NAME [--group GROUP_GUID|root] [--characteristic GUID] [--as-of YYYY-MM-DD] [--limit N] [--offset N] [--json]",
+	Example:     "1c list prices --price-type \"Пример цены\" --group GROUP_GUID",
+}
+
 var ListWarehouses = Spec{
 	Command:     "list warehouses",
 	Tool:        "list_warehouses",
@@ -347,4 +355,4 @@ var DescribeResource = Spec{
 	Advanced:    true,
 }
 
-var All = []Spec{Check, ListGroups, CreateGroup, UpdateGroup, ListCounterpartyGroups, CreateCounterpartyGroup, UpdateCounterpartyGroup, ListPriceTypes, ListUnitTypes, GetPrice, ListWarehouses, GetStock, ListProducts, GetProduct, SearchProducts, UpdateProduct, ListCustomers, SearchCustomers, GetCustomer, CreateCustomer, UpdateCustomer, ListSuppliers, SearchSuppliers, GetSupplier, CreateSupplier, UpdateSupplier, ListOrders, GetOrder, ListSales, GetSale, ListPurchases, GetPurchase, ListWarehouseDocuments, GetWarehouseDocument, ListMoneyAccounts, ListMoney, GetMoney, ListReceipts, GetReceipt, AuditUnpostedReceipts, SearchResources, DescribeResource}
+var All = []Spec{Check, ListGroups, CreateGroup, UpdateGroup, ListCounterpartyGroups, CreateCounterpartyGroup, UpdateCounterpartyGroup, ListPriceTypes, ListUnitTypes, GetPrice, ListPrices, ListWarehouses, GetStock, ListProducts, GetProduct, SearchProducts, UpdateProduct, ListCustomers, SearchCustomers, GetCustomer, CreateCustomer, UpdateCustomer, ListSuppliers, SearchSuppliers, GetSupplier, CreateSupplier, UpdateSupplier, ListOrders, GetOrder, ListSales, GetSale, ListPurchases, GetPurchase, ListWarehouseDocuments, GetWarehouseDocument, ListMoneyAccounts, ListMoney, GetMoney, ListReceipts, GetReceipt, AuditUnpostedReceipts, SearchResources, DescribeResource}

@@ -18,7 +18,9 @@ const maxPriceDocuments = 2000
 
 type PriceQuote struct {
 	ProductID        string  `json:"product_id"`
+	ProductCode      string  `json:"product_code,omitempty"`
 	ProductName      string  `json:"product_name"`
+	ProductArticle   string  `json:"product_article,omitempty"`
 	PriceTypeID      string  `json:"price_type_id"`
 	PriceTypeName    string  `json:"price_type_name"`
 	CharacteristicID string  `json:"characteristic_id"`
@@ -29,6 +31,18 @@ type PriceQuote struct {
 	SourceDocumentID string  `json:"source_document_id,omitempty"`
 	SourceDate       string  `json:"source_date,omitempty"`
 	SourceLineNumber int64   `json:"source_line_number,omitempty"`
+}
+
+type PricePage struct {
+	PriceTypeID      string       `json:"price_type_id"`
+	PriceTypeName    string       `json:"price_type_name"`
+	CharacteristicID string       `json:"characteristic_id"`
+	AsOf             string       `json:"as_of"`
+	GroupID          string       `json:"group_id,omitempty"`
+	Offset           int          `json:"offset"`
+	Scanned          int          `json:"scanned"`
+	NextOffset       *int         `json:"next_offset,omitempty"`
+	Items            []PriceQuote `json:"items"`
 }
 
 type priceDocument struct {
@@ -51,54 +65,114 @@ func (s Service) GetPrice(ctx context.Context, productID, typeName, characterist
 	if !guidPattern.MatchString(productID) || strings.EqualFold(productID, emptyGUID) {
 		return PriceQuote{}, errors.New("product ID must be a nonzero GUID")
 	}
-	typeName = strings.TrimSpace(typeName)
-	if typeName == "" {
-		return PriceQuote{}, errors.New("price type name is required")
-	}
-	if characteristicID == "" {
-		characteristicID = emptyGUID
-	}
-	if !guidPattern.MatchString(characteristicID) {
-		return PriceQuote{}, errors.New("characteristic ID must be a GUID")
-	}
-	if asOf == "" {
-		asOf = time.Now().Format("2006-01-02")
-	}
-	if parsed, err := time.Parse("2006-01-02", asOf); err != nil || parsed.Format("2006-01-02") != asOf {
-		return PriceQuote{}, errors.New("as-of date must be YYYY-MM-DD")
+	typeName, characteristicID, asOf, err := priceFilters(typeName, characteristicID, asOf)
+	if err != nil {
+		return PriceQuote{}, err
 	}
 	product, err := s.priceProduct(ctx, productID)
 	if err != nil {
 		return PriceQuote{}, err
 	}
-	priceTypes, err := s.ListPriceTypes(ctx)
+	selected, err := s.activePriceType(ctx, typeName)
 	if err != nil {
 		return PriceQuote{}, err
+	}
+	quote := PriceQuote{
+		ProductID: product.ID, ProductCode: product.Code, ProductName: product.Name, ProductArticle: product.Article,
+		PriceTypeID: selected.ID, PriceTypeName: selected.Name,
+		CharacteristicID: characteristicID, AsOf: asOf,
+	}
+	quotes := map[string]*PriceQuote{strings.ToLower(productID): &quote}
+	if err := s.applyPriceHistory(ctx, selected.ID, characteristicID, asOf, quotes); err != nil {
+		return PriceQuote{}, err
+	}
+	return quote, nil
+}
+
+func (s Service) ListPrices(ctx context.Context, typeName, groupID, characteristicID, asOf string, limit, offset int) (PricePage, error) {
+	typeName, characteristicID, asOf, err := priceFilters(typeName, characteristicID, asOf)
+	if err != nil {
+		return PricePage{}, err
+	}
+	selected, err := s.activePriceType(ctx, typeName)
+	if err != nil {
+		return PricePage{}, err
+	}
+	products, err := s.ListProductsInGroup(ctx, limit, offset, groupID)
+	if err != nil {
+		return PricePage{}, err
+	}
+	page := PricePage{
+		PriceTypeID: selected.ID, PriceTypeName: selected.Name,
+		CharacteristicID: characteristicID, AsOf: asOf, GroupID: products.GroupID,
+		Offset: products.Offset, Scanned: products.Scanned, NextOffset: products.NextOffset,
+		Items: make([]PriceQuote, 0, len(products.Items)),
+	}
+	quotes := make(map[string]*PriceQuote, len(products.Items))
+	for _, product := range products.Items {
+		page.Items = append(page.Items, PriceQuote{
+			ProductID: product.ID, ProductCode: product.Code, ProductName: product.Name, ProductArticle: product.Article,
+			PriceTypeID: selected.ID, PriceTypeName: selected.Name,
+			CharacteristicID: characteristicID, AsOf: asOf,
+		})
+		quotes[strings.ToLower(product.ID)] = &page.Items[len(page.Items)-1]
+	}
+	if len(quotes) != 0 {
+		if err := s.applyPriceHistory(ctx, selected.ID, characteristicID, asOf, quotes); err != nil {
+			return PricePage{}, err
+		}
+	}
+	return page, nil
+}
+
+func priceFilters(typeName, characteristicID, asOf string) (string, string, string, error) {
+	typeName = strings.TrimSpace(typeName)
+	if typeName == "" {
+		return "", "", "", errors.New("price type name is required")
+	}
+	if characteristicID == "" {
+		characteristicID = emptyGUID
+	}
+	if !guidPattern.MatchString(characteristicID) {
+		return "", "", "", errors.New("characteristic ID must be a GUID")
+	}
+	if asOf == "" {
+		asOf = time.Now().Format("2006-01-02")
+	}
+	if parsed, err := time.Parse("2006-01-02", asOf); err != nil || parsed.Format("2006-01-02") != asOf {
+		return "", "", "", errors.New("as-of date must be YYYY-MM-DD")
+	}
+	return typeName, characteristicID, asOf, nil
+}
+
+func (s Service) activePriceType(ctx context.Context, name string) (PriceType, error) {
+	priceTypes, err := s.ListPriceTypes(ctx)
+	if err != nil {
+		return PriceType{}, err
 	}
 	var selected *PriceType
 	for index := range priceTypes {
 		candidate := &priceTypes[index]
-		if strings.EqualFold(candidate.Name, typeName) && !candidate.Deleted && !candidate.Inactive {
+		if strings.EqualFold(candidate.Name, name) && !candidate.Deleted && !candidate.Inactive {
 			if selected != nil {
-				return PriceQuote{}, errors.New("multiple active price types have this name; use an unambiguous name")
+				return PriceType{}, errors.New("multiple active price types have this name; use an unambiguous name")
 			}
 			selected = candidate
 		}
 	}
 	if selected == nil {
-		return PriceQuote{}, errors.New("active price type not found")
+		return PriceType{}, errors.New("active price type not found")
 	}
-	quote := PriceQuote{
-		ProductID: product.ID, ProductName: product.Name,
-		PriceTypeID: selected.ID, PriceTypeName: selected.Name,
-		CharacteristicID: characteristicID, AsOf: asOf,
-	}
+	return *selected, nil
+}
+
+func (s Service) applyPriceHistory(ctx context.Context, priceTypeID, characteristicID, asOf string, quotes map[string]*PriceQuote) error {
 	count, err := s.documentCount(ctx, config.PriceDocuments)
 	if err != nil {
-		return PriceQuote{}, err
+		return err
 	}
 	if count > maxPriceDocuments {
-		return PriceQuote{}, errors.New("price history exceeds 2000 documents")
+		return errors.New("price history exceeds 2000 documents")
 	}
 	pageCount := (count + pricePageSize - 1) / pricePageSize
 	pages := make([][]map[string]json.RawMessage, pageCount)
@@ -121,32 +195,33 @@ func (s Service) GetPrice(ctx context.Context, productID, typeName, characterist
 		})
 	}
 	if err := group.Wait(); err != nil {
-		return PriceQuote{}, err
+		return err
 	}
 	seen := make(map[string]bool, count)
 	for _, rows := range pages {
 		for _, row := range rows {
 			document, err := bindFields[priceDocument](row, config.PriceDocuments.Fields)
 			if err != nil || !guidPattern.MatchString(document.ID) || seen[document.ID] || len(document.Date) < 19 {
-				return PriceQuote{}, errors.New("invalid or repeated price document")
+				return errors.New("invalid or repeated price document")
 			}
 			seen[document.ID] = true
 			if _, err := time.Parse("2006-01-02T15:04:05", document.Date[:19]); err != nil {
-				return PriceQuote{}, errors.New("invalid price document date")
+				return errors.New("invalid price document date")
 			}
 			if !document.Posted || document.Deleted || document.Date[:10] > asOf {
 				continue
 			}
 			var lines []map[string]json.RawMessage
 			if err := json.Unmarshal(row[config.PriceDocuments.LinesField], &lines); err != nil || lines == nil {
-				return PriceQuote{}, errors.New("invalid price document lines")
+				return errors.New("invalid price document lines")
 			}
 			for _, lineRow := range lines {
 				line, err := bindFields[priceLine](lineRow, config.PriceDocuments.LineFields)
 				if err != nil {
-					return PriceQuote{}, errors.New("invalid price line")
+					return errors.New("invalid price line")
 				}
-				if !strings.EqualFold(line.ProductID, productID) || !strings.EqualFold(line.PriceTypeID, selected.ID) || line.Price == "" {
+				quote := quotes[strings.ToLower(line.ProductID)]
+				if quote == nil || !strings.EqualFold(line.PriceTypeID, priceTypeID) || line.Price == "" {
 					continue
 				}
 				lineCharacteristic := line.CharacteristicID
@@ -158,7 +233,7 @@ func (s Service) GetPrice(ctx context.Context, productID, typeName, characterist
 				}
 				lineNumber, err := strconv.ParseInt(line.LineNumber, 10, 64)
 				if err != nil || lineNumber < 1 {
-					return PriceQuote{}, errors.New("invalid price line number")
+					return errors.New("invalid price line number")
 				}
 				if !quote.Found || document.Date > quote.SourceDate || document.Date == quote.SourceDate && (document.ID > quote.SourceDocumentID || document.ID == quote.SourceDocumentID && lineNumber > quote.SourceLineNumber) {
 					quote.Found = true
@@ -171,11 +246,11 @@ func (s Service) GetPrice(ctx context.Context, productID, typeName, characterist
 			}
 		}
 	}
-	return quote, nil
+	return nil
 }
 
 func (s Service) priceProduct(ctx context.Context, id string) (editableProduct, error) {
-	params := url.Values{"$format": {"json"}, "$select": {"Ref_Key,Description,IsFolder,DeletionMark"}}
+	params := url.Values{"$format": {"json"}, "$select": {"Ref_Key,Code,Description,Артикул,IsFolder,DeletionMark"}}
 	data, err := s.OData.Get(ctx, nomenclatureResource(id), params, 1<<20)
 	if err != nil {
 		return editableProduct{}, err

@@ -130,8 +130,8 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(listed.Tools) != 42 {
-		t.Fatalf("got %d tools; want 42", len(listed.Tools))
+	if len(listed.Tools) != 43 {
+		t.Fatalf("got %d tools; want 43", len(listed.Tools))
 	}
 	for _, tool := range listed.Tools {
 		if tool.Annotations == nil {
@@ -162,6 +162,7 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 		{operations.ListPriceTypes.Tool, map[string]any{}},
 		{operations.ListUnitTypes.Tool, map[string]any{}},
 		{operations.GetPrice.Tool, map[string]any{"product_id": "00000000-0000-0000-0000-000000000004", "price_type": "Retail", "as_of": "2026-09-23"}},
+		{operations.ListPrices.Tool, map[string]any{"price_type": "Retail", "group_id": "00000000-0000-0000-0000-000000000001", "as_of": "2026-09-23", "limit": 1}},
 		{operations.ListWarehouses.Tool, map[string]any{}},
 		{operations.GetStock.Tool, map[string]any{"product_id": "00000000-0000-0000-0000-000000000004"}},
 		{operations.SearchProducts.Tool, map[string]any{"query": "Chair", "limit": 2}},
@@ -203,6 +204,12 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 			data, err := json.Marshal(result.StructuredContent)
 			if err != nil || !strings.Contains(string(data), `"found":true`) || !strings.Contains(string(data), `"price":"120.50"`) {
 				t.Fatalf("price tool returned %s: %v", data, err)
+			}
+		}
+		if call.name == operations.ListPrices.Tool {
+			data, err := json.Marshal(result.StructuredContent)
+			if err != nil || !strings.Contains(string(data), `"price":"120.50"`) || !strings.Contains(string(data), `"items":[`) {
+				t.Fatalf("price list tool returned %s: %v", data, err)
 			}
 		}
 		if call.name == operations.ListOrders.Tool {

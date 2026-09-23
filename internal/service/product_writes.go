@@ -29,6 +29,7 @@ type ProductChange struct {
 
 type editableProduct struct {
 	ID          string `json:"Ref_Key"`
+	Code        string `json:"Code"`
 	Name        string `json:"Description"`
 	FullName    string `json:"НаименованиеПолное"`
 	Article     string `json:"Артикул"`
