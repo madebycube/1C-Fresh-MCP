@@ -57,6 +57,14 @@ var SearchProducts = Spec{
 	Example:     "1c search products диван",
 }
 
+var UpdateProduct = Spec{
+	Command:     "update product",
+	Tool:        "update_product",
+	Description: "Edit a product name, full name, or article by 1C ID.",
+	Usage:       "1c update product GUID [--name TEXT] [--full-name TEXT] [--article TEXT] [--json]",
+	Example:     "1c update product PRODUCT_GUID --article NEW-ARTICLE",
+}
+
 var ListOrders = Spec{
 	Command:     "list orders",
 	Tool:        "list_customer_orders",
@@ -115,4 +123,4 @@ var DescribeResource = Spec{
 	Advanced:    true,
 }
 
-var All = []Spec{Check, ListGroups, CreateGroup, UpdateGroup, ListPriceTypes, SearchProducts, ListOrders, GetOrder, ListReceipts, GetReceipt, AuditUnpostedReceipts, SearchResources, DescribeResource}
+var All = []Spec{Check, ListGroups, CreateGroup, UpdateGroup, ListPriceTypes, SearchProducts, UpdateProduct, ListOrders, GetOrder, ListReceipts, GetReceipt, AuditUnpostedReceipts, SearchResources, DescribeResource}

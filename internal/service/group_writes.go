@@ -16,7 +16,7 @@ import (
 
 const emptyGUID = "00000000-0000-0000-0000-000000000000"
 
-type groupWriter interface {
+type odataWriter interface {
 	Write(context.Context, string, string, []byte, string) ([]byte, error)
 }
 
@@ -56,7 +56,7 @@ func (s Service) CreateGroup(ctx context.Context, name, parentID string) (GroupC
 			return GroupChange{}, errors.New("parent must be an active product group")
 		}
 	}
-	writer, ok := s.OData.(groupWriter)
+	writer, ok := s.OData.(odataWriter)
 	if !ok {
 		return GroupChange{}, errors.New("OData client does not support writes")
 	}
@@ -98,12 +98,12 @@ func (s Service) UpdateGroup(ctx context.Context, id, name string) (GroupChange,
 	if current.Name == name {
 		return GroupChange{ID: id, Name: name, ParentID: current.ParentID, Applied: false}, nil
 	}
-	writer, ok := s.OData.(groupWriter)
+	writer, ok := s.OData.(odataWriter)
 	if !ok {
 		return GroupChange{}, errors.New("OData client does not support writes")
 	}
 	body, _ := json.Marshal(map[string]string{"Description": name})
-	_, err = writer.Write(ctx, http.MethodPatch, groupResource(id), body, current.DataVersion)
+	_, err = writer.Write(ctx, http.MethodPatch, nomenclatureResource(id), body, current.DataVersion)
 	if err != nil {
 		return GroupChange{}, err
 	}
@@ -115,7 +115,7 @@ func (s Service) readGroup(ctx context.Context, id string) (groupRecord, error) 
 		return groupRecord{}, errors.New("group ID must be a nonzero GUID")
 	}
 	params := url.Values{"$format": {"json"}, "$select": {"Ref_Key,Description,Parent_Key,IsFolder,DeletionMark,DataVersion"}}
-	data, err := s.OData.Get(ctx, groupResource(id), params, 1<<20)
+	data, err := s.OData.Get(ctx, nomenclatureResource(id), params, 1<<20)
 	if err != nil {
 		return groupRecord{}, err
 	}
@@ -126,7 +126,7 @@ func (s Service) readGroup(ctx context.Context, id string) (groupRecord, error) 
 	return record, nil
 }
 
-func groupResource(id string) string {
+func nomenclatureResource(id string) string {
 	return fmt.Sprintf("%s(guid'%s')", config.ProductGroups.Name, id)
 }
 

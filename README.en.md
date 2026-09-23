@@ -2,7 +2,7 @@
 
 ![1C-Fresh CLI and MCP](Images/EnglishREADMEBanner.png)
 
-A Go CLI and local MCP server for a 1C-Fresh application. Both use the same OData client and support product groups, price types, products, customer orders, cash receipts, and OData schema discovery. Creating and editing currently cover product groups only.
+A Go CLI and local MCP server for a 1C-Fresh application. Both use the same OData client and support product groups, price types, products, customer orders, cash receipts, and OData schema discovery. Writes currently cover product groups and selected product fields.
 
 ## Requirements
 
@@ -39,6 +39,14 @@ ln -s /path/to/1C-Fresh-MCP/bin/1c "$HOME/.local/bin/1c"
 
 If you copy the binary elsewhere, provide `ONEC_ENV_FILE` or the `ONEC_ODATA_*` environment variables.
 
+### Prompt for an agent
+
+Copy this into a task for an agent with access to your computer and the private repository:
+
+```text
+Install https://github.com/madebycube/1C-Fresh-MCP on my computer. Clone the repository using my GitHub access, build the CLI with go build -o bin/1c ./cmd/1cfresh, and symlink the built bin/1c into a directory on PATH so I can run 1c. Configure my MCP client to launch the absolute path to bin/1c with the mcp argument. Verify installation with 1c --help. Let me enter credentials using 1c login in the terminal; do not request my password in chat. After login, verify the connection with 1c check. If repository access or MCP client configuration is unavailable, identify the exact blocker.
+```
+
 ## CLI syntax
 
 Commands follow `1c VERB RESOURCE [OPTIONS]`. Use `--help` on a command for its usage and an example. Commands print readable tables by default; add `--json` for structured output.
@@ -50,6 +58,7 @@ Commands follow `1c VERB RESOURCE [OPTIONS]`. Use `--help` on a command for its 
 1c create group --name "Новая группа"
 1c create group --name "Подгруппа" --parent PARENT_GUID
 1c update group GROUP_GUID --name "Новое название"
+1c update product PRODUCT_GUID --name "New name" --article NEW-ARTICLE
 1c list price-types
 1c search products --limit 10 "диван"
 1c search resources --kind catalog --limit 20 "Номенклатура"
@@ -63,7 +72,7 @@ Commands follow `1c VERB RESOURCE [OPTIONS]`. Use `--help` on a command for its 
 
 `list groups` returns product folders and their IDs; `list price-types` returns price type names and IDs. A price type such as `Розничная` is separate from a product group such as `КЛИМОВО НОМЕНКЛАТУРА`. These commands do not retrieve prices from price documents.
 
-`create group` creates a group at the catalog root or under the group specified by `--parent`. `update group` renames an existing group by GUID. Both commands **change live 1C data**. A live write has not been verified. Other entities currently have no create, update, or delete commands, and there is no generic OData editor.
+`create group` creates a group at the catalog root or under the group specified by `--parent`. `update group` renames an existing group by GUID. `update product` changes a product's name, full name (`--full-name`), and/or article (`--article`); an empty string clears the full name or article. These commands **change live 1C data**. A live write has not been verified. Product creation, deletion, and generic OData editing are not available yet.
 
 `search resources` uses `1c search resources [--kind catalog|document|register|other] [--limit N] [--json] QUERY` to search OData metadata names by resource kind. `describe resource` uses `1c describe resource [--json] EXACT_NAME` to show schema fields for an exact OData resource name. These commands expose OData schema names and fields; they do not enumerate every screen in the 1C interface or provide generic reads of resource data.
 
@@ -88,6 +97,7 @@ Configure your MCP client to launch this command from the repository directory, 
 - `check_connection`
 - `list_product_groups` and `list_price_types`
 - `find_nomenclature`
+- `update_product` (write operation)
 - `search_odata_resources` and `describe_odata_resource`
 - `list_customer_orders` and `get_customer_order`
 - `list_cash_receipts` and `get_cash_receipt`
