@@ -115,6 +115,7 @@ var Customers = CatalogListResource{
 		{Output: "code", Source: "Code"},
 		{Output: "name", Source: "Description"},
 		{Output: "full_name", Source: "НаименованиеПолное"},
+		{Output: "parent_id", Source: "Parent_Key"},
 		{Output: "is_folder", Source: "IsFolder"},
 		{Output: "deleted", Source: "DeletionMark"},
 		{Output: "inactive", Source: "Недействителен"},

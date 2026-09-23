@@ -66,8 +66,9 @@ Commands follow `1c VERB RESOURCE [OPTIONS]`. Use `--help` on a command for its 
 1c update product PRODUCT_GUID --name "New name" --article NEW-ARTICLE
 1c update product PRODUCT_GUID --group GROUP_GUID
 1c list price-types
+1c list prices --price-type "Example price" --group GROUP_GUID --limit 20
 1c list unit-types
-1c get price PRODUCT_GUID --price-type "Пример цены" --as-of 2026-09-23
+1c get price PRODUCT_GUID --price-type "Example price" --as-of 2026-09-23
 1c list warehouses
 1c get stock PRODUCT_GUID --warehouse WAREHOUSE_GUID
 1c list products --limit 20
@@ -77,6 +78,7 @@ Commands follow `1c VERB RESOURCE [OPTIONS]`. Use `--help` on a command for its 
 1c create product --name "Example item" --type stock --unit UNIT_GUID --category CATEGORY_GUID --group GROUP_GUID
 1c search products --limit 10 "название товара"
 1c list customers --limit 20
+1c list customers --group FOLDER_GUID --limit 20
 1c search customers "Example company"
 1c get customer CUSTOMER_GUID
 1c create customer --name "Example customer" --parent FOLDER_GUID
@@ -89,6 +91,7 @@ Commands follow `1c VERB RESOURCE [OPTIONS]`. Use `--help` on a command for its 
 1c search resources --kind catalog --limit 20 "Номенклатура"
 1c describe resource Catalog_Номенклатура
 1c list orders --limit 20
+1c list orders --customer CUSTOMER_GUID --from 2026-09-01 --to 2026-09-30 --offset 20
 1c get order --json ORDER_GUID
 1c list sales --kind shipment --limit 20
 1c list sales --kind return --customer CUSTOMER_GUID
@@ -111,7 +114,9 @@ Commands follow `1c VERB RESOURCE [OPTIONS]`. Use `--help` on a command for its 
 1c audit receipts --from 2026-09-01 --before 2026-09-24 --json
 ```
 
-`list groups` returns product folders and their IDs; `list price-types` returns price type names and IDs. `list unit-types` returns measurement-unit classifier entries; their IDs are not product base-unit IDs. Product groups and price types are separate entities. These commands do not retrieve prices from price documents.
+`list groups` returns product folders and their IDs; `list price-types` returns price type names and IDs. `list unit-types` returns measurement-unit classifier entries. Product base-unit IDs from `get product` refer to this classifier in the tested tenant. Product groups and price types are separate entities. These commands do not retrieve prices from price documents.
+
+`list prices` shows products in the selected group and their effective prices for a named price type as of `--as-of`. Use `--group GROUP_GUID` or `--group root`; without a group, it browses the catalog. Its pages use raw catalog offsets like `list products` and include products without a price as `found: false`. Each item includes product code, article, and the source price document when found. It scans price document history once per page instead of once per product.
 
 `get price` finds the latest price for a product and named price type as of `--as-of` (today by default). It uses posted, non-deleted documents. Omit `--characteristic GUID` for a price without a characteristic or pass a variant's GUID. When no price exists, the result has `found: false`. JSON includes the exact decimal price string, currency, and source document ID, date, and line number. The command scans price document history, so it may take some time.
 
@@ -121,9 +126,11 @@ Commands follow `1c VERB RESOURCE [OPTIONS]`. Use `--help` on a command for its 
 
 `search resources` uses `1c search resources [--kind catalog|document|register|other] [--limit N] [--json] QUERY` to search OData metadata names by resource kind. `describe resource` uses `1c describe resource [--json] EXACT_NAME` to show schema fields for an exact OData resource name. These commands expose OData schema names and fields; they do not enumerate every screen in the 1C interface or provide generic reads of resource data.
 
-`list products` browses the catalog without a query and excludes folders and deletion-marked records. `--group GROUP_GUID` keeps direct children of that group; `--group root` keeps products at the catalog root. Group matching is local, so a page can be empty while `next_offset` is present; continue from that offset to cover the catalog. `get product` reads one active product by GUID, including its product type and base unit reference. `next_offset` is an offset into raw OData rows: pass it as the next `--offset` rather than adding the number of products shown. Each call scans at most 500 rows, so a page can contain fewer than `--limit` products while still returning `next_offset`. Offsets do not provide a snapshot if the catalog changes between requests. Product search checks product name, full name, and article, excludes folders and deletion-marked rows locally, and returns up to 50 matches. It scans at most 500 OData candidates per field. Order listing returns the latest non-deleted orders, up to 100; order details include product lines. Receipt listing accepts an inclusive date range of up to 31 days, returns up to 100 rows per page, and supports `--offset` for the next page. Receipt details include stock lines and cashless payments. JSON represents amounts and quantities as decimal strings to preserve source precision.
+`list products` browses the catalog without a query and excludes folders and deletion-marked records. `--group GROUP_GUID` keeps direct children of that group; `--group root` keeps products at the catalog root. Group matching is local, so a page can be empty while `next_offset` is present; continue from that offset to cover the catalog. `get product` reads one active product by GUID, including its product type and base unit reference. `next_offset` is an offset into raw OData rows: pass it as the next `--offset` rather than adding the number of products shown. Each call scans at most 500 rows, so a page can contain fewer than `--limit` products while still returning `next_offset`. Offsets do not provide a snapshot if the catalog changes between requests. Product search checks product name, full name, and article, excludes folders and deletion-marked rows locally, and returns up to 50 matches. It scans at most 500 OData candidates per field. Order details include product lines. Receipt listing accepts an inclusive date range of up to 31 days, returns up to 100 rows per page, and supports `--offset` for the next page. Receipt details include stock lines and cashless payments. JSON represents amounts and quantities as decimal strings to preserve source precision.
 
-`list customers` and `search customers` show counterparties marked as buyers, excluding folders and deletion-marked records. `list sales` reads invoices (`invoice`), customer shipments (`shipment`), and incoming goods documents whose operation is customer return (`return`). Use `--customer`, `--from`, and `--to` to narrow results, then `--limit` and `--offset` for paging. `get sale` includes date, amount, posting status, product lines, and linked order or source document IDs when 1C supplies a matching relationship type. `Posted` means the document was posted in 1C; it does not mean paid. The invoice resource is empty in the tested tenant, so lookup of a live invoice by GUID has not been verified. Listings scan resource history and may take several seconds.
+`list customers` and `search customers` show counterparties marked as buyers, excluding folders and deletion-marked records. `--group FOLDER_GUID` keeps direct children of a counterparty folder; `--group root` keeps records at the catalog root. Supplier commands support the same filter. Results include `parent_id`, and paging applies after filtering. `list sales` reads invoices (`invoice`), customer shipments (`shipment`), and incoming goods documents whose operation is customer return (`return`). Use `--customer`, `--from`, and `--to` to narrow results, then `--limit` and `--offset` for paging. `get sale` includes date, amount, posting status, product lines, and linked order or source document IDs when 1C supplies a matching relationship type. `Posted` means the document was posted in 1C; it does not mean paid. The invoice resource is empty in the tested tenant, so lookup of a live invoice by GUID has not been verified. Listings scan resource history and may take several seconds.
+
+`list orders` shows customer orders newest first. Use `--customer`, paired `--from` and `--to`, `--limit`, and `--offset` to filter and page results. JSON returns `items`, `total`, and `next_offset`.
 
 `list suppliers` and `search suppliers` show counterparties marked as suppliers. `list purchases --kind order` reads supplier orders, while `--kind receipt` selects incoming goods documents whose operation is supplier receipt. `list warehouse-docs` reads transfer orders (`transfer-order`), stock movements whose operation is transfer (`transfer`), stock receipts (`stock-receipt`), and stock writeoffs (`stock-writeoff`). Filter by supplier or warehouse ID; a transfer matches either its source or destination warehouse. Both lists support dates, `--limit`, and `--offset`. `get purchase` and `get warehouse-doc` include product lines and available linked document IDs. `Posted` indicates posting in 1C, not fulfillment or physical receipt. There are no transfer orders in the tested tenant, so getting one by GUID has not been verified live.
 
@@ -147,7 +154,7 @@ Configure your MCP client to launch this command from the repository directory, 
 
 - `check_connection`
 - `list_product_groups` and `list_price_types`
-- `get_product_price`
+- `get_product_price` and `list_product_prices`
 - `list_warehouses`, `get_product_stock`, and `list_unit_types`
 - `find_nomenclature`
 - `list_products` and `get_product`

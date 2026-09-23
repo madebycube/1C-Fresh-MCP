@@ -4,15 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/url"
 	"regexp"
 	"strings"
 
 	"github.com/madebycube/1C-Fresh-MCP/internal/config"
 )
-
-const MaxOrders = 100
 
 var guidPattern = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 
@@ -25,6 +22,16 @@ type Order struct {
 	Amount     Decimal     `json:"amount"`
 	CustomerID string      `json:"customer_id"`
 	Lines      []OrderLine `json:"lines,omitempty"`
+}
+
+type OrderPage struct {
+	CustomerID string  `json:"customer_id,omitempty"`
+	From       string  `json:"from,omitempty"`
+	To         string  `json:"to,omitempty"`
+	Total      int     `json:"total"`
+	Offset     int     `json:"offset"`
+	NextOffset *int    `json:"next_offset,omitempty"`
+	Items      []Order `json:"items"`
 }
 
 type OrderLine struct {
@@ -58,27 +65,47 @@ func (s Service) ListOrders(ctx context.Context, limit int) ([]Order, error) {
 	if limit == 0 {
 		limit = 20
 	}
-	if limit < 1 || limit > MaxOrders {
-		return nil, fmt.Errorf("limit must be between 1 and %d", MaxOrders)
+	page, err := s.ListOrdersPage(ctx, "", "", "", limit, 0)
+	return page.Items, err
+}
+
+func (s Service) ListOrdersPage(ctx context.Context, customerID, from, to string, limit, offset int) (OrderPage, error) {
+	if err := validateListPage(limit, offset); err != nil {
+		return OrderPage{}, err
+	}
+	if customerID != "" && !guidPattern.MatchString(customerID) {
+		return OrderPage{}, errors.New("customer ID must be a GUID")
+	}
+	startDate, endDate, err := optionalDocumentDateRange(from, to)
+	if err != nil {
+		return OrderPage{}, err
 	}
 	plan := config.CustomerOrders
 	rows, err := s.allDocumentRows(ctx, plan)
 	if err != nil {
-		return nil, err
+		return OrderPage{}, err
 	}
-	if limit > len(rows) {
-		limit = len(rows)
-	}
-	orders := make([]Order, 0, limit)
-	for index := len(rows) - 1; index >= len(rows)-limit; index-- {
-		row := rows[index]
+	matched := make([]Order, 0, len(rows))
+	for _, row := range rows {
 		order, err := bindFields[Order](row, plan.Fields)
 		if err != nil {
-			return nil, errors.New("invalid OData order fields")
+			return OrderPage{}, errors.New("invalid OData order fields")
 		}
-		orders = append(orders, order)
+		if customerID != "" && !strings.EqualFold(order.CustomerID, customerID) || startDate != "" && order.Date < startDate || endDate != "" && order.Date >= endDate {
+			continue
+		}
+		matched = append(matched, order)
 	}
-	return orders, nil
+	page := OrderPage{CustomerID: customerID, From: from, To: to, Total: len(matched), Offset: offset, Items: make([]Order, 0)}
+	start := min(offset, len(matched))
+	end := start + min(limit, len(matched)-start)
+	for index := len(matched) - start - 1; index >= len(matched)-end; index-- {
+		page.Items = append(page.Items, matched[index])
+	}
+	if end < len(matched) {
+		page.NextOffset = &end
+	}
+	return page, nil
 }
 
 func (s Service) GetOrder(ctx context.Context, id string) (Order, error) {

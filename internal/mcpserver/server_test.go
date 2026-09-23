@@ -136,8 +136,8 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(listed.Tools) != 44 {
-		t.Fatalf("got %d tools; want 44", len(listed.Tools))
+	if len(listed.Tools) != 45 {
+		t.Fatalf("got %d tools; want 45", len(listed.Tools))
 	}
 	for _, tool := range listed.Tools {
 		if tool.Annotations == nil {
@@ -169,6 +169,7 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 		{operations.ListPriceTypes.Tool, map[string]any{}},
 		{operations.ListUnitTypes.Tool, map[string]any{}},
 		{operations.GetPrice.Tool, map[string]any{"product_id": "00000000-0000-0000-0000-000000000004", "price_type": "Retail", "as_of": "2026-09-23"}},
+		{operations.ListPrices.Tool, map[string]any{"price_type": "Retail", "group_id": "00000000-0000-0000-0000-000000000001", "as_of": "2026-09-23", "limit": 1}},
 		{operations.ListWarehouses.Tool, map[string]any{}},
 		{operations.GetStock.Tool, map[string]any{"product_id": "00000000-0000-0000-0000-000000000004"}},
 		{operations.SearchProducts.Tool, map[string]any{"query": "Chair", "limit": 2}},
@@ -176,15 +177,15 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 		{operations.GetProduct.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000004"}},
 		{operations.CreateProduct.Tool, map[string]any{"name": "Example item", "type": "stock", "unit_id": "00000000-0000-0000-0000-000000000013", "category_id": "00000000-0000-0000-0000-000000000014"}},
 		{operations.UpdateProduct.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000004", "article": "B", "group_id": "00000000-0000-0000-0000-000000000001"}},
-		{operations.ListOrders.Tool, map[string]any{"limit": 2}},
+		{operations.ListOrders.Tool, map[string]any{"limit": 2, "offset": 0, "customer_id": "00000000-0000-0000-0000-000000000002", "from": "2026-09-23", "to": "2026-09-23"}},
 		{operations.GetOrder.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000001"}},
-		{operations.ListCustomers.Tool, map[string]any{"limit": 2}},
-		{operations.SearchCustomers.Tool, map[string]any{"query": "Example", "limit": 2}},
+		{operations.ListCustomers.Tool, map[string]any{"limit": 2, "group_id": "root"}},
+		{operations.SearchCustomers.Tool, map[string]any{"query": "Example", "limit": 2, "group_id": "root"}},
 		{operations.GetCustomer.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000007"}},
 		{operations.CreateCustomer.Tool, map[string]any{"name": "New customer"}},
 		{operations.UpdateCustomer.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000007", "name": "Renamed customer"}},
-		{operations.ListSuppliers.Tool, map[string]any{"limit": 2}},
-		{operations.SearchSuppliers.Tool, map[string]any{"query": "Example", "limit": 2}},
+		{operations.ListSuppliers.Tool, map[string]any{"limit": 2, "group_id": "root"}},
+		{operations.SearchSuppliers.Tool, map[string]any{"query": "Example", "limit": 2, "group_id": "root"}},
 		{operations.GetSupplier.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000007"}},
 		{operations.CreateSupplier.Tool, map[string]any{"name": "New supplier"}},
 		{operations.UpdateSupplier.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000007", "name": "Renamed supplier"}},
@@ -211,6 +212,18 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 			data, err := json.Marshal(result.StructuredContent)
 			if err != nil || !strings.Contains(string(data), `"found":true`) || !strings.Contains(string(data), `"price":"120.50"`) {
 				t.Fatalf("price tool returned %s: %v", data, err)
+			}
+		}
+		if call.name == operations.ListPrices.Tool {
+			data, err := json.Marshal(result.StructuredContent)
+			if err != nil || !strings.Contains(string(data), `"price":"120.50"`) || !strings.Contains(string(data), `"items":[`) {
+				t.Fatalf("price list tool returned %s: %v", data, err)
+			}
+		}
+		if call.name == operations.ListOrders.Tool {
+			data, err := json.Marshal(result.StructuredContent)
+			if err != nil || !strings.Contains(string(data), `"customer_id":"00000000-0000-0000-0000-000000000002"`) || !strings.Contains(string(data), `"total":0`) || !strings.Contains(string(data), `"items":[]`) {
+				t.Fatalf("order list tool returned %s: %v", data, err)
 			}
 		}
 	}

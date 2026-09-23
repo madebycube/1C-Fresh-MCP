@@ -9,6 +9,7 @@ import (
 	"io"
 	"text/tabwriter"
 
+	"github.com/madebycube/1C-Fresh-MCP/internal/operations"
 	"github.com/madebycube/1C-Fresh-MCP/internal/service"
 )
 
@@ -16,27 +17,34 @@ func runOrderList(ctx context.Context, svc service.Service, args []string, out i
 	flags := flag.NewFlagSet("list orders", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	limit := flags.Int("limit", 20, "maximum results (1-100)")
+	offset := flags.Int("offset", 0, "offset within matching orders")
+	customer := flags.String("customer", "", "optional customer GUID")
+	from := flags.String("from", "", "first date (YYYY-MM-DD)")
+	to := flags.String("to", "", "last date (YYYY-MM-DD)")
 	asJSON := flags.Bool("json", false, "print JSON")
 	if err := parseFlags(flags, args); err != nil || flags.NArg() != 0 {
-		return errors.New("usage: 1c list orders [--limit N] [--json]")
+		return errors.New("usage: " + operations.ListOrders.Usage)
 	}
-	orders, err := svc.ListOrders(ctx, *limit)
+	page, err := svc.ListOrdersPage(ctx, *customer, *from, *to, *limit, *offset)
 	if err != nil {
 		return err
 	}
 	if *asJSON {
-		return json.NewEncoder(out).Encode(orders)
+		return json.NewEncoder(out).Encode(page)
 	}
 	writer := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
-	if _, err := fmt.Fprintln(writer, "NUMBER\tDATE\tSTATE\tPOSTED\tAMOUNT\tID"); err != nil {
+	if _, err := fmt.Fprintln(writer, "NUMBER\tDATE\tSTATE\tPOSTED\tAMOUNT\tCUSTOMER ID\tID"); err != nil {
 		return err
 	}
-	for _, order := range orders {
-		if _, err := fmt.Fprintf(writer, "%s\t%s\t%s\t%t\t%s\t%s\n", flat(order.Number), flat(order.Date), flat(order.State), order.Posted, order.Amount, order.ID); err != nil {
+	for _, order := range page.Items {
+		if _, err := fmt.Fprintf(writer, "%s\t%s\t%s\t%t\t%s\t%s\t%s\n", flat(order.Number), flat(order.Date), flat(order.State), order.Posted, order.Amount, order.CustomerID, order.ID); err != nil {
 			return err
 		}
 	}
-	return writer.Flush()
+	if err := writer.Flush(); err != nil {
+		return err
+	}
+	return printPageSummary(out, len(page.Items), page.Total, page.NextOffset)
 }
 
 func runOrderGet(ctx context.Context, svc service.Service, args []string, out io.Writer) error {

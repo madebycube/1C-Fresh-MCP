@@ -115,6 +115,15 @@ type getPriceInput struct {
 	AsOf             string `json:"as_of,omitempty" jsonschema:"Application date, YYYY-MM-DD; defaults to today"`
 }
 
+type listPricesInput struct {
+	PriceType        string `json:"price_type" jsonschema:"Exact price type name from list_price_types"`
+	GroupID          string `json:"group_id,omitempty" jsonschema:"Optional direct parent group GUID or root"`
+	CharacteristicID string `json:"characteristic_id,omitempty" jsonschema:"Optional product characteristic GUID; omit for the default characteristic"`
+	AsOf             string `json:"as_of,omitempty" jsonschema:"Application date, YYYY-MM-DD; defaults to today"`
+	Limit            int    `json:"limit,omitempty" jsonschema:"Maximum products, 1 to 100; defaults to 20"`
+	Offset           int    `json:"offset,omitempty" jsonschema:"Raw catalog offset from a previous list_product_prices result"`
+}
+
 type listWarehousesInput struct{}
 
 type listWarehousesOutput struct {
@@ -139,12 +148,11 @@ type describeResourceInput struct {
 }
 
 type listOrdersInput struct {
-	Limit int `json:"limit,omitempty" jsonschema:"Maximum results, from 1 to 100; defaults to 20"`
-}
-
-type listOrdersOutput struct {
-	Orders []service.Order `json:"orders"`
-	Count  int             `json:"count"`
+	Limit      int    `json:"limit,omitempty" jsonschema:"Maximum results, from 1 to 100; defaults to 20"`
+	Offset     int    `json:"offset,omitempty" jsonschema:"Offset within matching orders"`
+	CustomerID string `json:"customer_id,omitempty" jsonschema:"Optional customer GUID"`
+	From       string `json:"from,omitempty" jsonschema:"Optional first date, YYYY-MM-DD; requires to"`
+	To         string `json:"to,omitempty" jsonschema:"Optional last date, YYYY-MM-DD; requires from"`
 }
 
 type getOrderInput struct {
@@ -152,14 +160,16 @@ type getOrderInput struct {
 }
 
 type listCustomersInput struct {
-	Limit  int `json:"limit,omitempty" jsonschema:"Maximum results, from 1 to 100; defaults to 20"`
-	Offset int `json:"offset,omitempty" jsonschema:"Offset within the customer list"`
+	Limit   int    `json:"limit,omitempty" jsonschema:"Maximum results, from 1 to 100; defaults to 20"`
+	Offset  int    `json:"offset,omitempty" jsonschema:"Offset within the customer list"`
+	GroupID string `json:"group_id,omitempty" jsonschema:"Optional direct counterparty folder GUID or root"`
 }
 
 type searchCustomersInput struct {
-	Query  string `json:"query" jsonschema:"Customer name or code substring"`
-	Limit  int    `json:"limit,omitempty" jsonschema:"Maximum results, from 1 to 100; defaults to 20"`
-	Offset int    `json:"offset,omitempty" jsonschema:"Offset within matching customers"`
+	Query   string `json:"query" jsonschema:"Customer name or code substring"`
+	Limit   int    `json:"limit,omitempty" jsonschema:"Maximum results, from 1 to 100; defaults to 20"`
+	Offset  int    `json:"offset,omitempty" jsonschema:"Offset within matching customers"`
+	GroupID string `json:"group_id,omitempty" jsonschema:"Optional direct counterparty folder GUID or root"`
 }
 
 type getCustomerInput struct {
@@ -346,6 +356,17 @@ func New(svc service.Service) *mcp.Server {
 		return nil, quote, err
 	})
 	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.ListPrices.Tool, Description: operations.ListPrices.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input listPricesInput) (*mcp.CallToolResult, service.PricePage, error) {
+		limit := input.Limit
+		if limit == 0 {
+			limit = 20
+		}
+		page, err := svc.ListPrices(ctx, input.PriceType, input.GroupID, input.CharacteristicID, input.AsOf, limit, input.Offset)
+		return nil, page, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
 		Name: operations.ListWarehouses.Tool, Description: operations.ListWarehouses.Description,
 		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ listWarehousesInput) (*mcp.CallToolResult, listWarehousesOutput, error) {
@@ -404,9 +425,13 @@ func New(svc service.Service) *mcp.Server {
 	mcp.AddTool(server, &mcp.Tool{
 		Name: operations.ListOrders.Tool, Description: operations.ListOrders.Description,
 		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, input listOrdersInput) (*mcp.CallToolResult, listOrdersOutput, error) {
-		orders, err := svc.ListOrders(ctx, input.Limit)
-		return nil, listOrdersOutput{Orders: orders, Count: len(orders)}, err
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input listOrdersInput) (*mcp.CallToolResult, service.OrderPage, error) {
+		limit := input.Limit
+		if limit == 0 {
+			limit = 20
+		}
+		page, err := svc.ListOrdersPage(ctx, input.CustomerID, input.From, input.To, limit, input.Offset)
+		return nil, page, err
 	})
 	mcp.AddTool(server, &mcp.Tool{
 		Name: operations.GetOrder.Tool, Description: operations.GetOrder.Description,
@@ -423,7 +448,7 @@ func New(svc service.Service) *mcp.Server {
 		if limit == 0 {
 			limit = 20
 		}
-		page, err := svc.ListCustomers(ctx, "", limit, input.Offset)
+		page, err := svc.ListCustomersInGroup(ctx, "", limit, input.Offset, input.GroupID)
 		return nil, page, err
 	})
 	mcp.AddTool(server, &mcp.Tool{
@@ -434,7 +459,7 @@ func New(svc service.Service) *mcp.Server {
 		if limit == 0 {
 			limit = 20
 		}
-		page, err := svc.ListCustomers(ctx, input.Query, limit, input.Offset)
+		page, err := svc.ListCustomersInGroup(ctx, input.Query, limit, input.Offset, input.GroupID)
 		return nil, page, err
 	})
 	mcp.AddTool(server, &mcp.Tool{
@@ -466,7 +491,7 @@ func New(svc service.Service) *mcp.Server {
 		if limit == 0 {
 			limit = 20
 		}
-		page, err := svc.ListSuppliers(ctx, "", limit, input.Offset)
+		page, err := svc.ListSuppliersInGroup(ctx, "", limit, input.Offset, input.GroupID)
 		return nil, page, err
 	})
 	mcp.AddTool(server, &mcp.Tool{
@@ -477,7 +502,7 @@ func New(svc service.Service) *mcp.Server {
 		if limit == 0 {
 			limit = 20
 		}
-		page, err := svc.ListSuppliers(ctx, input.Query, limit, input.Offset)
+		page, err := svc.ListSuppliersInGroup(ctx, input.Query, limit, input.Offset, input.GroupID)
 		return nil, page, err
 	})
 	mcp.AddTool(server, &mcp.Tool{

@@ -9,24 +9,28 @@ import (
 	"io"
 	"text/tabwriter"
 
+	"github.com/madebycube/1C-Fresh-MCP/internal/operations"
 	"github.com/madebycube/1C-Fresh-MCP/internal/service"
 )
 
 func runCustomerList(ctx context.Context, svc service.Service, args []string, out io.Writer, search bool, role string) error {
-	command := "list " + role + "s"
-	if search {
-		command = "search " + role + "s"
+	spec := operations.ListCustomers
+	if role == "supplier" {
+		spec = operations.ListSuppliers
 	}
-	flags := flag.NewFlagSet(command, flag.ContinueOnError)
+	if search && role == "supplier" {
+		spec = operations.SearchSuppliers
+	} else if search {
+		spec = operations.SearchCustomers
+	}
+	flags := flag.NewFlagSet(spec.Command, flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	limit := flags.Int("limit", 20, "maximum results (1-100)")
 	offset := flags.Int("offset", 0, "offset within matching customers")
+	groupID := flags.String("group", "", "direct counterparty folder GUID or root")
 	asJSON := flags.Bool("json", false, "print JSON")
 	if err := parseFlags(flags, args); err != nil || flags.NArg() != 0 && !search || flags.NArg() != 1 && search {
-		if search {
-			return errors.New("usage: 1c search " + role + "s [--limit N] [--offset N] [--json] QUERY")
-		}
-		return errors.New("usage: 1c list " + role + "s [--limit N] [--offset N] [--json]")
+		return errors.New("usage: " + spec.Usage)
 	}
 	query := ""
 	if search {
@@ -35,9 +39,9 @@ func runCustomerList(ctx context.Context, svc service.Service, args []string, ou
 	var page service.CustomerPage
 	var err error
 	if role == "supplier" {
-		page, err = svc.ListSuppliers(ctx, query, *limit, *offset)
+		page, err = svc.ListSuppliersInGroup(ctx, query, *limit, *offset, *groupID)
 	} else {
-		page, err = svc.ListCustomers(ctx, query, *limit, *offset)
+		page, err = svc.ListCustomersInGroup(ctx, query, *limit, *offset, *groupID)
 	}
 	if err != nil {
 		return err
@@ -46,11 +50,11 @@ func runCustomerList(ctx context.Context, svc service.Service, args []string, ou
 		return json.NewEncoder(out).Encode(page)
 	}
 	writer := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
-	if _, err := fmt.Fprintln(writer, "CODE\tNAME\tBUYER\tSUPPLIER\tINACTIVE\tID"); err != nil {
+	if _, err := fmt.Fprintln(writer, "CODE\tNAME\tBUYER\tSUPPLIER\tINACTIVE\tGROUP ID\tID"); err != nil {
 		return err
 	}
 	for _, customer := range page.Items {
-		if _, err := fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\t%s\n", flat(customer.Code), flat(customer.Name), optionalBool(customer.Buyer), optionalBool(customer.Supplier), optionalBool(customer.Inactive), customer.ID); err != nil {
+		if _, err := fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n", flat(customer.Code), flat(customer.Name), optionalBool(customer.Buyer), optionalBool(customer.Supplier), optionalBool(customer.Inactive), customer.ParentID, customer.ID); err != nil {
 			return err
 		}
 	}
@@ -80,7 +84,7 @@ func runCustomerGet(ctx context.Context, svc service.Service, args []string, out
 	if *asJSON {
 		return json.NewEncoder(out).Encode(customer)
 	}
-	_, err = fmt.Fprintf(out, "%s %s\nFull name: %s\nCode: %s\nBuyer: %s\nSupplier: %s\nInactive: %s\nDeleted: %t\nID: %s\n", role, flat(customer.Name), flat(customer.FullName), flat(customer.Code), optionalBool(customer.Buyer), optionalBool(customer.Supplier), optionalBool(customer.Inactive), customer.Deleted, customer.ID)
+	_, err = fmt.Fprintf(out, "%s %s\nFull name: %s\nCode: %s\nGroup ID: %s\nBuyer: %s\nSupplier: %s\nInactive: %s\nDeleted: %t\nID: %s\n", role, flat(customer.Name), flat(customer.FullName), flat(customer.Code), customer.ParentID, optionalBool(customer.Buyer), optionalBool(customer.Supplier), optionalBool(customer.Inactive), customer.Deleted, customer.ID)
 	return err
 }
 

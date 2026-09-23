@@ -97,6 +97,14 @@ var GetPrice = Spec{
 	Example:     "1c get price PRODUCT_GUID --price-type \"Пример цены\"",
 }
 
+var ListPrices = Spec{
+	Command:     "list prices",
+	Tool:        "list_product_prices",
+	Description: "List effective prices for a bounded page of products.",
+	Usage:       "1c list prices --price-type NAME [--group GROUP_GUID|root] [--characteristic GUID] [--as-of YYYY-MM-DD] [--limit N] [--offset N] [--json]",
+	Example:     "1c list prices --price-type \"Пример цены\" --group GROUP_GUID",
+}
+
 var ListWarehouses = Spec{
 	Command:     "list warehouses",
 	Tool:        "list_warehouses",
@@ -156,9 +164,9 @@ var UpdateProduct = Spec{
 var ListOrders = Spec{
 	Command:     "list orders",
 	Tool:        "list_customer_orders",
-	Description: "List recent customer orders.",
-	Usage:       "1c list orders [--limit N] [--json]",
-	Example:     "1c list orders --limit 10",
+	Description: "List customer orders with optional customer and date filters, and paging.",
+	Usage:       "1c list orders [--customer GUID] [--from YYYY-MM-DD --to YYYY-MM-DD] [--limit N] [--offset N] [--json]",
+	Example:     "1c list orders --customer CUSTOMER_GUID --limit 20",
 }
 
 var GetOrder = Spec{
@@ -172,16 +180,16 @@ var GetOrder = Spec{
 var ListCustomers = Spec{
 	Command:     "list customers",
 	Tool:        "list_customers",
-	Description: "List customers with stable paging.",
-	Usage:       "1c list customers [--limit N] [--offset N] [--json]",
-	Example:     "1c list customers --limit 20",
+	Description: "List customers, optionally in one counterparty folder, with stable paging.",
+	Usage:       "1c list customers [--group FOLDER_GUID|root] [--limit N] [--offset N] [--json]",
+	Example:     "1c list customers --group FOLDER_GUID --limit 20",
 }
 
 var SearchCustomers = Spec{
 	Command:     "search customers",
 	Tool:        "search_customers",
-	Description: "Find customers by name or code.",
-	Usage:       "1c search customers [--limit N] [--offset N] [--json] QUERY",
+	Description: "Find customers by name or code, optionally in one folder.",
+	Usage:       "1c search customers [--group FOLDER_GUID|root] [--limit N] [--offset N] [--json] QUERY",
 	Example:     "1c search customers \"Пример компании\"",
 }
 
@@ -212,16 +220,16 @@ var UpdateCustomer = Spec{
 var ListSuppliers = Spec{
 	Command:     "list suppliers",
 	Tool:        "list_suppliers",
-	Description: "List suppliers with stable paging.",
-	Usage:       "1c list suppliers [--limit N] [--offset N] [--json]",
+	Description: "List suppliers, optionally in one counterparty folder, with stable paging.",
+	Usage:       "1c list suppliers [--group FOLDER_GUID|root] [--limit N] [--offset N] [--json]",
 	Example:     "1c list suppliers --limit 20",
 }
 
 var SearchSuppliers = Spec{
 	Command:     "search suppliers",
 	Tool:        "search_suppliers",
-	Description: "Find suppliers by name or code.",
-	Usage:       "1c search suppliers [--limit N] [--offset N] [--json] QUERY",
+	Description: "Find suppliers by name or code, optionally in one folder.",
+	Usage:       "1c search suppliers [--group FOLDER_GUID|root] [--limit N] [--offset N] [--json] QUERY",
 	Example:     "1c search suppliers \"Пример поставщика\"",
 }
 
@@ -363,4 +371,4 @@ var DescribeResource = Spec{
 	Advanced:    true,
 }
 
-var All = []Spec{Check, ListGroups, ListProductCategories, CreateGroup, UpdateGroup, ListCounterpartyGroups, CreateCounterpartyGroup, UpdateCounterpartyGroup, ListPriceTypes, ListUnitTypes, GetPrice, ListWarehouses, GetStock, ListProducts, GetProduct, CreateProduct, SearchProducts, UpdateProduct, ListCustomers, SearchCustomers, GetCustomer, CreateCustomer, UpdateCustomer, ListSuppliers, SearchSuppliers, GetSupplier, CreateSupplier, UpdateSupplier, ListOrders, GetOrder, ListSales, GetSale, ListPurchases, GetPurchase, ListWarehouseDocuments, GetWarehouseDocument, ListMoneyAccounts, ListMoney, GetMoney, ListReceipts, GetReceipt, AuditUnpostedReceipts, SearchResources, DescribeResource}
+var All = []Spec{Check, ListGroups, ListProductCategories, CreateGroup, UpdateGroup, ListCounterpartyGroups, CreateCounterpartyGroup, UpdateCounterpartyGroup, ListPriceTypes, ListUnitTypes, GetPrice, ListPrices, ListWarehouses, GetStock, ListProducts, GetProduct, CreateProduct, SearchProducts, UpdateProduct, ListCustomers, SearchCustomers, GetCustomer, CreateCustomer, UpdateCustomer, ListSuppliers, SearchSuppliers, GetSupplier, CreateSupplier, UpdateSupplier, ListOrders, GetOrder, ListSales, GetSale, ListPurchases, GetPurchase, ListWarehouseDocuments, GetWarehouseDocument, ListMoneyAccounts, ListMoney, GetMoney, ListReceipts, GetReceipt, AuditUnpostedReceipts, SearchResources, DescribeResource}

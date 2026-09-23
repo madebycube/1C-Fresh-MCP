@@ -91,6 +91,8 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		return runUnitTypeList(ctx, svc, commandArgs, out)
 	case operations.GetPrice.Command:
 		return runPriceGet(ctx, svc, commandArgs, out)
+	case operations.ListPrices.Command:
+		return runPriceList(ctx, svc, commandArgs, out)
 	case operations.ListWarehouses.Command:
 		return runWarehouseList(ctx, svc, commandArgs, out)
 	case operations.GetStock.Command:
@@ -256,6 +258,7 @@ func printHelp(out io.Writer) {
 	fmt.Fprintln(out, "  1c list counterparty-groups")
 	fmt.Fprintln(out, "  1c create customer --name \"Example customer\" --parent FOLDER_GUID")
 	fmt.Fprintln(out, "  1c list price-types")
+	fmt.Fprintln(out, "  1c list prices --price-type \"Пример цены\" --group GROUP_GUID")
 	fmt.Fprintln(out, "  1c list unit-types")
 	fmt.Fprintln(out, "  1c list products --limit 20")
 	fmt.Fprintln(out, "  1c list products --group GROUP_GUID --limit 20")
@@ -263,6 +266,7 @@ func printHelp(out io.Writer) {
 	fmt.Fprintln(out, "  1c create product --name \"Example item\" --type stock --unit UNIT_GUID --category CATEGORY_GUID")
 	fmt.Fprintln(out, "  1c search products \"название товара\"")
 	fmt.Fprintln(out, "  1c search customers \"Пример компании\"")
+	fmt.Fprintln(out, "  1c list customers --group FOLDER_GUID --limit 20")
 	fmt.Fprintln(out, "  1c search suppliers \"Пример поставщика\"")
 	fmt.Fprintln(out, "  1c list sales --kind shipment --limit 20")
 	fmt.Fprintln(out, "  1c create customer --name \"Example customer\"")
