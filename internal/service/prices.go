@@ -47,6 +47,27 @@ type PricePage struct {
 	Items            []PriceQuote `json:"items"`
 }
 
+type PriceDocumentLine struct {
+	LineNumber       int64   `json:"line_number"`
+	ProductID        string  `json:"product_id"`
+	PriceTypeID      string  `json:"price_type_id"`
+	CharacteristicID string  `json:"characteristic_id"`
+	CurrencyID       string  `json:"currency_id"`
+	Price            Decimal `json:"price"`
+}
+
+type PriceDocument struct {
+	ID         string              `json:"id"`
+	Date       string              `json:"date"`
+	Posted     bool                `json:"posted"`
+	Deleted    bool                `json:"deleted"`
+	ProductID  string              `json:"product_id,omitempty"`
+	Total      int                 `json:"total"`
+	Offset     int                 `json:"offset"`
+	NextOffset *int                `json:"next_offset,omitempty"`
+	Lines      []PriceDocumentLine `json:"lines"`
+}
+
 type priceDocument struct {
 	ID      string `json:"id"`
 	Date    string `json:"date"`
@@ -61,6 +82,67 @@ type priceLine struct {
 	CharacteristicID string  `json:"characteristic_id"`
 	Price            Decimal `json:"price"`
 	CurrencyID       string  `json:"currency_id"`
+}
+
+func (s Service) GetPriceDocument(ctx context.Context, id, productID string, limit, offset int) (PriceDocument, error) {
+	if !linkedGUID(id) {
+		return PriceDocument{}, errors.New("price document ID must be a nonzero GUID")
+	}
+	if productID != "" && !linkedGUID(productID) {
+		return PriceDocument{}, errors.New("product ID must be a nonzero GUID")
+	}
+	if limit < 1 || limit > 100 || offset < 0 {
+		return PriceDocument{}, errors.New("limit must be 1-100 and offset must be nonnegative")
+	}
+	plan := config.PriceDocuments
+	resource := plan.Name + "(guid'" + strings.ToLower(id) + "')"
+	params := url.Values{"$format": {"json"}, "$select": {sourceFields(plan.Fields) + "," + plan.LinesField}}
+	data, err := s.OData.Get(ctx, resource, params, 8<<20)
+	if err != nil {
+		return PriceDocument{}, err
+	}
+	var row map[string]json.RawMessage
+	if err := json.Unmarshal(data, &row); err != nil || row == nil {
+		return PriceDocument{}, errors.New("invalid OData price document response")
+	}
+	header, err := bindFields[priceDocument](row, plan.Fields)
+	if err != nil || !strings.EqualFold(header.ID, id) || len(header.Date) < 19 {
+		return PriceDocument{}, errors.New("invalid OData price document")
+	}
+	if _, err := time.Parse("2006-01-02T15:04:05", header.Date[:19]); err != nil {
+		return PriceDocument{}, errors.New("invalid price document date")
+	}
+	var rows []map[string]json.RawMessage
+	if err := json.Unmarshal(row[plan.LinesField], &rows); err != nil || rows == nil {
+		return PriceDocument{}, errors.New("invalid price document lines")
+	}
+	result := PriceDocument{ID: header.ID, Date: header.Date, Posted: header.Posted, Deleted: header.Deleted, ProductID: productID, Offset: offset, Lines: make([]PriceDocumentLine, 0)}
+	for _, lineRow := range rows {
+		line, err := bindFields[priceLine](lineRow, plan.LineFields)
+		if err != nil {
+			return PriceDocument{}, errors.New("invalid price line")
+		}
+		if productID != "" && !strings.EqualFold(line.ProductID, productID) {
+			continue
+		}
+		result.Total++
+		if result.Total <= offset || len(result.Lines) >= limit {
+			continue
+		}
+		lineNumber, err := strconv.ParseInt(line.LineNumber, 10, 64)
+		if err != nil || lineNumber < 1 || !linkedGUID(line.ProductID) || !linkedGUID(line.PriceTypeID) || line.Price == "" {
+			return PriceDocument{}, errors.New("invalid price line")
+		}
+		if line.CharacteristicID == "" {
+			line.CharacteristicID = emptyGUID
+		}
+		result.Lines = append(result.Lines, PriceDocumentLine{LineNumber: lineNumber, ProductID: line.ProductID, PriceTypeID: line.PriceTypeID, CharacteristicID: line.CharacteristicID, CurrencyID: line.CurrencyID, Price: line.Price})
+	}
+	if offset+len(result.Lines) < result.Total {
+		next := offset + len(result.Lines)
+		result.NextOffset = &next
+	}
+	return result, nil
 }
 
 func (s Service) GetPrice(ctx context.Context, productID, typeName, characteristicID, asOf string) (PriceQuote, error) {
