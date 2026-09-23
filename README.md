@@ -1,17 +1,19 @@
-![1C-Fresh CLI and MCP](Images/READMEHeader.png)
+[Английская версия](README.en.md)
 
-A Go command-line tool and local read-only MCP server for a 1C-Fresh application. Both use the same OData client and support product groups, price types, products, customer orders, and cash receipts.
+![1C-Fresh: CLI и MCP](Images/READMEHeader.png)
 
-## Requirements
+`1c` — CLI и локальный MCP-сервер на Go для работы с приложением 1С:Фреш через OData. У них общий клиент; операции с данными доступны через оба интерфейса. Сейчас доступны группы номенклатуры, виды цен, поиск товаров, заказы покупателей, кассовые чеки и просмотр схемы OData. Создание и изменение пока реализованы только для групп номенклатуры.
 
-- Go 1.25 or newer
-- A 1C-Fresh application URL and an account with access to its OData data
+## Требования
 
-## Configure
+- Go 1.25 или новее
+- Ссылка на приложение 1С:Фреш и учётная запись с доступом к OData
 
-Run `1c login` after building the CLI. It prompts for `1C Link/Ссылка на 1C`, `User/Юзер`, and a hidden `Password/Пароль`, checks OData access, then saves `.env` with permissions limited to your account. Existing URL and user values are offered as defaults. A blank password keeps the saved one.
+## Подключение
 
-For manual setup, copy `.env.example` to `.env`, then set the URL and credentials:
+После сборки запустите `1c login`. Команда спросит `1C Link/Ссылка на 1C`, `User/Юзер` и `Password/Пароль` (ввод пароля скрыт), проверит доступ к OData и сохранит `.env` с правами доступа только для вашего пользователя. Если URL и имя пользователя уже сохранены, они предлагаются как значения по умолчанию. Пустой пароль оставляет прежний пароль.
+
+Можно создать файл вручную: скопируйте `.env.example` в `.env` и заполните поля:
 
 ```dotenv
 ONEC_ODATA_BASE_URL=https://your-1cfresh-host/a/your-app/your-tenant
@@ -19,36 +21,38 @@ ONEC_ODATA_USERNAME=your-username
 ONEC_ODATA_PASSWORD=your-password
 ```
 
-Use the application URL, not an `/odata/` endpoint. Keep credentials out of source control; `.env` is ignored by Git. Environment variables override values in the file. Set `ONEC_ENV_FILE` to load a different file. By default, the CLI reads `.env` from the current directory. When run through a binary in this project's `bin` directory, it can also find the project `.env`.
+Указывайте ссылку на приложение, без `/odata/` в конце. `.env` исключён из Git. Переменные окружения имеют приоритет над значениями файла. Для другого файла задайте `ONEC_ENV_FILE`. По умолчанию CLI ищет `.env` в текущем каталоге. Если бинарный файл находится в каталоге `bin` этого проекта, CLI также может найти `.env` в корне проекта.
 
-## Install
+## Установка
 
-Build the CLI from the repository root:
+Соберите CLI в корне репозитория:
 
 ```sh
 go build -o bin/1c ./cmd/1cfresh
+bin/1c --help
 ```
 
-Run `bin/1c --help` to see the commands. To run `1c` from anywhere while using the project `.env`, symlink `bin/1c` into a directory on your `PATH`:
+Чтобы запускать `1c` из любого каталога и использовать проектный `.env`, создайте ссылку на бинарный файл в каталоге из `PATH`:
 
 ```sh
 ln -s /path/to/1C-Fresh-MCP/bin/1c "$HOME/.local/bin/1c"
 ```
 
-If you copy the binary elsewhere, provide `ONEC_ENV_FILE` or the `ONEC_ODATA_*` environment variables.
+Если скопировать бинарный файл в другое место, укажите `ONEC_ENV_FILE` или переменные `ONEC_ODATA_*`.
 
-## CLI syntax
+## Команды CLI
 
-Commands follow `1c VERB RESOURCE [OPTIONS]`. Use `--help` on a command for its usage and an example. Commands print readable tables by default; add `--json` for structured output.
+Основной синтаксис — `1c ДЕЙСТВИЕ РЕСУРС [ПАРАМЕТРЫ]`. Для справки и примера используйте `1c --help` или `1c ДЕЙСТВИЕ РЕСУРС --help`. По умолчанию выводятся читаемые таблицы; `--json` включает структурированный вывод.
 
 ```sh
-1c check
 1c login
+1c check
 1c list groups --name КЛИМОВО
+1c create group --name "Новая группа"
+1c create group --name "Подгруппа" --parent PARENT_GUID
+1c update group GROUP_GUID --name "Новое название"
 1c list price-types
 1c search products --limit 10 "диван"
-1c search resources --kind catalog --limit 20 "Номенклатура"
-1c describe resource Catalog_Номенклатура
 1c list orders --limit 20
 1c get order --json ORDER_GUID
 1c list receipts --kind sale --from 2026-09-01 --to 2026-09-07
@@ -56,45 +60,56 @@ Commands follow `1c VERB RESOURCE [OPTIONS]`. Use `--help` on a command for its 
 1c audit receipts --from 2026-09-01 --before 2026-09-24 --json
 ```
 
-`list groups` returns product folders and their IDs; `list price-types` returns price type names and IDs. A price type such as `Розничная` is separate from a product group such as `КЛИМОВО НОМЕНКЛАТУРА`. These commands do not retrieve prices from price documents.
+`list groups` показывает папки номенклатуры и их идентификаторы; `list price-types` — виды цен и их идентификаторы. Вид цены `Розничная` и группа `КЛИМОВО НОМЕНКЛАТУРА` — разные сущности. Эти команды не получают цены товаров из документов установки цен.
 
-`search resources` uses `1c search resources [--kind catalog|document|register|other] [--limit N] [--json] QUERY` to search OData metadata names by resource kind. `describe resource` uses `1c describe resource [--json] EXACT_NAME` to show schema fields for an exact OData resource name. These commands expose OData schema names and fields; they do not enumerate every screen in the 1C interface or provide generic reads of resource data.
+`create group` создаёт группу в корне каталога либо внутри группы, указанной через `--parent`. `update group` переименовывает существующую группу по её GUID. Обе команды **изменяют данные в действующей 1С**. Запись в действующую базу не проверялась. Для остальных сущностей команд создания, изменения и удаления пока нет; общего редактора OData тоже нет.
 
-Product search checks product name, full name, and article, and excludes folders and deletion-marked products. It returns up to 50 matches. Order listing returns the latest non-deleted orders, up to 100; order details include product lines. Receipt listing accepts an inclusive date range of up to 31 days, returns up to 100 rows per page, and supports `--offset` for the next page. Receipt details include stock lines and cashless payments. JSON represents amounts and quantities as decimal strings to preserve source precision.
+Поиск товаров проверяет название, полное название и артикул, исключает папки и помеченные на удаление записи и возвращает не более 50 результатов. Список заказов показывает до 100 последних заказов без пометки на удаление; просмотр заказа включает товарные строки. Список чеков принимает включительный диапазон до 31 дня, возвращает до 100 записей на страницу и поддерживает `--offset`. Детали чека включают товарные строки и безналичные платежи. В JSON суммы и количества представлены строками с десятичными числами, чтобы сохранить точность источника.
 
-### Audit unposted receipts
+### Проверка непроведённых чеков
 
-`audit receipts` checks sale and refund receipts in the half-open application date interval `[--from, --before)`. It reports non-deleted receipts with `Posted=false`, including their kind, ID, number, date, amount, and available related IDs. The audit covers at most 31 calendar days and 1,000 receipts across both kinds; a larger scan fails without returning a partial report.
+`audit receipts` проверяет чеки продажи и возврата за интервал дат приложения `[--from, --before)`, где дата `--before` не входит в интервал. Отчёт показывает чеки без пометки на удаление с `Posted=false`: тип, ID, номер, дату, сумму и доступные связанные ID. Максимум — 31 календарный день и 1000 чеков обоих типов; при превышении команда завершается ошибкой, не выдавая частичный отчёт.
 
-An unposted receipt may be a draft or part of a cancelled workflow. The command reports status for review; it does not decide whether a receipt is an accounting error. The application returns dates without timezone offsets, so the audit compares calendar dates directly.
+Непроведённый чек может быть черновиком или частью отменённой операции. Команда сообщает статус для проверки, но не определяет, есть ли ошибка в учёте. Приложение возвращает даты без часового пояса, поэтому сравниваются календарные даты.
 
-## MCP server
+### Схема OData
 
-Run the server over stdio:
+```sh
+1c search resources --kind catalog --limit 20 "Номенклатура"
+1c describe resource Catalog_Номенклатура
+```
+
+`search resources` ищет имена ресурсов OData; фильтр `--kind` принимает `catalog`, `document`, `register` или `other`. `describe resource` показывает поля, типы, ключи и связи ресурса с точным именем. Эти команды показывают схему OData, а не все экраны интерфейса 1С. Они не читают произвольные записи ресурсов.
+
+## MCP-сервер
+
+Запустите сервер через stdio:
 
 ```sh
 bin/1c mcp
 ```
 
-Configure your MCP client to launch this command from the repository directory, or provide the three `ONEC_ODATA_*` variables in the client's environment. The server exposes these read-only tools:
+Настройте MCP-клиент на запуск команды из каталога репозитория либо передайте ему три переменные `ONEC_ODATA_*`. Сервер предоставляет инструменты:
 
-- `check_connection`
-- `list_product_groups` and `list_price_types`
-- `find_nomenclature`
-- `search_odata_resources` and `describe_odata_resource`
-- `list_customer_orders` and `get_customer_order`
-- `list_cash_receipts` and `get_cash_receipt`
-- `audit_unposted_receipts`
+| Чтение | Изменение |
+| --- | --- |
+| `check_connection` | `create_product_group` |
+| `list_product_groups`, `list_price_types` | `update_product_group` |
+| `find_nomenclature` | |
+| `list_customer_orders`, `get_customer_order` | |
+| `list_cash_receipts`, `get_cash_receipt` | |
+| `audit_unposted_receipts` | |
+| `search_odata_resources`, `describe_odata_resource` | |
 
-No generic OData query or tool for writing, deleting, or posting data is exposed.
+Инструменты создания и изменения групп записывают данные в 1С. Инструментов для удаления, проведения документов и произвольных запросов OData нет.
 
-## Development
+## Разработка
 
-Run the Go tests and static checks from the repository root:
+Из корня репозитория:
 
 ```sh
 go test ./...
 go vet ./...
 ```
 
-The OData client uses HTTPS, HTTP Basic authentication, a 30-second timeout, a response-size limit, and does not follow redirects. Errors omit credentials and response bodies. MCP protocol output goes to stdout; CLI errors go to stderr.
+Клиент OData использует HTTPS, HTTP Basic, тайм-аут 30 секунд, ограничение размера ответа и не следует перенаправлениям. Сообщения об ошибках не включают учётные данные и тела ответов. MCP-протокол пишет в stdout, ошибки CLI — в stderr.
