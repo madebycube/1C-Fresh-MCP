@@ -25,6 +25,22 @@ var ListGroups = Spec{
 	Example:     "1c list groups --name КЛИМОВО",
 }
 
+var CreateGroup = Spec{
+	Command:     "create group",
+	Tool:        "create_product_group",
+	Description: "Create a product group in 1C.",
+	Usage:       "1c create group --name NAME [--parent GUID] [--json]",
+	Example:     "1c create group --name НоваяГруппа --parent PARENT_GUID",
+}
+
+var UpdateGroup = Spec{
+	Command:     "update group",
+	Tool:        "update_product_group",
+	Description: "Rename an existing product group by 1C ID.",
+	Usage:       "1c update group GUID --name NAME [--json]",
+	Example:     "1c update group GROUP_GUID --name НовоеИмя",
+}
+
 var ListPriceTypes = Spec{
 	Command:     "list price-types",
 	Tool:        "list_price_types",
@@ -99,4 +115,4 @@ var DescribeResource = Spec{
 	Advanced:    true,
 }
 
-var All = []Spec{Check, ListGroups, ListPriceTypes, SearchProducts, ListOrders, GetOrder, ListReceipts, GetReceipt, AuditUnpostedReceipts, SearchResources, DescribeResource}
+var All = []Spec{Check, ListGroups, CreateGroup, UpdateGroup, ListPriceTypes, SearchProducts, ListOrders, GetOrder, ListReceipts, GetReceipt, AuditUnpostedReceipts, SearchResources, DescribeResource}

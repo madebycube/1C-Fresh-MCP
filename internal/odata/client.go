@@ -1,6 +1,7 @@
 package odata
 
 import (
+	"bytes"
 	"context"
 	"encoding/xml"
 	"errors"
@@ -63,6 +64,49 @@ func (c *Client) Get(ctx context.Context, resource string, params url.Values, ma
 		return nil, errors.New("could not read OData response")
 	}
 	if int64(len(data)) > maxBytes {
+		return nil, errors.New("OData response exceeded size limit")
+	}
+	return data, nil
+}
+
+func (c *Client) Write(ctx context.Context, method, resource string, body []byte, ifMatch string) ([]byte, error) {
+	if method != http.MethodPost && method != http.MethodPatch {
+		return nil, errors.New("unsupported OData write method")
+	}
+	if resource == "" || strings.Contains(resource, "/") || strings.Contains(resource, "..") || len(body) == 0 || len(body) > 1<<20 {
+		return nil, errors.New("invalid OData write request")
+	}
+	if method == http.MethodPatch && ifMatch == "" {
+		return nil, errors.New("OData update requires a data version")
+	}
+	u := c.base
+	u.Path = strings.TrimRight(u.Path, "/") + "/odata/standard.odata/" + resource
+	req, err := http.NewRequestWithContext(ctx, method, u.String(), bytes.NewReader(body))
+	if err != nil {
+		return nil, errors.New("could not create OData write request")
+	}
+	req.SetBasicAuth(c.username, c.password)
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	if ifMatch != "" {
+		req.Header.Set("If-Match", ifMatch)
+	}
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return nil, errors.New("OData connection failed")
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusPreconditionFailed {
+		return nil, errors.New("OData record changed since it was read")
+	}
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusNoContent {
+		return nil, fmt.Errorf("OData returned HTTP %d", resp.StatusCode)
+	}
+	data, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20+1))
+	if err != nil {
+		return nil, errors.New("could not read OData response")
+	}
+	if len(data) > 1<<20 {
 		return nil, errors.New("OData response exceeded size limit")
 	}
 	return data, nil
