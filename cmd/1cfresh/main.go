@@ -87,6 +87,8 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		return runStockGet(ctx, svc, commandArgs, out)
 	case operations.ListProducts.Command:
 		return runProductList(ctx, svc, commandArgs, out)
+	case operations.GetProduct.Command:
+		return runProductGet(ctx, svc, commandArgs, out)
 	case operations.SearchProducts.Command:
 		flags := flag.NewFlagSet("search products", flag.ContinueOnError)
 		flags.SetOutput(io.Discard)
@@ -240,6 +242,7 @@ func printHelp(out io.Writer) {
 	fmt.Fprintln(out, "  1c update group GROUP_GUID --parent PARENT_GUID")
 	fmt.Fprintln(out, "  1c list price-types")
 	fmt.Fprintln(out, "  1c list products --limit 20")
+	fmt.Fprintln(out, "  1c get product PRODUCT_GUID")
 	fmt.Fprintln(out, "  1c search products \"название товара\"")
 	fmt.Fprintln(out, "  1c search customers \"Пример компании\"")
 	fmt.Fprintln(out, "  1c search suppliers \"Пример поставщика\"")

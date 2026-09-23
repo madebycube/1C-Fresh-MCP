@@ -49,6 +49,24 @@ func runProductList(ctx context.Context, svc service.Service, args []string, out
 	return err
 }
 
+func runProductGet(ctx context.Context, svc service.Service, args []string, out io.Writer) error {
+	flags := flag.NewFlagSet(operations.GetProduct.Command, flag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+	asJSON := flags.Bool("json", false, "print JSON")
+	if err := parseFlags(flags, args); err != nil || flags.NArg() != 1 {
+		return errors.New("usage: " + operations.GetProduct.Usage)
+	}
+	product, err := svc.GetProduct(ctx, flags.Arg(0))
+	if err != nil {
+		return err
+	}
+	if *asJSON {
+		return json.NewEncoder(out).Encode(product)
+	}
+	_, err = fmt.Fprintf(out, "ID: %s\nCode: %s\nName: %s\nFull name: %s\nArticle: %s\nGroup ID: %s\nType: %s\nUnit ID: %s\n", product.ID, flat(product.Code), flat(product.Name), flat(product.FullName), flat(product.Article), product.ParentID, flat(product.Type), product.UnitID)
+	return err
+}
+
 func runGroupList(ctx context.Context, svc service.Service, args []string, out io.Writer) error {
 	flags := flag.NewFlagSet("list groups", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)

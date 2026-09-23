@@ -89,6 +89,14 @@ var ListProducts = Spec{
 	Example:     "1c list products --limit 20",
 }
 
+var GetProduct = Spec{
+	Command:     "get product",
+	Tool:        "get_product",
+	Description: "Show a product, its type, and base unit ID by 1C ID.",
+	Usage:       "1c get product [--json] GUID",
+	Example:     "1c get product PRODUCT_GUID",
+}
+
 var UpdateProduct = Spec{
 	Command:     "update product",
 	Tool:        "update_product",
@@ -307,4 +315,4 @@ var DescribeResource = Spec{
 	Advanced:    true,
 }
 
-var All = []Spec{Check, ListGroups, CreateGroup, UpdateGroup, ListPriceTypes, GetPrice, ListWarehouses, GetStock, ListProducts, SearchProducts, UpdateProduct, ListCustomers, SearchCustomers, GetCustomer, CreateCustomer, UpdateCustomer, ListSuppliers, SearchSuppliers, GetSupplier, CreateSupplier, UpdateSupplier, ListOrders, GetOrder, ListSales, GetSale, ListPurchases, GetPurchase, ListWarehouseDocuments, GetWarehouseDocument, ListMoneyAccounts, ListMoney, GetMoney, ListReceipts, GetReceipt, AuditUnpostedReceipts, SearchResources, DescribeResource}
+var All = []Spec{Check, ListGroups, CreateGroup, UpdateGroup, ListPriceTypes, GetPrice, ListWarehouses, GetStock, ListProducts, GetProduct, SearchProducts, UpdateProduct, ListCustomers, SearchCustomers, GetCustomer, CreateCustomer, UpdateCustomer, ListSuppliers, SearchSuppliers, GetSupplier, CreateSupplier, UpdateSupplier, ListOrders, GetOrder, ListSales, GetSale, ListPurchases, GetPurchase, ListWarehouseDocuments, GetWarehouseDocument, ListMoneyAccounts, ListMoney, GetMoney, ListReceipts, GetReceipt, AuditUnpostedReceipts, SearchResources, DescribeResource}
