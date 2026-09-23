@@ -67,6 +67,16 @@ type listProductCategoriesOutput struct {
 	Count      int                       `json:"count"`
 }
 
+type listProductCharacteristicsInput struct {
+	ProductID string `json:"product_id,omitempty" jsonschema:"Optional product GUID"`
+	Name      string `json:"name,omitempty" jsonschema:"Optional substring of a characteristic name"`
+}
+
+type listProductCharacteristicsOutput struct {
+	Characteristics []service.ProductCharacteristic `json:"characteristics"`
+	Count           int                             `json:"count"`
+}
+
 type createGroupInput struct {
 	Name     string `json:"name" jsonschema:"Name for the new product group"`
 	ParentID string `json:"parent_id,omitempty" jsonschema:"Optional parent product group GUID; omit for root"`
@@ -298,6 +308,13 @@ func New(svc service.Service) *mcp.Server {
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, input listGroupsInput) (*mcp.CallToolResult, listProductCategoriesOutput, error) {
 		categories, err := svc.ListProductCategories(ctx, input.Name)
 		return nil, listProductCategoriesOutput{Categories: categories, Count: len(categories)}, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.ListProductCharacteristics.Tool, Description: operations.ListProductCharacteristics.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input listProductCharacteristicsInput) (*mcp.CallToolResult, listProductCharacteristicsOutput, error) {
+		items, err := svc.ListProductCharacteristics(ctx, input.ProductID, input.Name)
+		return nil, listProductCharacteristicsOutput{Characteristics: items, Count: len(items)}, err
 	})
 	mcp.AddTool(server, &mcp.Tool{
 		Name: operations.CreateGroup.Tool, Description: operations.CreateGroup.Description,

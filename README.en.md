@@ -55,8 +55,8 @@ Commands follow `1c VERB RESOURCE [OPTIONS]`. Use `--help` on a command for its 
 1c check
 1c login
 1c list product-categories
+1c list characteristics --product PRODUCT_GUID
 1c list groups --name "Пример группы"
-1c list product-categories
 1c create group --name "Новая группа"
 1c create group --name "Подгруппа" --parent PARENT_GUID
 1c update group GROUP_GUID --name "Новое название"
@@ -117,6 +117,8 @@ Commands follow `1c VERB RESOURCE [OPTIONS]`. Use `--help` on a command for its 
 
 `list product-categories` shows active product categories, paths, default types, and units.
 
+`list characteristics` shows active product characteristics, their IDs, and owning product IDs. Use `--product` or `--name` to find a GUID for `get price --characteristic` and `get stock --characteristic`. A call is limited to catalogs of 5,000 records.
+
 `list groups` returns product folders and their IDs; `list price-types` returns price type names and IDs. `list unit-types` returns measurement-unit classifier entries. Product base-unit IDs from `get product` refer to this classifier in the tested tenant. Product groups and price types are separate entities. These commands do not retrieve prices from price documents.
 
 `list prices` shows products in the selected group and their effective prices for a named price type as of `--as-of`. Use `--group GROUP_GUID` or `--group root`; without a group, it browses the catalog. Its pages use raw catalog offsets like `list products` and include products without a price as `found: false`. Each item includes product code, article, and the source price document when found. It scans price document history once per page instead of once per product.
@@ -156,7 +158,7 @@ bin/1c mcp
 Configure your MCP client to launch this command from the repository directory, or provide the three `ONEC_ODATA_*` variables in the client's environment. The server exposes:
 
 - `check_connection`
-- `list_product_groups`, `list_product_categories`, and `list_price_types`
+- `list_product_groups`, `list_product_categories`, `list_product_characteristics`, and `list_price_types`
 - `get_product_price` and `list_product_prices`
 - `list_warehouses`, `get_product_stock`, and `list_unit_types`
 - `find_nomenclature`
