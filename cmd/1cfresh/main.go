@@ -73,6 +73,8 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		return err
 	case operations.ListGroups.Command:
 		return runGroupList(ctx, svc, commandArgs, out)
+	case operations.ListProductCategories.Command:
+		return runProductCategoryList(ctx, svc, commandArgs, out)
 	case operations.CreateGroup.Command:
 		return runGroupCreate(ctx, svc, commandArgs, out)
 	case operations.UpdateGroup.Command:
@@ -249,6 +251,7 @@ func printHelp(out io.Writer) {
 	}
 	fmt.Fprintln(out, "\nExamples:")
 	fmt.Fprintln(out, "  1c list groups --name \"Пример группы\"")
+	fmt.Fprintln(out, "  1c list product-categories")
 	fmt.Fprintln(out, "  1c update group GROUP_GUID --parent PARENT_GUID")
 	fmt.Fprintln(out, "  1c list counterparty-groups")
 	fmt.Fprintln(out, "  1c create customer --name \"Example customer\" --parent FOLDER_GUID")
