@@ -60,6 +60,18 @@ func TestListPriceTypesIncludesInactiveAndDeleted(t *testing.T) {
 	}
 }
 
+func TestListCurrenciesSkipsDeletedAndSortsByCode(t *testing.T) {
+	reader := &catalogReader{rows: map[string][]map[string]any{"Catalog_Валюты": {
+		{"Ref_Key": "11111111-1111-1111-1111-111111111111", "Code": "840", "Description": "Dollar", "СимвольноеПредставление": "$", "DeletionMark": false},
+		{"Ref_Key": "22222222-2222-2222-2222-222222222222", "Code": "643", "Description": "Ruble", "СимвольноеПредставление": "₽", "DeletionMark": false},
+		{"Ref_Key": "33333333-3333-3333-3333-333333333333", "Code": "978", "Description": "Old", "DeletionMark": true},
+	}}}
+	items, err := (Service{OData: reader}).ListCurrencies(context.Background())
+	if err != nil || len(items) != 2 || items[0].Code != "643" || items[1].Symbol != "$" {
+		t.Fatalf("currencies: %+v, %v", items, err)
+	}
+}
+
 func TestListUnitTypesReturnsActiveClassifierEntries(t *testing.T) {
 	reader := &catalogReader{rows: map[string][]map[string]any{"Catalog_КлассификаторЕдиницИзмерения": {
 		{"Ref_Key": groupID, "Code": "796", "Description": "шт", "НаименованиеПолное": "Штука", "МеждународноеСокращение": "pc", "ТипИзмеряемойВеличины": "Штука", "DeletionMark": false},

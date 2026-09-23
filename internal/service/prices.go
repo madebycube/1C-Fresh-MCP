@@ -28,6 +28,8 @@ type PriceQuote struct {
 	Found            bool    `json:"found"`
 	Price            Decimal `json:"price,omitempty"`
 	CurrencyID       string  `json:"currency_id,omitempty"`
+	CurrencyCode     string  `json:"currency_code,omitempty"`
+	CurrencySymbol   string  `json:"currency_symbol,omitempty"`
 	SourceDocumentID string  `json:"source_document_id,omitempty"`
 	SourceDate       string  `json:"source_date,omitempty"`
 	SourceLineNumber int64   `json:"source_line_number,omitempty"`
@@ -86,6 +88,7 @@ func (s Service) GetPrice(ctx context.Context, productID, typeName, characterist
 	if err := s.applyPriceHistory(ctx, selected.ID, characteristicID, asOf, quotes); err != nil {
 		return PriceQuote{}, err
 	}
+	s.enrichPriceCurrencies(ctx, []*PriceQuote{&quote})
 	return quote, nil
 }
 
@@ -121,8 +124,40 @@ func (s Service) ListPrices(ctx context.Context, typeName, groupID, characterist
 		if err := s.applyPriceHistory(ctx, selected.ID, characteristicID, asOf, quotes); err != nil {
 			return PricePage{}, err
 		}
+		items := make([]*PriceQuote, 0, len(page.Items))
+		for index := range page.Items {
+			items = append(items, &page.Items[index])
+		}
+		s.enrichPriceCurrencies(ctx, items)
 	}
 	return page, nil
+}
+
+func (s Service) enrichPriceCurrencies(ctx context.Context, quotes []*PriceQuote) {
+	needLookup := false
+	for _, quote := range quotes {
+		if quote.Found && linkedGUID(quote.CurrencyID) {
+			needLookup = true
+			break
+		}
+	}
+	if !needLookup {
+		return
+	}
+	currencies, err := s.ListCurrencies(ctx)
+	if err != nil {
+		return
+	}
+	byID := make(map[string]Currency, len(currencies))
+	for _, currency := range currencies {
+		byID[strings.ToLower(currency.ID)] = currency
+	}
+	for _, quote := range quotes {
+		if currency, ok := byID[strings.ToLower(quote.CurrencyID)]; ok {
+			quote.CurrencyCode = currency.Code
+			quote.CurrencySymbol = currency.Symbol
+		}
+	}
 }
 
 func priceFilters(typeName, characteristicID, asOf string) (string, string, string, error) {

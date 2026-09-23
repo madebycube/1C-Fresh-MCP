@@ -97,6 +97,17 @@ var PriceTypes = CatalogListResource{
 	},
 }
 
+var Currencies = CatalogListResource{
+	Name: "Catalog_Валюты",
+	Fields: []FieldBinding{
+		{Output: "id", Source: "Ref_Key"},
+		{Output: "code", Source: "Code"},
+		{Output: "name", Source: "Description"},
+		{Output: "symbol", Source: "СимвольноеПредставление"},
+		{Output: "deleted", Source: "DeletionMark"},
+	},
+}
+
 var UnitTypes = CatalogListResource{
 	Name: "Catalog_КлассификаторЕдиницИзмерения",
 	Fields: []FieldBinding{
