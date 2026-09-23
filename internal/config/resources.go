@@ -69,6 +69,38 @@ var PriceTypes = CatalogListResource{
 	},
 }
 
+var Warehouses = CatalogListResource{
+	Name: "Catalog_СтруктурныеЕдиницы",
+	Fields: []FieldBinding{
+		{Output: "id", Source: "Ref_Key"},
+		{Output: "code", Source: "Code"},
+		{Output: "name", Source: "Description"},
+		{Output: "kind", Source: "ТипСтруктурнойЕдиницы"},
+		{Output: "deleted", Source: "DeletionMark"},
+		{Output: "inactive", Source: "Недействителен"},
+	},
+}
+
+type BalanceResource struct {
+	Name         string
+	ProductField string
+	Fields       []FieldBinding
+}
+
+var WarehouseStock = BalanceResource{
+	Name:         "AccumulationRegister_ЗапасыНаСкладах",
+	ProductField: "Номенклатура_Key",
+	Fields: []FieldBinding{
+		{Output: "product_id", Source: "Номенклатура_Key"},
+		{Output: "warehouse_id", Source: "СтруктурнаяЕдиница_Key"},
+		{Output: "characteristic_id", Source: "Характеристика_Key"},
+		{Output: "organization_id", Source: "Организация_Key"},
+		{Output: "batch_id", Source: "Партия_Key"},
+		{Output: "cell_id", Source: "Ячейка_Key"},
+		{Output: "quantity", Source: "КоличествоBalance"},
+	},
+}
+
 var PriceDocuments = DocumentResource{
 	Name:         "Document_УстановкаЦенНоменклатуры",
 	Filter:       "Posted eq true and DeletionMark eq false",

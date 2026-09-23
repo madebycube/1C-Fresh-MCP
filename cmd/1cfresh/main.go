@@ -81,6 +81,10 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		return runPriceTypeList(ctx, svc, commandArgs, out)
 	case operations.GetPrice.Command:
 		return runPriceGet(ctx, svc, commandArgs, out)
+	case operations.ListWarehouses.Command:
+		return runWarehouseList(ctx, svc, commandArgs, out)
+	case operations.GetStock.Command:
+		return runStockGet(ctx, svc, commandArgs, out)
 	case operations.SearchProducts.Command:
 		flags := flag.NewFlagSet("search products", flag.ContinueOnError)
 		flags.SetOutput(io.Discard)

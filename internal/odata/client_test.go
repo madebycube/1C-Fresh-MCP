@@ -87,3 +87,27 @@ func TestWriteHidesResponseAndReportsConflict(t *testing.T) {
 		t.Fatalf("unexpected conflict error: %v", err)
 	}
 }
+
+func TestStockBalanceUsesValidatedFunctionPath(t *testing.T) {
+	id := "11111111-1111-1111-1111-111111111111"
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		want := "/a/sbm/1/odata/standard.odata/AccumulationRegister_ЗапасыНаСкладах/Balance(Condition='Номенклатура_Key eq guid''" + id + "''')"
+		if r.URL.Path != want || r.URL.Query().Get("$top") != "1" {
+			t.Errorf("unexpected balance request: %s?%s", r.URL.Path, r.URL.RawQuery)
+		}
+		_, _ = w.Write([]byte(`{"value":[]}`))
+	}))
+	defer server.Close()
+	base, _ := url.Parse(server.URL + "/a/sbm/1")
+	client := New(config.Config{BaseURL: base, Username: "user", Password: "password"})
+	client.http = server.Client()
+	if _, err := client.GetStockBalance(context.Background(), id, url.Values{"$top": {"1"}}, 100); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.GetStockBalance(context.Background(), "../other", nil, 100); err == nil {
+		t.Fatal("accepted an invalid product ID")
+	}
+	if _, err := client.Get(context.Background(), "AccumulationRegister_ЗапасыНаСкладах/Balance", nil, 100); err == nil {
+		t.Fatal("generic OData read accepted a function path")
+	}
+}
