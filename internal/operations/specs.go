@@ -30,4 +30,16 @@ var GetOrder = Spec{
 	Description: "Read one customer order and its stock line items by GUID.",
 }
 
-var All = []Spec{Check, SearchProducts, ListOrders, GetOrder}
+var ListReceipts = Spec{
+	Command:     "receipts list",
+	Tool:        "list_cash_receipts",
+	Description: "List sales receipts or refunds in a bounded application date range.",
+}
+
+var GetReceipt = Spec{
+	Command:     "receipts get",
+	Tool:        "get_cash_receipt",
+	Description: "Read one cash receipt or refund, including stock lines and cashless payments.",
+}
+
+var All = []Spec{Check, SearchProducts, ListOrders, GetOrder, ListReceipts, GetReceipt}

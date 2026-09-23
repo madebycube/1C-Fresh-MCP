@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/url"
 	"regexp"
-	"strconv"
 	"strings"
 
 	"github.com/madebycube/1C-Fresh-MCP/internal/config"
@@ -63,31 +62,33 @@ func (s Service) ListOrders(ctx context.Context, limit int) ([]Order, error) {
 		return nil, fmt.Errorf("limit must be between 1 and %d", MaxOrders)
 	}
 	plan := config.CustomerOrders
-	params := url.Values{
-		"$format":     {"json"},
-		"$filter":     {plan.DeletedField + " eq false"},
-		"$select":     {sourceFields(plan.Fields)},
-		"$orderby":    {plan.DateField + " desc"},
-		"$top":        {strconv.Itoa(limit)},
-		"allowedOnly": {"true"},
-	}
-	data, err := s.OData.Get(ctx, plan.Name, params, 4<<20)
+	count, err := s.documentCount(ctx, plan)
 	if err != nil {
 		return nil, err
 	}
-	var response struct {
-		Value []map[string]json.RawMessage `json:"value"`
+	if limit > count {
+		limit = count
 	}
-	if err := json.Unmarshal(data, &response); err != nil || response.Value == nil {
-		return nil, errors.New("invalid OData order response")
+	rows, err := s.documentPage(ctx, plan, count-limit, limit)
+	if err != nil {
+		return nil, err
 	}
-	orders := make([]Order, 0, len(response.Value))
-	for _, row := range response.Value {
+	if len(rows) != limit {
+		return nil, errors.New("OData order count changed during lookup")
+	}
+	orders := make([]Order, 0, len(rows))
+	for index := len(rows) - 1; index >= 0; index-- {
+		row := rows[index]
 		order, err := bindFields[Order](row, plan.Fields)
 		if err != nil {
 			return nil, errors.New("invalid OData order fields")
 		}
 		orders = append(orders, order)
+	}
+	for index := 1; index < len(orders); index++ {
+		if orders[index].Date > orders[index-1].Date {
+			return nil, errors.New("OData returned orders outside descending date order")
+		}
 	}
 	return orders, nil
 }
@@ -126,29 +127,4 @@ func (s Service) GetOrder(ctx context.Context, id string) (Order, error) {
 		order.Lines = append(order.Lines, line)
 	}
 	return order, nil
-}
-
-func sourceFields(bindings []config.FieldBinding) string {
-	fields := make([]string, 0, len(bindings))
-	for _, binding := range bindings {
-		fields = append(fields, binding.Source)
-	}
-	return strings.Join(fields, ",")
-}
-
-func bindFields[T any](row map[string]json.RawMessage, bindings []config.FieldBinding) (T, error) {
-	selected := make(map[string]json.RawMessage, len(bindings))
-	for _, binding := range bindings {
-		if value, ok := row[binding.Source]; ok {
-			selected[binding.Output] = value
-		}
-	}
-	data, err := json.Marshal(selected)
-	if err != nil {
-		var zero T
-		return zero, err
-	}
-	var value T
-	err = json.Unmarshal(data, &value)
-	return value, err
 }

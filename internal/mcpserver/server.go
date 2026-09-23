@@ -38,6 +38,19 @@ type getOrderInput struct {
 	ID string `json:"id" jsonschema:"Customer order GUID"`
 }
 
+type listReceiptsInput struct {
+	Kind   string `json:"kind" jsonschema:"sale or refund"`
+	From   string `json:"from" jsonschema:"First application date, YYYY-MM-DD"`
+	To     string `json:"to" jsonschema:"Last application date, YYYY-MM-DD; no more than 31 days after from"`
+	Limit  int    `json:"limit,omitempty" jsonschema:"Maximum results, from 1 to 100; defaults to 20"`
+	Offset int    `json:"offset,omitempty" jsonschema:"Offset within matching receipts; defaults to zero"`
+}
+
+type getReceiptInput struct {
+	Kind string `json:"kind" jsonschema:"sale or refund"`
+	ID   string `json:"id" jsonschema:"Receipt GUID"`
+}
+
 func New(svc service.Service) *mcp.Server {
 	server := mcp.NewServer(&mcp.Implementation{Name: "1c-fresh", Version: "0.1.0"}, nil)
 	mcp.AddTool(server, &mcp.Tool{
@@ -67,6 +80,20 @@ func New(svc service.Service) *mcp.Server {
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, input getOrderInput) (*mcp.CallToolResult, service.Order, error) {
 		order, err := svc.GetOrder(ctx, input.ID)
 		return nil, order, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.ListReceipts.Tool, Description: operations.ListReceipts.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input listReceiptsInput) (*mcp.CallToolResult, service.ReceiptPage, error) {
+		page, err := svc.ListReceipts(ctx, input.Kind, input.From, input.To, input.Limit, input.Offset)
+		return nil, page, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.GetReceipt.Tool, Description: operations.GetReceipt.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input getReceiptInput) (*mcp.CallToolResult, service.Receipt, error) {
+		receipt, err := svc.GetReceipt(ctx, input.Kind, input.ID)
+		return nil, receipt, err
 	})
 	return server
 }
