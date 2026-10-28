@@ -550,6 +550,30 @@ var ListContracts = Spec{
 	Example:     "1c list contracts --counterparty SUPPLIER_GUID --kind supplier",
 }
 
+var ListDebts = Spec{
+	Command:     "list debts",
+	Tool:        "list_debts",
+	Description: "List customer or supplier settlement balances by counterparty from the 1C settlement register.",
+	Usage:       "1c list debts --kind customer|supplier [--as-of YYYY-MM-DD] [--counterparty GUID] [--limit N] [--offset N] [--json]",
+	Example:     "1c list debts --kind customer --as-of 2026-09-30",
+}
+
+var ReportSales = Spec{
+	Command:     "report sales",
+	Tool:        "report_sales",
+	Description: "Sum sales quantity, amount, VAT, and cost for a period by product, customer, or both.",
+	Usage:       "1c report sales --from YYYY-MM-DD --to YYYY-MM-DD [--by product|customer|product-customer] [--limit N] [--offset N] [--json]",
+	Example:     "1c report sales --from 2026-09-01 --to 2026-09-30 --by customer",
+}
+
+var ListCashBalances = Spec{
+	Command:     "list cash-balances",
+	Tool:        "list_cash_balances",
+	Description: "Show money balances by bank account or cash desk and currency.",
+	Usage:       "1c list cash-balances [--as-of YYYY-MM-DD] [--json]",
+	Example:     "1c list cash-balances --as-of 2026-09-30",
+}
+
 var Topics = []Topic{
 	{Name: "setup", Description: "Connection and local MCP server", Commands: []Spec{Check}},
 	{Name: "company", Description: "Organizations, departments, and contracts", Commands: []Spec{ListOrganizations, ListDepartments, ListContracts}},
@@ -557,9 +581,9 @@ var Topics = []Topic{
 	{Name: "prices", Description: "Price types, currencies, quotes, and source documents", Commands: []Spec{ListPriceTypes, ListCurrencies, GetPrice, ListPrices, ListPriceDocuments, GetPriceDocument}},
 	{Name: "inventory", Description: "Warehouses, stock, and warehouse documents", Commands: []Spec{ListWarehouses, GetStock, ListWarehouseDocuments, GetWarehouseDocument}},
 	{Name: "partners", Description: "Customer and supplier records and folders", Commands: []Spec{ListCounterpartyGroups, CreateCounterpartyGroup, UpdateCounterpartyGroup, ListCustomers, SearchCustomers, GetCustomer, CreateCustomer, UpdateCustomer, ListSuppliers, SearchSuppliers, GetSupplier, CreateSupplier, UpdateSupplier}},
-	{Name: "sales", Description: "Customer orders and sales documents", Commands: []Spec{ListOrders, GetOrder, ListSales, GetSale}},
+	{Name: "sales", Description: "Customer orders and sales documents", Commands: []Spec{ListOrders, GetOrder, ListSales, GetSale, ReportSales}},
 	{Name: "purchases", Description: "Supplier orders, goods receipts, and payment plans", Commands: []Spec{ListPurchases, GetPurchase, CreateReceipt, UpdateReceipt, PostReceipt, UnpostReceipt, ListLinkProperties, GetReceiptLink, SetReceiptLink, ListPaymentPlans, GetPaymentPlan, CreatePaymentPlan, UpdatePaymentPlan, PostPaymentPlan, UnpostPaymentPlan, TraceReceiptPayments, ReconcileSupplier}},
-	{Name: "money", Description: "Accounts, cash, bank, and card movements", Commands: []Spec{ListMoneyAccounts, ListMoney, GetMoney}},
+	{Name: "money", Description: "Accounts, cash, bank, and card movements", Commands: []Spec{ListMoneyAccounts, ListMoney, GetMoney, ListCashBalances, ListDebts}},
 	{Name: "receipts", Description: "Fiscal receipts and posting audit", Commands: []Spec{ListReceipts, GetReceipt, AuditUnpostedReceipts}},
 	{Name: "schema", Description: "Search and inspect exposed OData resources", Commands: []Spec{SearchResources, DescribeResource}},
 }

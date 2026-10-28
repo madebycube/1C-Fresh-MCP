@@ -125,6 +125,26 @@ type listContractsInput struct {
 	Offset         int    `json:"offset,omitempty" jsonschema:"Results to skip"`
 }
 
+type listDebtsInput struct {
+	Kind           string `json:"kind" jsonschema:"customer or supplier"`
+	AsOf           string `json:"as_of,omitempty" jsonschema:"Inclusive date YYYY-MM-DD; default today"`
+	CounterpartyID string `json:"counterparty_id,omitempty" jsonschema:"Optional counterparty GUID"`
+	Limit          int    `json:"limit,omitempty" jsonschema:"Maximum results, 1-100; default 20"`
+	Offset         int    `json:"offset,omitempty" jsonschema:"Results to skip"`
+}
+
+type reportSalesInput struct {
+	From   string `json:"from" jsonschema:"First day YYYY-MM-DD"`
+	To     string `json:"to" jsonschema:"Last day YYYY-MM-DD; at most one year after from"`
+	By     string `json:"by,omitempty" jsonschema:"product, customer, or product-customer; default product"`
+	Limit  int    `json:"limit,omitempty" jsonschema:"Maximum results, 1-100; default 20"`
+	Offset int    `json:"offset,omitempty" jsonschema:"Results to skip"`
+}
+
+type listCashBalancesInput struct {
+	AsOf string `json:"as_of,omitempty" jsonschema:"Inclusive date YYYY-MM-DD; default today"`
+}
+
 type listCurrenciesInput struct{}
 
 type listCurrenciesOutput struct {
@@ -562,6 +582,38 @@ func New(svc service.Service) *mcp.Server {
 		}
 		page, err := svc.ListContracts(ctx, service.ContractFilter{CounterpartyID: input.CounterpartyID, OrganizationID: input.OrganizationID, Kind: input.Kind, All: input.All}, limit, input.Offset)
 		return nil, page, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.ListDebts.Tool, Description: operations.ListDebts.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input listDebtsInput) (*mcp.CallToolResult, service.DebtPage, error) {
+		limit := input.Limit
+		if limit == 0 {
+			limit = 20
+		}
+		page, err := svc.ListDebts(ctx, input.Kind, input.AsOf, input.CounterpartyID, limit, input.Offset)
+		return nil, page, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.ReportSales.Tool, Description: operations.ReportSales.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input reportSalesInput) (*mcp.CallToolResult, service.SalesReport, error) {
+		limit, by := input.Limit, input.By
+		if limit == 0 {
+			limit = 20
+		}
+		if by == "" {
+			by = "product"
+		}
+		report, err := svc.ReportSales(ctx, by, input.From, input.To, limit, input.Offset)
+		return nil, report, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.ListCashBalances.Tool, Description: operations.ListCashBalances.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input listCashBalancesInput) (*mcp.CallToolResult, service.CashBalances, error) {
+		balances, err := svc.ListCashBalances(ctx, input.AsOf)
+		return nil, balances, err
 	})
 	mcp.AddTool(server, &mcp.Tool{
 		Name: operations.ListCurrencies.Tool, Description: operations.ListCurrencies.Description,

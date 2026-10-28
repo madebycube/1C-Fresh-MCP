@@ -58,6 +58,59 @@ func (c *Client) GetStockBalance(ctx context.Context, productID string, params u
 	return c.get(ctx, resource, params, maxBytes)
 }
 
+var (
+	registerNamePattern = regexp.MustCompile(`^AccumulationRegister_[\p{L}\p{N}_]+$`)
+	registerListPattern = regexp.MustCompile(`^[\p{L}\p{N}_]+(,[\p{L}\p{N}_]+)*$`)
+	registerTimePattern = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$`)
+)
+
+// GetRegisterTable reads a Balance or Turnovers virtual table. Every argument is validated so callers cannot inject OData syntax.
+func (c *Client) GetRegisterTable(ctx context.Context, query config.RegisterQuery, params url.Values, maxBytes int64) ([]byte, error) {
+	resource, err := RegisterTableResource(query)
+	if err != nil {
+		return nil, err
+	}
+	return c.get(ctx, resource, params, maxBytes)
+}
+
+func RegisterTableResource(query config.RegisterQuery) (string, error) {
+	if !registerNamePattern.MatchString(query.Register) {
+		return "", errors.New("invalid accumulation register")
+	}
+	var args []string
+	periods := [][2]string{}
+	switch query.Table {
+	case "Balance":
+		if query.StartPeriod != "" || query.EndPeriod != "" {
+			return "", errors.New("balance takes only a period")
+		}
+		periods = append(periods, [2]string{"Period", query.Period})
+	case "Turnovers":
+		if query.Period != "" {
+			return "", errors.New("turnovers take a start and end period")
+		}
+		periods = append(periods, [2]string{"StartPeriod", query.StartPeriod}, [2]string{"EndPeriod", query.EndPeriod})
+	default:
+		return "", errors.New("unsupported register table")
+	}
+	for _, period := range periods {
+		if period[1] == "" {
+			continue
+		}
+		if !registerTimePattern.MatchString(period[1]) {
+			return "", errors.New("invalid register period")
+		}
+		args = append(args, period[0]+"=datetime'"+period[1]+"'")
+	}
+	if query.Dimensions != "" {
+		if !registerListPattern.MatchString(query.Dimensions) {
+			return "", errors.New("invalid register dimensions")
+		}
+		args = append(args, "Dimensions='"+query.Dimensions+"'")
+	}
+	return query.Register + "/" + query.Table + "(" + strings.Join(args, ",") + ")", nil
+}
+
 func (c *Client) get(ctx context.Context, resource string, params url.Values, maxBytes int64) ([]byte, error) {
 	u := c.base
 	u.Path = strings.TrimRight(u.Path, "/") + "/odata/standard.odata/" + resource

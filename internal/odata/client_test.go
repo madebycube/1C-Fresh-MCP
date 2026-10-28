@@ -146,3 +146,27 @@ func TestActionPostsDocumentAndExplainsRejection(t *testing.T) {
 		t.Fatal("accepted unknown action")
 	}
 }
+
+func TestRegisterTableResourceValidatesArguments(t *testing.T) {
+	got, err := RegisterTableResource(config.RegisterQuery{Register: "AccumulationRegister_Продажи", Table: "Turnovers", StartPeriod: "2026-09-01T00:00:00", EndPeriod: "2026-09-30T23:59:59", Dimensions: "Номенклатура,Контрагент"})
+	if err != nil || got != "AccumulationRegister_Продажи/Turnovers(StartPeriod=datetime'2026-09-01T00:00:00',EndPeriod=datetime'2026-09-30T23:59:59',Dimensions='Номенклатура,Контрагент')" {
+		t.Fatalf("turnovers: %q, %v", got, err)
+	}
+	got, err = RegisterTableResource(config.RegisterQuery{Register: "AccumulationRegister_ДенежныеСредства", Table: "Balance"})
+	if err != nil || got != "AccumulationRegister_ДенежныеСредства/Balance()" {
+		t.Fatalf("balance: %q, %v", got, err)
+	}
+	for _, query := range []config.RegisterQuery{
+		{Register: "Catalog_Номенклатура", Table: "Balance"},
+		{Register: "AccumulationRegister_X/Y", Table: "Balance"},
+		{Register: "AccumulationRegister_X", Table: "SliceLast"},
+		{Register: "AccumulationRegister_X", Table: "Balance", Period: "2026-09-01'"},
+		{Register: "AccumulationRegister_X", Table: "Balance", StartPeriod: "2026-09-01T00:00:00"},
+		{Register: "AccumulationRegister_X", Table: "Turnovers", Period: "2026-09-01T00:00:00"},
+		{Register: "AccumulationRegister_X", Table: "Turnovers", Dimensions: "A',B"},
+	} {
+		if _, err := RegisterTableResource(query); err == nil {
+			t.Fatalf("expected error for %+v", query)
+		}
+	}
+}
