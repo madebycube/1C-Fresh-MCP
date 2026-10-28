@@ -612,3 +612,187 @@ var CashReceipts = map[string]DocumentResource{
 		},
 	},
 }
+
+var SupplierPaymentPlans = DocumentResource{
+	Name: "Document_СчетНаОплатуПоставщика", DateField: "Date", DeletedField: "DeletionMark",
+	Fields: []FieldBinding{
+		{Output: "id", Source: "Ref_Key"},
+		{Output: "number", Source: "Number"},
+		{Output: "date", Source: "Date"},
+		{Output: "posted", Source: "Posted"},
+		{Output: "deleted", Source: "DeletionMark"},
+		{Output: "amount", Source: "СуммаДокумента"},
+		{Output: "currency_id", Source: "ВалютаДокумента_Key"},
+		{Output: "organization_id", Source: "Организация_Key"},
+		{Output: "supplier_id", Source: "Контрагент_Key"},
+		{Output: "contract_id", Source: "Договор_Key"},
+		{Output: "account_id", Source: "БанковскийСчет_Key"},
+		{Output: "cash_account_id", Source: "Касса_Key"},
+		{Output: "supplier_account_id", Source: "БанковскийСчетПоставщика_Key"},
+		{Output: "money_type", Source: "ТипДенежныхСредств"},
+		{Output: "plan_payment", Source: "ЗапланироватьОплату"},
+		{Output: "incoming_number", Source: "НомерВходящегоДокумента"},
+		{Output: "incoming_date", Source: "ДатаВходящегоДокумента"},
+		{Output: "basis_id", Source: "ДокументОснование_Key"},
+	},
+	LinesField: "ПлатежныйКалендарь",
+	LineFields: []FieldBinding{
+		{Output: "line_number", Source: "LineNumber"},
+		{Output: "date", Source: "ДатаОплаты"},
+		{Output: "percent", Source: "ПроцентОплаты"},
+		{Output: "amount", Source: "СуммаОплаты"},
+		{Output: "vat", Source: "СуммаНДСОплаты"},
+	},
+}
+
+// PaymentCalendar is scanned and matched by invoice reference locally, because the tested tenant rejects reference filters.
+var PaymentCalendar = struct {
+	Name         string
+	InvoiceField string
+	Fields       []FieldBinding
+}{
+	Name:         "AccumulationRegister_ПлатежныйКалендарь_RecordType",
+	InvoiceField: "СчетНаОплату",
+	Fields: []FieldBinding{
+		{Output: "invoice_id", Source: "СчетНаОплату"},
+		{Output: "invoice_type", Source: "СчетНаОплату_Type"},
+		{Output: "recorder_id", Source: "Recorder"},
+		{Output: "recorder_type", Source: "Recorder_Type"},
+		{Output: "period", Source: "Period"},
+		{Output: "active", Source: "Active"},
+		{Output: "approval_state", Source: "СтатусУтвержденияПлатежа"},
+		{Output: "amount", Source: "Сумма"},
+		{Output: "payment_amount", Source: "СуммаОплаты"},
+	},
+}
+
+var SupplierReceiptTrace = DocumentResource{
+	Name: "Document_ПриходнаяНакладная", DateField: "Date", DeletedField: "DeletionMark",
+	Fields: []FieldBinding{
+		{Output: "id", Source: "Ref_Key"},
+		{Output: "number", Source: "Number"},
+		{Output: "date", Source: "Date"},
+		{Output: "posted", Source: "Posted"},
+		{Output: "deleted", Source: "DeletionMark"},
+		{Output: "operation", Source: "ВидОперации"},
+		{Output: "amount", Source: "СуммаДокумента"},
+		{Output: "currency_id", Source: "ВалютаДокумента_Key"},
+		{Output: "organization_id", Source: "Организация_Key"},
+		{Output: "supplier_id", Source: "Контрагент_Key"},
+		{Output: "contract_id", Source: "Договор_Key"},
+		{Output: "order_id", Source: "Заказ"},
+		{Output: "order_type", Source: "Заказ_Type"},
+		{Output: "incoming_number", Source: "НомерВходящегоДокумента"},
+		{Output: "incoming_date", Source: "ДатаВходящегоДокумента"},
+	},
+	PaymentsField: "Предоплата",
+	PaymentFields: []FieldBinding{
+		{Output: "line_number", Source: "LineNumber"},
+		{Output: "document_id", Source: "Документ"},
+		{Output: "document_type", Source: "Документ_Type"},
+		{Output: "settlement_amount", Source: "СуммаРасчетов"},
+		{Output: "payment_amount", Source: "СуммаПлатежа"},
+	},
+}
+
+var supplierPaymentLineFields = []FieldBinding{
+	{Output: "line_number", Source: "LineNumber"},
+	{Output: "contract_id", Source: "Договор_Key"},
+	{Output: "advance", Source: "ПризнакАванса"},
+	{Output: "document_id", Source: "Документ"},
+	{Output: "document_type", Source: "Документ_Type"},
+	{Output: "order_id", Source: "Заказ"},
+	{Output: "order_type", Source: "Заказ_Type"},
+	{Output: "invoice_id", Source: "СчетНаОплату"},
+	{Output: "invoice_type", Source: "СчетНаОплату_Type"},
+	{Output: "plan_id", Source: "ДокументПланирования"},
+	{Output: "plan_type", Source: "ДокументПланирования_Type"},
+	{Output: "settlement_amount", Source: "СуммаРасчетов"},
+	{Output: "payment_amount", Source: "СуммаПлатежа"},
+}
+
+// SupplierPaymentDocuments are the outgoing documents whose payment breakdown can reference a goods receipt or invoice.
+var SupplierPaymentDocuments = map[string]DocumentResource{
+	"payment-order": {
+		Name: "Document_ПлатежноеПоручение", DateField: "Date", DeletedField: "DeletionMark",
+		Fields: []FieldBinding{
+			{Output: "id", Source: "Ref_Key"},
+			{Output: "number", Source: "Number"},
+			{Output: "date", Source: "Date"},
+			{Output: "posted", Source: "Posted"},
+			{Output: "deleted", Source: "DeletionMark"},
+			{Output: "operation", Source: "ВидОперации"},
+			{Output: "amount", Source: "СуммаДокумента"},
+			{Output: "currency_id", Source: "ВалютаДокумента_Key"},
+			{Output: "account_id", Source: "БанковскийСчет_Key"},
+			{Output: "supplier_id", Source: "Контрагент_Key"},
+			{Output: "contract_id", Source: "Договор_Key"},
+			{Output: "paid", Source: "Оплачено"},
+			{Output: "basis_id", Source: "ДокументОснование"},
+			{Output: "basis_type", Source: "ДокументОснование_Type"},
+		},
+		LinesField: "РасшифровкаПлатежа", LineFields: supplierPaymentLineFields,
+	},
+	"bank-out": {
+		Name: "Document_РасходСоСчета", DateField: "Date", DeletedField: "DeletionMark",
+		Fields: []FieldBinding{
+			{Output: "id", Source: "Ref_Key"},
+			{Output: "number", Source: "Number"},
+			{Output: "date", Source: "Date"},
+			{Output: "posted", Source: "Posted"},
+			{Output: "deleted", Source: "DeletionMark"},
+			{Output: "operation", Source: "ВидОперации"},
+			{Output: "amount", Source: "СуммаДокумента"},
+			{Output: "currency_id", Source: "ВалютаДенежныхСредств_Key"},
+			{Output: "account_id", Source: "БанковскийСчет_Key"},
+			{Output: "supplier_id", Source: "Контрагент_Key"},
+			{Output: "basis_id", Source: "ДокументОснование"},
+			{Output: "basis_type", Source: "ДокументОснование_Type"},
+		},
+		LinesField: "РасшифровкаПлатежа", LineFields: supplierPaymentLineFields,
+	},
+	"cash-out": {
+		Name: "Document_РасходИзКассы", DateField: "Date", DeletedField: "DeletionMark",
+		Fields: []FieldBinding{
+			{Output: "id", Source: "Ref_Key"},
+			{Output: "number", Source: "Number"},
+			{Output: "date", Source: "Date"},
+			{Output: "posted", Source: "Posted"},
+			{Output: "deleted", Source: "DeletionMark"},
+			{Output: "operation", Source: "ВидОперации"},
+			{Output: "amount", Source: "СуммаДокумента"},
+			{Output: "currency_id", Source: "ВалютаДенежныхСредств_Key"},
+			{Output: "account_id", Source: "Касса_Key"},
+			{Output: "supplier_id", Source: "Контрагент_Key"},
+			{Output: "basis_id", Source: "ДокументОснование"},
+			{Output: "basis_type", Source: "ДокументОснование_Type"},
+		},
+		LinesField: "РасшифровкаПлатежа", LineFields: supplierPaymentLineFields,
+	},
+}
+
+// SupplierSettlements is scanned and matched by document locally; it is how 1C itself closes a receipt's debt.
+var SupplierSettlements = struct {
+	Name   string
+	Fields []FieldBinding
+}{
+	Name: "AccumulationRegister_РасчетыСПоставщиками_RecordType",
+	Fields: []FieldBinding{
+		{Output: "recorder_id", Source: "Recorder"},
+		{Output: "recorder_type", Source: "Recorder_Type"},
+		{Output: "line_number", Source: "LineNumber"},
+		{Output: "period", Source: "Period"},
+		{Output: "active", Source: "Active"},
+		{Output: "record_type", Source: "RecordType"},
+		{Output: "settlement_type", Source: "ТипРасчетов"},
+		{Output: "organization_id", Source: "Организация_Key"},
+		{Output: "supplier_id", Source: "Контрагент_Key"},
+		{Output: "contract_id", Source: "Договор_Key"},
+		{Output: "document_id", Source: "Документ"},
+		{Output: "document_type", Source: "Документ_Type"},
+		{Output: "payment_document_id", Source: "ДокументОплаты"},
+		{Output: "payment_document_type", Source: "ДокументОплаты_Type"},
+		{Output: "amount", Source: "Сумма"},
+		{Output: "currency_amount", Source: "СуммаВал"},
+	},
+}

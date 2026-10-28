@@ -249,6 +249,25 @@ type getPurchaseInput struct {
 	ID   string `json:"id" jsonschema:"Supplier order or goods receipt GUID"`
 }
 
+type listPaymentPlansInput struct {
+	OrganizationID string `json:"organization_id,omitempty" jsonschema:"Optional organization GUID"`
+	SupplierID     string `json:"supplier_id,omitempty" jsonschema:"Optional supplier GUID"`
+	ContractID     string `json:"contract_id,omitempty" jsonschema:"Optional supplier contract GUID"`
+	AccountID      string `json:"account_id,omitempty" jsonschema:"Optional organization bank account GUID that pays the plan"`
+	From           string `json:"from,omitempty" jsonschema:"Optional first date YYYY-MM-DD; use with to"`
+	To             string `json:"to,omitempty" jsonschema:"Optional last date YYYY-MM-DD; use with from"`
+	Limit          int    `json:"limit,omitempty" jsonschema:"Maximum results, 1 to 100; defaults to 20"`
+	Offset         int    `json:"offset,omitempty" jsonschema:"Offset within matching documents"`
+}
+
+type getPaymentPlanInput struct {
+	ID string `json:"id" jsonschema:"Supplier invoice GUID"`
+}
+
+type traceReceiptPaymentsInput struct {
+	ID string `json:"id" jsonschema:"Supplier goods receipt GUID"`
+}
+
 type listWarehouseDocumentsInput struct {
 	Kind        string `json:"kind" jsonschema:"transfer-order, transfer, stock-receipt, or stock-writeoff"`
 	WarehouseID string `json:"warehouse_id,omitempty" jsonschema:"Optional source, reserve, or destination warehouse GUID"`
@@ -629,6 +648,32 @@ func New(svc service.Service) *mcp.Server {
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, input getPurchaseInput) (*mcp.CallToolResult, service.OperationalDocument, error) {
 		doc, err := svc.GetOperationalDocument(ctx, "purchase", input.Kind, input.ID)
 		return nil, doc, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.ListPaymentPlans.Tool, Description: operations.ListPaymentPlans.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input listPaymentPlansInput) (*mcp.CallToolResult, service.SupplierPaymentPlanPage, error) {
+		limit := input.Limit
+		if limit == 0 {
+			limit = 20
+		}
+		filter := service.SupplierPaymentPlanFilter{OrganizationID: input.OrganizationID, SupplierID: input.SupplierID, ContractID: input.ContractID, AccountID: input.AccountID, From: input.From, To: input.To}
+		page, err := svc.ListSupplierPaymentPlans(ctx, filter, limit, input.Offset)
+		return nil, page, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.GetPaymentPlan.Tool, Description: operations.GetPaymentPlan.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input getPaymentPlanInput) (*mcp.CallToolResult, service.SupplierPaymentPlan, error) {
+		item, err := svc.GetSupplierPaymentPlan(ctx, input.ID)
+		return nil, item, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.TraceReceiptPayments.Tool, Description: operations.TraceReceiptPayments.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input traceReceiptPaymentsInput) (*mcp.CallToolResult, service.SupplierReceiptTrace, error) {
+		trace, err := svc.TraceSupplierReceipt(ctx, input.ID)
+		return nil, trace, err
 	})
 	mcp.AddTool(server, &mcp.Tool{
 		Name: operations.ListWarehouseDocuments.Tool, Description: operations.ListWarehouseDocuments.Description,
