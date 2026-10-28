@@ -154,21 +154,21 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(listed.Tools) != 52 {
-		t.Fatalf("got %d tools; want 52", len(listed.Tools))
+	if len(listed.Tools) != 55 {
+		t.Fatalf("got %d tools; want 55", len(listed.Tools))
 	}
 	for _, tool := range listed.Tools {
 		if tool.Annotations == nil {
 			t.Fatalf("tool %s has no annotations", tool.Name)
 		}
-		write := tool.Name == operations.CreateGroup.Tool || tool.Name == operations.UpdateGroup.Tool || tool.Name == operations.CreateCounterpartyGroup.Tool || tool.Name == operations.UpdateCounterpartyGroup.Tool || tool.Name == operations.CreateProduct.Tool || tool.Name == operations.UpdateProduct.Tool || tool.Name == operations.CreateCustomer.Tool || tool.Name == operations.UpdateCustomer.Tool || tool.Name == operations.CreateSupplier.Tool || tool.Name == operations.UpdateSupplier.Tool
+		write := tool.Name == operations.CreateGroup.Tool || tool.Name == operations.UpdateGroup.Tool || tool.Name == operations.CreateCounterpartyGroup.Tool || tool.Name == operations.UpdateCounterpartyGroup.Tool || tool.Name == operations.CreateProduct.Tool || tool.Name == operations.UpdateProduct.Tool || tool.Name == operations.CreateCustomer.Tool || tool.Name == operations.UpdateCustomer.Tool || tool.Name == operations.CreateSupplier.Tool || tool.Name == operations.UpdateSupplier.Tool || tool.Name == operations.CreateReceipt.Tool || tool.Name == operations.UpdateReceipt.Tool || tool.Name == operations.PostReceipt.Tool
 		if tool.Annotations.ReadOnlyHint == write {
 			t.Fatalf("tool %s has incorrect read-only annotation", tool.Name)
 		}
-		if (tool.Name == operations.CreateGroup.Tool || tool.Name == operations.CreateCounterpartyGroup.Tool || tool.Name == operations.CreateProduct.Tool || tool.Name == operations.CreateCustomer.Tool || tool.Name == operations.CreateSupplier.Tool) && (tool.Annotations.DestructiveHint == nil || *tool.Annotations.DestructiveHint) {
+		if (tool.Name == operations.CreateGroup.Tool || tool.Name == operations.CreateCounterpartyGroup.Tool || tool.Name == operations.CreateProduct.Tool || tool.Name == operations.CreateCustomer.Tool || tool.Name == operations.CreateSupplier.Tool || tool.Name == operations.CreateReceipt.Tool) && (tool.Annotations.DestructiveHint == nil || *tool.Annotations.DestructiveHint) {
 			t.Fatalf("%s must be marked additive", tool.Name)
 		}
-		if (tool.Name == operations.UpdateGroup.Tool || tool.Name == operations.UpdateCounterpartyGroup.Tool || tool.Name == operations.UpdateCustomer.Tool || tool.Name == operations.UpdateSupplier.Tool) && !tool.Annotations.IdempotentHint {
+		if (tool.Name == operations.UpdateGroup.Tool || tool.Name == operations.UpdateCounterpartyGroup.Tool || tool.Name == operations.UpdateCustomer.Tool || tool.Name == operations.UpdateSupplier.Tool || tool.Name == operations.UpdateReceipt.Tool || tool.Name == operations.PostReceipt.Tool) && !tool.Annotations.IdempotentHint {
 			t.Fatalf("%s must be marked idempotent", tool.Name)
 		}
 	}
@@ -262,6 +262,39 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 			if err != nil || !strings.Contains(string(data), `"customer_id":"00000000-0000-0000-0000-000000000002"`) || !strings.Contains(string(data), `"total":0`) || !strings.Contains(string(data), `"items":[]`) {
 				t.Fatalf("order list tool returned %s: %v", data, err)
 			}
+		}
+	}
+}
+
+func TestReceiptToolsReachServiceValidation(t *testing.T) {
+	ctx := context.Background()
+	serverTransport, clientTransport := mcp.NewInMemoryTransports()
+	serverSession, err := New(service.Service{OData: stubReader{}}).Connect(ctx, serverTransport, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer serverSession.Close()
+	clientSession, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "0.1.0"}, nil).Connect(ctx, clientTransport, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer clientSession.Close()
+	for _, call := range []struct {
+		name string
+		args map[string]any
+		want string
+	}{
+		{operations.CreateReceipt.Tool, map[string]any{"organization_id": "bad", "supplier_id": "bad", "contract_id": "bad", "warehouse_id": "bad", "department_id": "bad", "date": "2026-10-01", "vat_mode": "inclusive", "lines": []map[string]any{{"product_id": "bad", "quantity": "1", "price": "1", "vat_rate": "НДС22"}}}, "GUID"},
+		{operations.UpdateReceipt.Tool, map[string]any{"id": "bad", "change_lines": []map[string]any{{"line_number": 1, "quantity": "2"}}}, "GUID"},
+		{operations.PostReceipt.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000017", "action": "delete"}, "post or unpost"},
+	} {
+		result, err := clientSession.CallTool(ctx, &mcp.CallToolParams{Name: call.name, Arguments: call.args})
+		if err != nil || !result.IsError {
+			t.Fatalf("tool %s should reject input: %v, %+v", call.name, err, result)
+		}
+		text, _ := json.Marshal(result.Content)
+		if !strings.Contains(string(text), call.want) {
+			t.Fatalf("tool %s returned %s; want %q", call.name, text, call.want)
 		}
 	}
 }
