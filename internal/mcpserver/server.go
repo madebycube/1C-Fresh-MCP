@@ -328,6 +328,17 @@ func receiptLines(lines []receiptLineInput) []service.ReceiptLineInput {
 	return out
 }
 
+type reconcileSupplierInput struct {
+	OrganizationID string `json:"organization_id" jsonschema:"Organization GUID"`
+	SupplierID     string `json:"supplier_id" jsonschema:"Supplier GUID"`
+	From           string `json:"from" jsonschema:"First day YYYY-MM-DD"`
+	To             string `json:"to" jsonschema:"Last day YYYY-MM-DD, at most five years after from"`
+	ContractID     string `json:"contract_id,omitempty" jsonschema:"Optional contract GUID; limits every figure to that contract"`
+	AccountID      string `json:"account_id,omitempty" jsonschema:"Optional bank account or cash desk GUID; narrows only the allocation list, never the balances"`
+	Limit          int    `json:"limit,omitempty" jsonschema:"Movements per page, 1 to 100; defaults to 50"`
+	Offset         int    `json:"offset,omitempty" jsonschema:"Movement offset from a previous next_offset"`
+}
+
 type listWarehouseDocumentsInput struct {
 	Kind        string `json:"kind" jsonschema:"transfer-order, transfer, stock-receipt, or stock-writeoff"`
 	WarehouseID string `json:"warehouse_id,omitempty" jsonschema:"Optional source, reserve, or destination warehouse GUID"`
@@ -768,6 +779,17 @@ func New(svc service.Service) *mcp.Server {
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, input receiptPostingInput) (*mcp.CallToolResult, service.ReceiptPosting, error) {
 		posting, err := svc.SetReceiptPosting(ctx, input.ID, input.Action, input.ExpectedDataVersion, input.Apply)
 		return nil, posting, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.ReconcileSupplier.Tool, Description: operations.ReconcileSupplier.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input reconcileSupplierInput) (*mcp.CallToolResult, service.SupplierReconciliation, error) {
+		limit := input.Limit
+		if limit == 0 {
+			limit = 50
+		}
+		result, err := svc.ReconcileSupplier(ctx, service.SupplierReconciliationQuery{OrganizationID: input.OrganizationID, SupplierID: input.SupplierID, ContractID: input.ContractID, AccountID: input.AccountID, From: input.From, To: input.To, Limit: limit, Offset: input.Offset})
+		return nil, result, err
 	})
 	mcp.AddTool(server, &mcp.Tool{
 		Name: operations.ListWarehouseDocuments.Tool, Description: operations.ListWarehouseDocuments.Description,

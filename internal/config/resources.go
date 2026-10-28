@@ -794,5 +794,6 @@ var SupplierSettlements = struct {
 		{Output: "payment_document_type", Source: "ДокументОплаты_Type"},
 		{Output: "amount", Source: "Сумма"},
 		{Output: "currency_amount", Source: "СуммаВал"},
+		{Output: "allocation_method", Source: "СпособЗачета"},
 	},
 }
