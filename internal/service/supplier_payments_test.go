@@ -89,6 +89,14 @@ func traceFixture() *traceReader {
 				"РасшифровкаПлатежа": []map[string]any{{"LineNumber": "1", "Документ": receipt, "Документ_Type": "StandardODATA.Document_ПриходнаяНакладная", "СуммаРасчетов": 300, "СуммаПлатежа": 300}}},
 		},
 		"Document_РасходИзКассы": {},
+		"AccumulationRegister_РасчетыСПоставщиками_RecordType": {
+			{"Recorder": receipt, "Recorder_Type": "StandardODATA.Document_ПриходнаяНакладная", "LineNumber": "1", "Active": true, "RecordType": "Receipt", "Документ": receipt, "Документ_Type": "StandardODATA.Document_ПриходнаяНакладная", "Сумма": 1000.10, "СуммаВал": 1000.10},
+			{"Recorder": receipt, "Recorder_Type": "StandardODATA.Document_ПриходнаяНакладная", "LineNumber": "2", "Active": true, "RecordType": "Expense", "Документ": receipt, "Документ_Type": "StandardODATA.Document_ПриходнаяНакладная", "ДокументОплаты": salesID(30), "ДокументОплаты_Type": "StandardODATA.Document_РасходСоСчета", "Сумма": 100, "СуммаВал": 100},
+			{"Recorder": receipt, "Recorder_Type": "StandardODATA.Document_ПриходнаяНакладная", "LineNumber": "3", "Active": true, "RecordType": "Receipt", "Документ": salesID(30), "Документ_Type": "StandardODATA.Document_РасходСоСчета", "Сумма": 100, "СуммаВал": 100},
+			{"Recorder": salesID(21), "Recorder_Type": "StandardODATA.Document_РасходСоСчета", "LineNumber": "1", "Active": true, "RecordType": "Expense", "Документ": receipt, "Документ_Type": "StandardODATA.Document_ПриходнаяНакладная", "Сумма": 400.05, "СуммаВал": 400.05},
+			{"Recorder": salesID(26), "Recorder_Type": "StandardODATA.Document_РасходИзКассы", "LineNumber": "1", "Active": false, "RecordType": "Expense", "Документ": receipt, "Документ_Type": "StandardODATA.Document_ПриходнаяНакладная", "Сумма": 500, "СуммаВал": 500},
+			{"Recorder": salesID(98), "Recorder_Type": "StandardODATA.Document_ПриходнаяНакладная", "LineNumber": "1", "Active": true, "RecordType": "Receipt", "Документ": salesID(98), "Документ_Type": "StandardODATA.Document_ПриходнаяНакладная", "Сумма": 9, "СуммаВал": 9},
+		},
 		"AccumulationRegister_ПлатежныйКалендарь_RecordType": {
 			{"Recorder": plan, "Recorder_Type": "StandardODATA.Document_СчетНаОплатуПоставщика", "Period": "2026-09-05T00:00:00", "Active": true, "СчетНаОплату": plan, "СчетНаОплату_Type": "StandardODATA.Document_СчетНаОплатуПоставщика", "СтатусУтвержденияПлатежа": "Утвержден", "Сумма": 1000.10, "СуммаОплаты": 0},
 			{"Recorder": plan, "Recorder_Type": "StandardODATA.Document_СчетНаОплатуПоставщика", "Period": "2026-09-05T00:00:00", "Active": true, "СчетНаОплату": salesID(4), "СчетНаОплату_Type": "StandardODATA.Document_СчетНаОплатуПоставщика", "СтатусУтвержденияПлатежа": "НеУтвержден", "Сумма": 5},
@@ -119,8 +127,20 @@ func TestTraceSupplierReceiptCountsOnlyLinkedRecordedPayments(t *testing.T) {
 		t.Fatal("non-supplier operation included")
 	}
 	// 400.05 recorded bank expense + 100 prepayment; the payment order, unposted expense and plan-level payment are not counted.
-	if trace.Summary.LinkedSettlement != "500.05" || trace.Summary.OutstandingByLinks != "500.05" || trace.Summary.Status != "partly_settled_by_linked_payments" || !trace.Summary.Complete {
+	if trace.Summary.LinkedSettlement != "500.05" || trace.Summary.OutstandingByLinks != "500.05" || trace.Summary.LinkStatus != "partly_settled_by_linked_payments" || !trace.Summary.Complete {
 		t.Fatalf("summary: %+v", trace.Summary)
+	}
+	// The register holds the receipt debt, a bank payment and an advance offset; the inactive cash row is listed but not counted.
+	settlements := trace.Settlements
+	if !settlements.Available || len(settlements.Movements) != 4 || settlements.Debt != "1000.1" || settlements.Settled != "500.05" || settlements.Outstanding != "500.05" || trace.Summary.Status != "partly_closed_in_settlements" {
+		t.Fatalf("settlements: %+v, summary %+v", settlements, trace.Summary)
+	}
+	sources := map[string]bool{}
+	for _, movement := range settlements.Movements {
+		sources[movement.Source] = true
+	}
+	if !sources["receipt"] || !sources["advance-offset"] || !sources["bank-out"] || !sources["cash-out"] {
+		t.Fatalf("sources: %+v", sources)
 	}
 	if len(trace.Candidates) != 1 || trace.Candidates[0].Number != "EQUAL" {
 		t.Fatalf("equal-amount payment must be a candidate only: %+v", trace.Candidates)
@@ -141,7 +161,7 @@ func (d Decimal) equal(value string) bool { return decimalEqual(d, Decimal(value
 
 func TestTraceReportsMissingSourcesAsIncomplete(t *testing.T) {
 	reader := traceFixture()
-	reader.fail = map[string]bool{"Document_ПлатежноеПоручение": true}
+	reader.fail = map[string]bool{"Document_ПлатежноеПоручение": true, "AccumulationRegister_РасчетыСПоставщиками_RecordType": true}
 	reader.rows["Document_РасходСоСчета"] = nil
 	reader.rows["Document_ПриходнаяНакладная"][0]["Предоплата"] = []map[string]any{}
 	trace, err := Service{OData: reader}.TraceSupplierReceipt(context.Background(), salesID(1))
@@ -188,5 +208,26 @@ func TestSupplierPaymentPlansFilterAndApproval(t *testing.T) {
 	plan, err = Service{OData: reader}.GetSupplierPaymentPlan(context.Background(), salesID(3))
 	if err != nil || plan.Calendar.Available || plan.Calendar.Error == "" {
 		t.Fatalf("unavailable calendar must be reported, not hidden: %+v, %v", plan.Calendar, err)
+	}
+}
+
+func TestTraceSettlementStatusClosedAndOpen(t *testing.T) {
+	reader := traceFixture()
+	register := reader.rows["AccumulationRegister_РасчетыСПоставщиками_RecordType"]
+	register = append(register, map[string]any{"Recorder": salesID(27), "Recorder_Type": "StandardODATA.Document_Взаимозачет", "LineNumber": "1", "Active": true, "RecordType": "Expense", "Документ": salesID(1), "Документ_Type": "StandardODATA.Document_ПриходнаяНакладная", "Сумма": 500.05, "СуммаВал": 500.05})
+	reader.rows["AccumulationRegister_РасчетыСПоставщиками_RecordType"] = register
+	trace, err := Service{OData: reader}.TraceSupplierReceipt(context.Background(), salesID(1))
+	if err != nil || trace.Summary.Status != "closed_in_settlements" || trace.Settlements.Outstanding != "0" {
+		t.Fatalf("closed: %+v %+v, %v", trace.Summary, trace.Settlements, err)
+	}
+	reader.rows["AccumulationRegister_РасчетыСПоставщиками_RecordType"] = register[:1]
+	trace, err = Service{OData: reader}.TraceSupplierReceipt(context.Background(), salesID(1))
+	if err != nil || trace.Summary.Status != "open_in_settlements" {
+		t.Fatalf("open: %+v, %v", trace.Summary, err)
+	}
+	reader.rows["AccumulationRegister_РасчетыСПоставщиками_RecordType"] = append(register[:1:1], register[0])
+	trace, err = Service{OData: reader}.TraceSupplierReceipt(context.Background(), salesID(1))
+	if err != nil || trace.Settlements.Available || trace.Summary.Status != trace.Summary.LinkStatus {
+		t.Fatalf("repeated rows must make the register unavailable: %+v, %v", trace.Settlements, err)
 	}
 }

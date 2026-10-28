@@ -105,8 +105,18 @@ func runReceiptPaymentTrace(ctx context.Context, svc service.Service, args []str
 		return json.NewEncoder(out).Encode(trace)
 	}
 	receipt := trace.Receipt
-	if _, err := fmt.Fprintf(out, "Receipt %s %s, amount %s, posted %t\nStatus: %s (complete: %t)\nLinked settlement: %s\nOutstanding by links: %s\n", flat(receipt.Number), flat(receipt.Date), receipt.Amount, receipt.Posted, trace.Summary.Status, trace.Summary.Complete, trace.Summary.LinkedSettlement, trace.Summary.OutstandingByLinks); err != nil {
+	if _, err := fmt.Fprintf(out, "Receipt %s %s, amount %s, posted %t\nStatus: %s\nDocument links: %s (complete: %t), linked settlement %s, outstanding by links %s\n", flat(receipt.Number), flat(receipt.Date), receipt.Amount, receipt.Posted, trace.Summary.Status, trace.Summary.LinkStatus, trace.Summary.Complete, trace.Summary.LinkedSettlement, trace.Summary.OutstandingByLinks); err != nil {
 		return err
+	}
+	if settlements := trace.Settlements; settlements.Available {
+		if _, err := fmt.Fprintf(out, "Settlements: debt %s, settled %s, outstanding %s\n", settlements.Debt, settlements.Settled, settlements.Outstanding); err != nil {
+			return err
+		}
+		for _, movement := range settlements.Movements {
+			if _, err := fmt.Fprintf(out, "  %s\t%s\t%s\tactive %t\t%s\t%s\n", flat(movement.Period), movement.RecordType, movement.Source, movement.Active, movement.CurrencyAmount, movement.RecorderID); err != nil {
+				return err
+			}
+		}
 	}
 	writer := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
 	if _, err := fmt.Fprintln(writer, "\nKIND\tLINK\tNUMBER\tDATE\tPOSTED\tAMOUNT\tID"); err != nil {

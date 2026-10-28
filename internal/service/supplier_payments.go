@@ -219,6 +219,7 @@ type SupplierReceiptTrace struct {
 	Payments     []TracedPayment       `json:"payments"`
 	Prepayments  []TracedPrepayment    `json:"prepayments"`
 	Candidates   []TraceCandidate      `json:"candidates"`
+	Settlements  SettlementEvidence    `json:"settlements"`
 	Summary      SupplierReceiptStatus `json:"summary"`
 	Scans        []TraceScan           `json:"scans"`
 	Unsupported  []string              `json:"unsupported"`
@@ -312,6 +313,7 @@ type TraceScan struct {
 // Payment orders, plans, approval and equal amounts are never treated as payment.
 type SupplierReceiptStatus struct {
 	Status             string   `json:"status"`
+	LinkStatus         string   `json:"link_status"`
 	Complete           bool     `json:"complete"`
 	LinkedSettlement   Decimal  `json:"linked_settlement"`
 	OutstandingByLinks Decimal  `json:"outstanding_by_links"`
@@ -336,7 +338,7 @@ func (s Service) TraceSupplierReceipt(ctx context.Context, id string) (SupplierR
 	}
 	trace := SupplierReceiptTrace{Receipt: receipt, PaymentPlans: []TracedPaymentPlan{}, Payments: []TracedPayment{}, Prepayments: prepayments, Candidates: []TraceCandidate{}, Scans: []TraceScan{}, Unsupported: []string{
 		"supplier payment documents other than payment orders, bank expenses and cash expenses",
-		"settlements recorded only through debt offsets or opening balances (see supplier reconciliation)",
+		"opening balances and contract-level advances not allocated to this receipt (see supplier reconciliation)",
 	}}
 	complete := true
 
@@ -457,7 +459,133 @@ func (s Service) TraceSupplierReceipt(ctx context.Context, id string) (SupplierR
 		}
 	}
 	trace.Summary = receiptStatus(receipt.Amount, settled, complete, notes)
+	trace.Settlements = s.receiptSettlements(ctx, receipt.ID)
+	applySettlementStatus(&trace.Summary, trace.Settlements)
 	return trace, nil
+}
+
+// SettlementEvidence is the receipt's own movements in the supplier-settlement register.
+// Debt is recorded as Receipt movements and closing payments or advance offsets as Expense movements.
+type SettlementEvidence struct {
+	Available   bool                 `json:"available"`
+	Error       string               `json:"error,omitempty"`
+	Debt        Decimal              `json:"debt"`
+	Settled     Decimal              `json:"settled"`
+	Outstanding Decimal              `json:"outstanding"`
+	Movements   []SettlementMovement `json:"movements"`
+}
+
+type SettlementMovement struct {
+	Source              string  `json:"source"`
+	RecorderID          string  `json:"recorder_id"`
+	RecorderType        string  `json:"recorder_type"`
+	LineNumber          string  `json:"line_number"`
+	Period              string  `json:"period"`
+	Active              bool    `json:"active"`
+	RecordType          string  `json:"record_type"`
+	SettlementType      string  `json:"settlement_type"`
+	OrganizationID      string  `json:"organization_id,omitempty"`
+	SupplierID          string  `json:"supplier_id,omitempty"`
+	ContractID          string  `json:"contract_id,omitempty"`
+	DocumentID          string  `json:"document_id"`
+	DocumentType        string  `json:"document_type"`
+	PaymentDocumentID   string  `json:"payment_document_id,omitempty"`
+	PaymentDocumentType string  `json:"payment_document_type,omitempty"`
+	Amount              Decimal `json:"amount"`
+	CurrencyAmount      Decimal `json:"currency_amount"`
+}
+
+var settlementSources = map[string]string{
+	supplierReceiptType: "receipt",
+	"StandardODATA.Document_РасходСоСчета":            "bank-out",
+	"StandardODATA.Document_РасходИзКассы":            "cash-out",
+	"StandardODATA.Document_Взаимозачет":              "debt-offset",
+	"StandardODATA.Document_КорректировкаПоступления": "receipt-correction",
+	"StandardODATA.Document_ВводНачальныхОстатков":    "opening-balance",
+}
+
+// receiptSettlements never fails the caller: an unreadable register is reported as unavailable evidence.
+func (s Service) receiptSettlements(ctx context.Context, receiptID string) SettlementEvidence {
+	register := config.SupplierSettlements
+	evidence := SettlementEvidence{Movements: []SettlementMovement{}}
+	rows, err := s.scanRows(ctx, register.Name, sourceFields(register.Fields), "", maxDocumentScan)
+	if err != nil {
+		evidence.Error = err.Error()
+		return evidence
+	}
+	debt, settled := &stockSum{}, &stockSum{}
+	seen := make(map[string]bool, len(rows))
+	for _, row := range rows {
+		movement, err := bindFields[SettlementMovement](row, register.Fields)
+		if err != nil {
+			return SettlementEvidence{Error: "invalid OData settlement record", Movements: []SettlementMovement{}}
+		}
+		key := strings.ToLower(movement.RecorderType + "/" + movement.RecorderID + "/" + movement.LineNumber)
+		if seen[key] {
+			return SettlementEvidence{Error: "settlement records repeated during lookup", Movements: []SettlementMovement{}}
+		}
+		seen[key] = true
+		if movement.DocumentType != supplierReceiptType || !strings.EqualFold(movement.DocumentID, receiptID) {
+			continue
+		}
+		movement.Source = settlementSources[movement.RecorderType]
+		if movement.Source == "" {
+			movement.Source = "other"
+		} else if movement.Source == "receipt" && movement.RecordType == "Expense" {
+			movement.Source = "advance-offset"
+		}
+		clearUnlinked(&movement.OrganizationID, &movement.SupplierID, &movement.ContractID)
+		if movement.PaymentDocumentType == "StandardODATA.Undefined" || !linkedGUID(movement.PaymentDocumentID) {
+			movement.PaymentDocumentID, movement.PaymentDocumentType = "", ""
+		}
+		if movement.Active {
+			target := debt
+			if movement.RecordType == "Expense" {
+				target = settled
+			} else if movement.RecordType != "Receipt" {
+				return SettlementEvidence{Error: "unknown settlement record type", Movements: []SettlementMovement{}}
+			}
+			if err := target.Add(movement.CurrencyAmount); err != nil {
+				return SettlementEvidence{Error: err.Error(), Movements: []SettlementMovement{}}
+			}
+		}
+		evidence.Movements = append(evidence.Movements, movement)
+	}
+	evidence.Available = true
+	evidence.Debt, evidence.Settled = debt.Decimal(), settled.Decimal()
+	evidence.Outstanding = decimalDifference(debt, settled)
+	return evidence
+}
+
+func applySettlementStatus(summary *SupplierReceiptStatus, evidence SettlementEvidence) {
+	summary.LinkStatus = summary.Status
+	if !evidence.Available {
+		summary.Notes = append(summary.Notes, "Supplier-settlement register unavailable, so status falls back to document links: "+evidence.Error)
+		return
+	}
+	summary.Notes = append(summary.Notes, "Status comes from the receipt's movements in the supplier-settlement register, in settlement currency.")
+	outstanding, _ := new(big.Rat).SetString(string(evidence.Outstanding))
+	debt, _ := new(big.Rat).SetString(string(evidence.Debt))
+	switch {
+	case len(evidence.Movements) == 0 || debt == nil || debt.Sign() == 0:
+		summary.Status = "not_in_settlements"
+		summary.Notes = append(summary.Notes, "The receipt has no settlement debt; it may be unposted or recorded elsewhere.")
+	case outstanding.Sign() <= 0:
+		summary.Status = "closed_in_settlements"
+	case outstanding.Cmp(debt) < 0:
+		summary.Status = "partly_closed_in_settlements"
+	default:
+		summary.Status = "open_in_settlements"
+	}
+}
+
+func decimalDifference(first, second *stockSum) Decimal {
+	difference := new(big.Rat).Sub(&first.value, &second.value)
+	text := difference.FloatString(max(first.scale, second.scale))
+	if strings.Contains(text, ".") {
+		text = strings.TrimRight(strings.TrimRight(text, "0"), ".")
+	}
+	return Decimal(text)
 }
 
 func (s Service) tracedReceipt(ctx context.Context, id string) (TracedReceipt, []TracedPrepayment, error) {

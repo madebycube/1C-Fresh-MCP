@@ -770,3 +770,29 @@ var SupplierPaymentDocuments = map[string]DocumentResource{
 		LinesField: "РасшифровкаПлатежа", LineFields: supplierPaymentLineFields,
 	},
 }
+
+// SupplierSettlements is scanned and matched by document locally; it is how 1C itself closes a receipt's debt.
+var SupplierSettlements = struct {
+	Name   string
+	Fields []FieldBinding
+}{
+	Name: "AccumulationRegister_РасчетыСПоставщиками_RecordType",
+	Fields: []FieldBinding{
+		{Output: "recorder_id", Source: "Recorder"},
+		{Output: "recorder_type", Source: "Recorder_Type"},
+		{Output: "line_number", Source: "LineNumber"},
+		{Output: "period", Source: "Period"},
+		{Output: "active", Source: "Active"},
+		{Output: "record_type", Source: "RecordType"},
+		{Output: "settlement_type", Source: "ТипРасчетов"},
+		{Output: "organization_id", Source: "Организация_Key"},
+		{Output: "supplier_id", Source: "Контрагент_Key"},
+		{Output: "contract_id", Source: "Договор_Key"},
+		{Output: "document_id", Source: "Документ"},
+		{Output: "document_type", Source: "Документ_Type"},
+		{Output: "payment_document_id", Source: "ДокументОплаты"},
+		{Output: "payment_document_type", Source: "ДокументОплаты_Type"},
+		{Output: "amount", Source: "Сумма"},
+		{Output: "currency_amount", Source: "СуммаВал"},
+	},
+}
