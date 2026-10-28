@@ -111,6 +111,9 @@ Commands follow `1c VERB RESOURCE [OPTIONS]`. `1c --help` lists topics, `1c help
 1c update receipt RECEIPT_GUID --set-line 1:quantity=4 --expect-version DATA_VERSION --apply
 1c post receipt RECEIPT_GUID --apply
 1c unpost receipt RECEIPT_GUID --apply
+1c list link-properties
+1c get receipt-link RECEIPT_GUID
+1c set receipt-link RECEIPT_GUID --url https://drive.example.test/d/1 --caption "Накладная №1" --apply
 1c list warehouse-docs --kind transfer --warehouse WAREHOUSE_GUID
 1c list warehouse-docs --kind stock-writeoff --limit 20
 1c get warehouse-doc --kind transfer DOCUMENT_GUID
@@ -155,6 +158,8 @@ The tested tenant has no payment-request document («Заявка на расх�
 
 Supplier goods receipts are created, amended, posted, and unposted only after a preview: without `--apply` (or `apply` in MCP) the command validates the organization, supplier, contract (active, of that organization, in rubles), warehouse, department, stock products, and VAT rates by code (`НДС22`, `НДС5`, `БезНДС`…), computes exact amounts and VAT, and lists possible duplicates by incoming number and date. A duplicate blocks creation unless `--allow-duplicate` is given. New receipts are saved unposted, then read back and verified. Only an unposted receipt can be amended; other fields and lines are kept as read, and `--expect-version` rejects the save if the receipt changed since the preview. Posting and unposting use the 1C `Post`/`Unpost` document actions, and 1C's own error text is returned. If a save could not be confirmed, check the receipt list before retrying.
 
+The primary-document link is an additional property that 1C shows as a hyperlink on the receipt. `list link-properties` discovers such properties (string type, shown as hyperlink) and whether the «Документ_ПриходнаяНакладная» property set includes them; no GUID or name is hard-coded. `get receipt-link` reads the URL and caption separately: the caption is stored in «Значение» and `<a href = "…">caption</a>` in «ТекстоваяСтрока». `set receipt-link` changes the URL and/or caption (an empty caption shows the URL) or removes the link with `--clear`; other properties, lines, payments, and the comment stay as read. A missing or ambiguous property stops the command without creating configuration. Saves are guarded by the data version and read back; if 1C changes the posting state on save, the command reports it instead of reposting. The URL is never opened and its sharing is not changed.
+
 `list accounts` discovers cash desks (`cash`), organization-owned bank accounts (`bank`), and retail registers (`register`). `list money` reads cash receipts and disbursements (`cash-in`, `cash-out`), bank receipts and disbursements (`bank-in`, `bank-out`), card transactions (`card-payment`), and cash shifts (`cash-shift`). Supply an inclusive date range of at most 31 days and a cash desk, bank account, register, or terminal ID with `--account`, `--register`, or `--terminal`. `--limit` and `--offset` page results; `get money` reads a document by GUID. Payroll, tax, employee-payment, and unknown operation types are excluded. Fiscal receipts, card transactions, and bank settlements are distinct documents; `Posted` indicates 1C posting, not payment or reconciliation. These are read-only commands and may scan resource history for several seconds.
 
 ### Audit unposted receipts
@@ -192,6 +197,7 @@ Configure your MCP client to launch this command from the repository directory, 
 - `list_purchase_documents` and `get_purchase_document`
 - `list_supplier_payment_plans`, `get_supplier_payment_plan`, and `trace_supplier_receipt_payments`
 - `create_supplier_receipt`, `update_supplier_receipt`, and `set_supplier_receipt_posting` (write operations)
+- `list_receipt_link_properties`, `get_receipt_document_link`, and `set_receipt_document_link` (write operation)
 - `list_warehouse_documents` and `get_warehouse_document`
 - `list_money_accounts`, `list_money_documents`, and `get_money_document`
 - `list_cash_receipts` and `get_cash_receipt`
