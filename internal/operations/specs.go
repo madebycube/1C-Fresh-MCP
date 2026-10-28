@@ -402,7 +402,7 @@ var ListMoneyAccounts = Spec{
 	Command:     "list accounts",
 	Tool:        "list_money_accounts",
 	Description: "List cash accounts, own bank accounts, or retail registers.",
-	Usage:       "1c list accounts --kind cash|bank|register [--json]",
+	Usage:       "1c list accounts --kind cash|bank|register [--organization GUID] [--json]",
 	Example:     "1c list accounts --kind bank",
 }
 
@@ -546,7 +546,7 @@ var ListContracts = Spec{
 	Command:     "list contracts",
 	Tool:        "list_contracts",
 	Description: "List counterparty contracts with owner, organization, kind, and settlement currency.",
-	Usage:       "1c list contracts [--counterparty GUID] [--organization GUID] [--kind supplier|customer] [--all] [--json]",
+	Usage:       "1c list contracts [--counterparty GUID] [--organization GUID] [--kind supplier|customer|other] [--all] [--limit N] [--offset N] [--json]",
 	Example:     "1c list contracts --counterparty SUPPLIER_GUID --kind supplier",
 }
 

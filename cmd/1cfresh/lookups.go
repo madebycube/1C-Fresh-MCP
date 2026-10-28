@@ -70,27 +70,35 @@ func runContractList(ctx context.Context, svc service.Service, args []string, ou
 	flags.SetOutput(io.Discard)
 	counterpartyID := flags.String("counterparty", "", "optional counterparty GUID")
 	organizationID := flags.String("organization", "", "optional organization GUID")
-	kind := flags.String("kind", "", "supplier or customer")
+	kind := flags.String("kind", "", "supplier, customer, or other")
+	limit := flags.Int("limit", 20, "maximum results (1-100)")
+	offset := flags.Int("offset", 0, "results to skip")
 	all := flags.Bool("all", false, "include inactive contracts")
 	asJSON := flags.Bool("json", false, "print JSON")
 	if err := parseFlags(flags, args); err != nil || flags.NArg() != 0 {
 		return errors.New("usage: " + operations.ListContracts.Usage)
 	}
-	items, err := svc.ListContracts(ctx, service.ContractFilter{CounterpartyID: *counterpartyID, OrganizationID: *organizationID, Kind: *kind, All: *all})
+	page, err := svc.ListContracts(ctx, service.ContractFilter{CounterpartyID: *counterpartyID, OrganizationID: *organizationID, Kind: *kind, All: *all}, *limit, *offset)
 	if err != nil {
 		return err
 	}
 	if *asJSON {
-		return json.NewEncoder(out).Encode(items)
+		return json.NewEncoder(out).Encode(page)
 	}
 	writer := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
 	if _, err := fmt.Fprintln(writer, "NAME\tNUMBER\tKIND\tCOUNTERPARTY\tORGANIZATION\tCURRENCY\tINACTIVE\tID"); err != nil {
 		return err
 	}
-	for _, item := range items {
+	for _, item := range page.Items {
 		if _, err := fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\t%s\t%t\t%s\n", flat(item.Name), flat(item.Number), item.Kind, item.CounterpartyID, item.OrganizationID, item.CurrencyID, item.Inactive, item.ID); err != nil {
 			return err
 		}
 	}
-	return writer.Flush()
+	if err := writer.Flush(); err != nil {
+		return err
+	}
+	if page.NextOffset != nil {
+		_, err = fmt.Fprintf(out, "%d of %d contracts; next offset %d\n", page.Count, page.Total, *page.NextOffset)
+	}
+	return err
 }
