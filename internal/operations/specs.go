@@ -342,6 +342,30 @@ var GetWarehouseDocument = Spec{
 	Example:     "1c get warehouse-doc --kind transfer DOCUMENT_GUID",
 }
 
+var ListPaymentPlans = Spec{
+	Command:     "list payment-plans",
+	Tool:        "list_supplier_payment_plans",
+	Description: "List supplier invoices that plan outgoing payments, with amount, accounts, and basis.",
+	Usage:       "1c list payment-plans [--organization GUID] [--supplier GUID] [--contract GUID] [--account GUID] [--from YYYY-MM-DD --to YYYY-MM-DD] [--limit N] [--offset N] [--json]",
+	Example:     "1c list payment-plans --supplier SUPPLIER_GUID",
+}
+
+var GetPaymentPlan = Spec{
+	Command:     "get payment-plan",
+	Tool:        "get_supplier_payment_plan",
+	Description: "Show a supplier invoice with its payment schedule and payment-calendar approval records.",
+	Usage:       "1c get payment-plan [--json] GUID",
+	Example:     "1c get payment-plan INVOICE_GUID",
+}
+
+var TraceReceiptPayments = Spec{
+	Command:     "trace receipt-payments",
+	Tool:        "trace_supplier_receipt_payments",
+	Description: "Trace a supplier goods receipt to its payment plans, payment orders, and recorded bank or cash expenses.",
+	Usage:       "1c trace receipt-payments [--json] RECEIPT_GUID",
+	Example:     "1c trace receipt-payments RECEIPT_GUID",
+}
+
 var ListMoneyAccounts = Spec{
 	Command:     "list accounts",
 	Tool:        "list_money_accounts",
@@ -413,7 +437,7 @@ var Topics = []Topic{
 	{Name: "inventory", Description: "Warehouses, stock, and warehouse documents", Commands: []Spec{ListWarehouses, GetStock, ListWarehouseDocuments, GetWarehouseDocument}},
 	{Name: "partners", Description: "Customer and supplier records and folders", Commands: []Spec{ListCounterpartyGroups, CreateCounterpartyGroup, UpdateCounterpartyGroup, ListCustomers, SearchCustomers, GetCustomer, CreateCustomer, UpdateCustomer, ListSuppliers, SearchSuppliers, GetSupplier, CreateSupplier, UpdateSupplier}},
 	{Name: "sales", Description: "Customer orders and sales documents", Commands: []Spec{ListOrders, GetOrder, ListSales, GetSale}},
-	{Name: "purchases", Description: "Supplier orders and goods receipts", Commands: []Spec{ListPurchases, GetPurchase}},
+	{Name: "purchases", Description: "Supplier orders, goods receipts, and payment plans", Commands: []Spec{ListPurchases, GetPurchase, ListPaymentPlans, GetPaymentPlan, TraceReceiptPayments}},
 	{Name: "money", Description: "Accounts, cash, bank, and card movements", Commands: []Spec{ListMoneyAccounts, ListMoney, GetMoney}},
 	{Name: "receipts", Description: "Fiscal receipts and posting audit", Commands: []Spec{ListReceipts, GetReceipt, AuditUnpostedReceipts}},
 	{Name: "schema", Description: "Search and inspect exposed OData resources", Commands: []Spec{SearchResources, DescribeResource}},

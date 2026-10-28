@@ -65,6 +65,9 @@ func (stubReader) Get(_ context.Context, resource string, params url.Values, _ i
 		}
 		return []byte(`{"Ref_Key":"00000000-0000-0000-0000-000000000007","Code":"C1","Description":"Example customer","НаименованиеПолное":"Example customer","IsFolder":false,"DeletionMark":false,"Недействителен":false,"Покупатель":true,"Поставщик":true,"DataVersion":"version-1"}`), nil
 	}
+	if resource == "Document_СчетНаОплатуПоставщика" || resource == "Document_ПлатежноеПоручение" || resource == "Document_РасходСоСчета" || resource == "Document_РасходИзКассы" || resource == "AccumulationRegister_ПлатежныйКалендарь_RecordType" {
+		return []byte(`{"odata.count":"0","value":[]}`), nil
+	}
 	if params.Get("$inlinecount") != "" {
 		return []byte(`{"odata.count":"1","value":[]}`), nil
 	}
@@ -79,6 +82,12 @@ func (stubReader) Get(_ context.Context, resource string, params url.Values, _ i
 	}
 	if resource == "Document_ЗаказПоставщику" {
 		return []byte(`{"value":[{"Ref_Key":"00000000-0000-0000-0000-000000000009","Number":"P1","Date":"2026-09-23T00:00:00","Posted":true,"DeletionMark":false,"СуммаДокумента":25.50,"Контрагент_Key":"00000000-0000-0000-0000-000000000007"}]}`), nil
+	}
+	if strings.HasPrefix(resource, "Document_ПриходнаяНакладная(") {
+		return []byte(`{"Ref_Key":"00000000-0000-0000-0000-000000000017","Number":"R1","Date":"2026-09-23T00:00:00","Posted":true,"DeletionMark":false,"ВидОперации":"ПоступлениеОтПоставщика","СуммаДокумента":25.50,"Контрагент_Key":"00000000-0000-0000-0000-000000000007","Предоплата":[]}`), nil
+	}
+	if strings.HasPrefix(resource, "Document_СчетНаОплатуПоставщика(") {
+		return []byte(`{"Ref_Key":"00000000-0000-0000-0000-000000000018","Number":"I1","Date":"2026-09-23T00:00:00","Posted":true,"DeletionMark":false,"СуммаДокумента":25.50,"Контрагент_Key":"00000000-0000-0000-0000-000000000007","ПлатежныйКалендарь":[]}`), nil
 	}
 	if strings.HasPrefix(resource, "Document_ПеремещениеЗапасов(") {
 		return []byte(`{"Ref_Key":"00000000-0000-0000-0000-000000000010","Number":"T1","Date":"2026-09-23T00:00:00","Posted":true,"DeletionMark":false,"ВидОперации":"Перемещение","СтруктурнаяЕдиница_Key":"00000000-0000-0000-0000-000000000006","Запасы":[]}`), nil
@@ -145,8 +154,8 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(listed.Tools) != 49 {
-		t.Fatalf("got %d tools; want 49", len(listed.Tools))
+	if len(listed.Tools) != 52 {
+		t.Fatalf("got %d tools; want 52", len(listed.Tools))
 	}
 	for _, tool := range listed.Tools {
 		if tool.Annotations == nil {
@@ -206,6 +215,9 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 		{operations.GetSale.Tool, map[string]any{"kind": "shipment", "id": "00000000-0000-0000-0000-000000000008"}},
 		{operations.ListPurchases.Tool, map[string]any{"kind": "order", "limit": 2}},
 		{operations.GetPurchase.Tool, map[string]any{"kind": "order", "id": "00000000-0000-0000-0000-000000000009"}},
+		{operations.ListPaymentPlans.Tool, map[string]any{"supplier_id": "00000000-0000-0000-0000-000000000007", "limit": 2}},
+		{operations.GetPaymentPlan.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000018"}},
+		{operations.TraceReceiptPayments.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000017"}},
 		{operations.ListWarehouseDocuments.Tool, map[string]any{"kind": "transfer", "limit": 2}},
 		{operations.GetWarehouseDocument.Tool, map[string]any{"kind": "transfer", "id": "00000000-0000-0000-0000-000000000010"}},
 		{operations.ListMoneyAccounts.Tool, map[string]any{"kind": "cash"}},

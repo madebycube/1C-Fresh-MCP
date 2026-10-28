@@ -104,6 +104,9 @@ Commands follow `1c VERB RESOURCE [OPTIONS]`. `1c --help` lists topics, `1c help
 1c list purchases --kind order --limit 20
 1c list purchases --kind receipt --supplier SUPPLIER_GUID
 1c get purchase --kind receipt DOCUMENT_GUID
+1c list payment-plans --supplier SUPPLIER_GUID
+1c get payment-plan INVOICE_GUID
+1c trace receipt-payments RECEIPT_GUID
 1c list warehouse-docs --kind transfer --warehouse WAREHOUSE_GUID
 1c list warehouse-docs --kind stock-writeoff --limit 20
 1c get warehouse-doc --kind transfer DOCUMENT_GUID
@@ -144,6 +147,8 @@ Commands follow `1c VERB RESOURCE [OPTIONS]`. `1c --help` lists topics, `1c help
 
 `list suppliers` and `search suppliers` show counterparties marked as suppliers. `list purchases --kind order` reads supplier orders, while `--kind receipt` selects incoming goods documents whose operation is supplier receipt. `list warehouse-docs` reads transfer orders (`transfer-order`), stock movements whose operation is transfer (`transfer`), stock receipts (`stock-receipt`), and stock writeoffs (`stock-writeoff`). Filter by supplier or warehouse ID; a transfer matches either its source or destination warehouse. Both lists support dates, `--limit`, and `--offset`. `get purchase` and `get warehouse-doc` include product lines and available linked document IDs. `Posted` indicates posting in 1C, not fulfillment or physical receipt. There are no transfer orders in the tested tenant, so getting one by GUID has not been verified live.
 
+The tested tenant has no payment-request document («Заявка на расходование денежных средств»), so planned supplier payments are read from supplier invoices («Счет на оплату поставщика»). `list payment-plans` filters them by organization, supplier, contract, paying bank account, and dates. `get payment-plan` shows the payment schedule and the payment-calendar register records, including the approval state as stored; an unreadable register is reported as unavailable. `trace receipt-payments` takes a goods receipt and finds supplier invoices based on it or on its supplier order, plus payment orders, bank expenses, and cash expenses with the supplier-payment operation whose payment breakdown references the receipt, invoice, or order, and the receipt's own prepayment offsets. Only posted bank and cash expenses allocated directly to the receipt and the prepayment offsets count as settlement; payment orders, invoices, and approval never do. Equal amounts without a link are listed as candidates, and missing links are reported as "no linked payment found", not unpaid. Debt offsets and opening balances are not traced.
+
 `list accounts` discovers cash desks (`cash`), organization-owned bank accounts (`bank`), and retail registers (`register`). `list money` reads cash receipts and disbursements (`cash-in`, `cash-out`), bank receipts and disbursements (`bank-in`, `bank-out`), card transactions (`card-payment`), and cash shifts (`cash-shift`). Supply an inclusive date range of at most 31 days and a cash desk, bank account, register, or terminal ID with `--account`, `--register`, or `--terminal`. `--limit` and `--offset` page results; `get money` reads a document by GUID. Payroll, tax, employee-payment, and unknown operation types are excluded. Fiscal receipts, card transactions, and bank settlements are distinct documents; `Posted` indicates 1C posting, not payment or reconciliation. These are read-only commands and may scan resource history for several seconds.
 
 ### Audit unposted receipts
@@ -179,6 +184,7 @@ Configure your MCP client to launch this command from the repository directory, 
 - `create_supplier` and `update_supplier` (write operations)
 - `list_sales_documents` and `get_sales_document`
 - `list_purchase_documents` and `get_purchase_document`
+- `list_supplier_payment_plans`, `get_supplier_payment_plan`, and `trace_supplier_receipt_payments`
 - `list_warehouse_documents` and `get_warehouse_document`
 - `list_money_accounts`, `list_money_documents`, and `get_money_document`
 - `list_cash_receipts` and `get_cash_receipt`

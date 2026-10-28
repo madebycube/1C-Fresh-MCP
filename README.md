@@ -103,6 +103,9 @@ ln -s /path/to/1C-Fresh-MCP/bin/1c "$HOME/.local/bin/1c"
 1c list purchases --kind order --limit 20
 1c list purchases --kind receipt --supplier SUPPLIER_GUID
 1c get purchase --kind receipt DOCUMENT_GUID
+1c list payment-plans --supplier SUPPLIER_GUID
+1c get payment-plan INVOICE_GUID
+1c trace receipt-payments RECEIPT_GUID
 1c list warehouse-docs --kind transfer --warehouse WAREHOUSE_GUID
 1c list warehouse-docs --kind stock-writeoff --limit 20
 1c get warehouse-doc --kind transfer DOCUMENT_GUID
@@ -140,6 +143,8 @@ ln -s /path/to/1C-Fresh-MCP/bin/1c "$HOME/.local/bin/1c"
 `list orders` показывает заказы покупателей, начиная с новых. `--customer`, парные `--from` и `--to`, `--limit` и `--offset` ограничивают выборку и делят её на страницы. JSON возвращает `items`, `total` и `next_offset`.
 
 `list suppliers` и `search suppliers` показывают контрагентов с признаком «Поставщик». `list purchases --kind order` читает заказы поставщикам, а `--kind receipt` — только приходные накладные с операцией «ПоступлениеОтПоставщика». `list warehouse-docs` читает заказы на перемещение (`transfer-order`), перемещения запасов с операцией «Перемещение» (`transfer`), оприходования (`stock-receipt`) и списания (`stock-writeoff`). `--supplier` и `--warehouse` выбирают записи по ID; для перемещения склад может быть исходным или конечным. Оба списка поддерживают даты, `--limit` и `--offset`. `get purchase` и `get warehouse-doc` показывают товарные строки и доступные ID связанных документов. `Posted` показывает проведение в 1С, а не получение товара или исполнение заказа. В проверенной базе заказов на перемещение нет, поэтому получение такого документа по GUID на живой записи не проверялось.
+
+В проверенной базе нет документа «Заявка на расходование денежных средств», поэтому плановые платежи поставщикам читаются из «Счетов на оплату поставщика». `list payment-plans` фильтрует их по организации, поставщику, договору, банковскому счёту и датам. `get payment-plan` показывает график оплаты и записи регистра «Платежный календарь», включая статус утверждения как он хранится в 1С; если регистр недоступен, это указывается явно. `trace receipt-payments` для приходной накладной находит счета поставщика, основанные на накладной или её заказе, платёжные поручения, списания с расчётного счёта и расходы из кассы с операцией «Поставщику», чья расшифровка ссылается на накладную, счёт или заказ, а также зачёт аванса в самой накладной. В оплату засчитываются только проведённые списания и расходы с прямой ссылкой на накладную и строки зачёта аванса; платёжное поручение, счёт и утверждение оплатой не считаются. Совпадение суммы без ссылки выводится как кандидат, а отсутствие ссылок — как «связанная оплата не найдена», а не «не оплачено». Связи через взаимозачёт и ввод остатков не отслеживаются.
 
 `list accounts` показывает кассы (`cash`), банковские счета организации (`bank`) и кассы ККМ (`register`). `list money` читает поступления и расходы кассы (`cash-in`, `cash-out`), банка (`bank-in`, `bank-out`), операции по платёжным картам (`card-payment`) и кассовые смены (`cash-shift`). Укажите даты включительно, не более 31 дня, и ID кассы, счёта, кассы ККМ или терминала через `--account`, `--register`, `--terminal`. `--limit` и `--offset` делят результат на страницы; `get money` показывает документ по GUID. Операции зарплаты, налогов, выплат работникам и неизвестные виды операций исключены. Кассовый чек, операция по карте и зачисление на банковский счёт — отдельные документы; `Posted` означает проведение, а не подтверждение оплаты или сверки. Команды только читают данные и могут просматривать историю ресурса несколько секунд.
 
@@ -181,6 +186,7 @@ bin/1c mcp
 | `list_customer_orders`, `get_customer_order` | |
 | `list_sales_documents`, `get_sales_document` | |
 | `list_purchase_documents`, `get_purchase_document` | |
+| `list_supplier_payment_plans`, `get_supplier_payment_plan`, `trace_supplier_receipt_payments` | |
 | `list_warehouse_documents`, `get_warehouse_document` | |
 | `list_money_accounts`, `list_money_documents`, `get_money_document` | |
 | `list_cash_receipts`, `get_cash_receipt` | |
