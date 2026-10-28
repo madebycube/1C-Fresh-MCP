@@ -422,6 +422,14 @@ var GetMoney = Spec{
 	Example:     "1c get money --kind card-payment DOCUMENT_GUID",
 }
 
+var ReconcileSupplier = Spec{
+	Command:     "reconcile supplier",
+	Tool:        "reconcile_supplier_balances",
+	Description: "Read-only supplier reconciliation from the supplier-settlement register: opening, movements and closing per contract and settlement type, open items, allocations and exclusions.",
+	Usage:       "1c reconcile supplier --organization GUID --supplier GUID --from YYYY-MM-DD --to YYYY-MM-DD [--contract GUID] [--account GUID] [--limit N] [--offset N] [--json]",
+	Example:     "1c reconcile supplier --organization ORG_GUID --supplier SUPPLIER_GUID --from 2026-01-01 --to 2026-09-30",
+}
+
 var ListLinkProperties = Spec{
 	Command:     "list link-properties",
 	Tool:        "list_receipt_link_properties",
@@ -525,7 +533,7 @@ var Topics = []Topic{
 	{Name: "inventory", Description: "Warehouses, stock, and warehouse documents", Commands: []Spec{ListWarehouses, GetStock, ListWarehouseDocuments, GetWarehouseDocument}},
 	{Name: "partners", Description: "Customer and supplier records and folders", Commands: []Spec{ListCounterpartyGroups, CreateCounterpartyGroup, UpdateCounterpartyGroup, ListCustomers, SearchCustomers, GetCustomer, CreateCustomer, UpdateCustomer, ListSuppliers, SearchSuppliers, GetSupplier, CreateSupplier, UpdateSupplier}},
 	{Name: "sales", Description: "Customer orders and sales documents", Commands: []Spec{ListOrders, GetOrder, ListSales, GetSale}},
-	{Name: "purchases", Description: "Supplier orders, goods receipts, and payment plans", Commands: []Spec{ListPurchases, GetPurchase, CreateReceipt, UpdateReceipt, PostReceipt, UnpostReceipt, ListLinkProperties, GetReceiptLink, SetReceiptLink, ListPaymentPlans, GetPaymentPlan, CreatePaymentPlan, UpdatePaymentPlan, PostPaymentPlan, UnpostPaymentPlan, TraceReceiptPayments}},
+	{Name: "purchases", Description: "Supplier orders, goods receipts, and payment plans", Commands: []Spec{ListPurchases, GetPurchase, CreateReceipt, UpdateReceipt, PostReceipt, UnpostReceipt, ListLinkProperties, GetReceiptLink, SetReceiptLink, ListPaymentPlans, GetPaymentPlan, CreatePaymentPlan, UpdatePaymentPlan, PostPaymentPlan, UnpostPaymentPlan, TraceReceiptPayments, ReconcileSupplier}},
 	{Name: "money", Description: "Accounts, cash, bank, and card movements", Commands: []Spec{ListMoneyAccounts, ListMoney, GetMoney}},
 	{Name: "receipts", Description: "Fiscal receipts and posting audit", Commands: []Spec{ListReceipts, GetReceipt, AuditUnpostedReceipts}},
 	{Name: "schema", Description: "Search and inspect exposed OData resources", Commands: []Spec{SearchResources, DescribeResource}},

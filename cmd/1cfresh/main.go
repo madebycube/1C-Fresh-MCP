@@ -213,6 +213,8 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		return runPaymentPlanGet(ctx, svc, commandArgs, out)
 	case operations.TraceReceiptPayments.Command:
 		return runReceiptPaymentTrace(ctx, svc, commandArgs, out)
+	case operations.ReconcileSupplier.Command:
+		return runSupplierReconciliation(ctx, svc, commandArgs, out)
 	case operations.ListWarehouseDocuments.Command:
 		return runOperationalList(ctx, svc, commandArgs, out, "warehouse")
 	case operations.GetWarehouseDocument.Command:

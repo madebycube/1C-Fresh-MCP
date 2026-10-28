@@ -502,6 +502,7 @@ type SettlementMovement struct {
 	PaymentDocumentType string  `json:"payment_document_type,omitempty"`
 	Amount              Decimal `json:"amount"`
 	CurrencyAmount      Decimal `json:"currency_amount"`
+	AllocationMethod    string  `json:"allocation_method,omitempty"`
 	Counted             bool    `json:"counted"`
 }
 

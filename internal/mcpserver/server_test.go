@@ -154,8 +154,8 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(listed.Tools) != 61 {
-		t.Fatalf("got %d tools; want 61", len(listed.Tools))
+	if len(listed.Tools) != 62 {
+		t.Fatalf("got %d tools; want 62", len(listed.Tools))
 	}
 	for _, tool := range listed.Tools {
 		if tool.Annotations == nil {
@@ -287,6 +287,7 @@ func TestReceiptToolsReachServiceValidation(t *testing.T) {
 		{operations.CreateReceipt.Tool, map[string]any{"organization_id": "bad", "supplier_id": "bad", "contract_id": "bad", "warehouse_id": "bad", "department_id": "bad", "date": "2026-10-01", "vat_mode": "inclusive", "lines": []map[string]any{{"product_id": "bad", "quantity": "1", "price": "1", "vat_rate": "НДС22"}}}, "GUID"},
 		{operations.UpdateReceipt.Tool, map[string]any{"id": "bad", "change_lines": []map[string]any{{"line_number": 1, "quantity": "2"}}}, "GUID"},
 		{operations.PostReceipt.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000017", "action": "delete"}, "post or unpost"},
+		{operations.ReconcileSupplier.Tool, map[string]any{"organization_id": "00000000-0000-0000-0000-000000000080", "supplier_id": "00000000-0000-0000-0000-000000000050", "from": "2026-09-01", "to": "2026-09-30", "account_id": "x"}, "GUID"},
 		{operations.GetReceiptLink.Tool, map[string]any{"receipt_id": "bad"}, "GUID"},
 		{operations.SetReceiptLink.Tool, map[string]any{"receipt_id": "bad", "url": "https://drive.example.test/d/1"}, "property"},
 		{operations.CreatePaymentPlan.Tool, map[string]any{"receipt_id": "bad", "account_id": "bad", "date": "2026-10-01", "payment_date": "2026-10-10"}, "GUID"},
