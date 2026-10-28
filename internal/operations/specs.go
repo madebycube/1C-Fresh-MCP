@@ -422,6 +422,30 @@ var GetMoney = Spec{
 	Example:     "1c get money --kind card-payment DOCUMENT_GUID",
 }
 
+var ListLinkProperties = Spec{
+	Command:     "list link-properties",
+	Tool:        "list_receipt_link_properties",
+	Description: "List hyperlink additional properties and whether the supplier-receipt property set uses them.",
+	Usage:       "1c list link-properties [--json]",
+	Example:     "1c list link-properties",
+}
+
+var GetReceiptLink = Spec{
+	Command:     "get receipt-link",
+	Tool:        "get_receipt_document_link",
+	Description: "Read the primary-document hyperlink (URL and caption) stored in a supplier receipt's additional property.",
+	Usage:       "1c get receipt-link [--property GUID_OR_NAME] [--json] RECEIPT_GUID",
+	Example:     "1c get receipt-link RECEIPT_GUID",
+}
+
+var SetReceiptLink = Spec{
+	Command:     "set receipt-link",
+	Tool:        "set_receipt_document_link",
+	Description: "Preview or save the URL and/or caption of a supplier receipt's hyperlink property, leaving everything else as is.",
+	Usage:       "1c set receipt-link RECEIPT_GUID [--property GUID_OR_NAME] [--url URL] [--caption TEXT] [--clear] [--expect-version DATA_VERSION] [--apply] [--json]",
+	Example:     "1c set receipt-link RECEIPT_GUID --url https://drive.example.test/d/1 --caption \"Накладная №1\"",
+}
+
 var CreatePaymentPlan = Spec{
 	Command:     "create payment-plan",
 	Tool:        "create_supplier_payment_plan",
@@ -501,7 +525,7 @@ var Topics = []Topic{
 	{Name: "inventory", Description: "Warehouses, stock, and warehouse documents", Commands: []Spec{ListWarehouses, GetStock, ListWarehouseDocuments, GetWarehouseDocument}},
 	{Name: "partners", Description: "Customer and supplier records and folders", Commands: []Spec{ListCounterpartyGroups, CreateCounterpartyGroup, UpdateCounterpartyGroup, ListCustomers, SearchCustomers, GetCustomer, CreateCustomer, UpdateCustomer, ListSuppliers, SearchSuppliers, GetSupplier, CreateSupplier, UpdateSupplier}},
 	{Name: "sales", Description: "Customer orders and sales documents", Commands: []Spec{ListOrders, GetOrder, ListSales, GetSale}},
-	{Name: "purchases", Description: "Supplier orders, goods receipts, and payment plans", Commands: []Spec{ListPurchases, GetPurchase, CreateReceipt, UpdateReceipt, PostReceipt, UnpostReceipt, ListPaymentPlans, GetPaymentPlan, CreatePaymentPlan, UpdatePaymentPlan, PostPaymentPlan, UnpostPaymentPlan, TraceReceiptPayments}},
+	{Name: "purchases", Description: "Supplier orders, goods receipts, and payment plans", Commands: []Spec{ListPurchases, GetPurchase, CreateReceipt, UpdateReceipt, PostReceipt, UnpostReceipt, ListLinkProperties, GetReceiptLink, SetReceiptLink, ListPaymentPlans, GetPaymentPlan, CreatePaymentPlan, UpdatePaymentPlan, PostPaymentPlan, UnpostPaymentPlan, TraceReceiptPayments}},
 	{Name: "money", Description: "Accounts, cash, bank, and card movements", Commands: []Spec{ListMoneyAccounts, ListMoney, GetMoney}},
 	{Name: "receipts", Description: "Fiscal receipts and posting audit", Commands: []Spec{ListReceipts, GetReceipt, AuditUnpostedReceipts}},
 	{Name: "schema", Description: "Search and inspect exposed OData resources", Commands: []Spec{SearchResources, DescribeResource}},

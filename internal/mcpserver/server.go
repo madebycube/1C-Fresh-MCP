@@ -328,6 +328,23 @@ func receiptLines(lines []receiptLineInput) []service.ReceiptLineInput {
 	return out
 }
 
+type listLinkPropertiesInput struct{}
+
+type getReceiptLinkInput struct {
+	ReceiptID string `json:"receipt_id" jsonschema:"Supplier goods receipt GUID"`
+	Property  string `json:"property,omitempty" jsonschema:"Property GUID, description, title or name; optional when receipts use exactly one hyperlink property"`
+}
+
+type setReceiptLinkInput struct {
+	ReceiptID           string  `json:"receipt_id" jsonschema:"Supplier goods receipt GUID"`
+	Property            string  `json:"property,omitempty" jsonschema:"Property GUID, description, title or name; optional when receipts use exactly one hyperlink property"`
+	URL                 *string `json:"url,omitempty" jsonschema:"New http or https address; omit to keep the current one"`
+	Caption             *string `json:"caption,omitempty" jsonschema:"New caption; omit to keep the current one, empty shows the URL"`
+	Clear               bool    `json:"clear,omitempty" jsonschema:"Remove the link from this receipt"`
+	ExpectedDataVersion string  `json:"expected_data_version,omitempty" jsonschema:"data_version from the preview; the save fails if the receipt changed since"`
+	Apply               bool    `json:"apply,omitempty" jsonschema:"Save the change; false only previews it"`
+}
+
 type createPaymentPlanInput struct {
 	ReceiptID         string `json:"receipt_id" jsonschema:"Posted supplier goods receipt GUID"`
 	AccountID         string `json:"account_id" jsonschema:"Organization bank account GUID that will pay"`
@@ -782,6 +799,27 @@ func New(svc service.Service) *mcp.Server {
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, input paymentPlanPostingInput) (*mcp.CallToolResult, service.PaymentPlanPosting, error) {
 		posting, err := svc.SetPaymentPlanPosting(ctx, input.ID, input.Action, input.ExpectedDataVersion, input.Apply)
 		return nil, posting, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.ListLinkProperties.Tool, Description: operations.ListLinkProperties.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ listLinkPropertiesInput) (*mcp.CallToolResult, service.LinkPropertyList, error) {
+		list, err := svc.ListLinkProperties(ctx)
+		return nil, list, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.GetReceiptLink.Tool, Description: operations.GetReceiptLink.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input getReceiptLinkInput) (*mcp.CallToolResult, service.ReceiptLink, error) {
+		link, err := svc.GetReceiptLink(ctx, input.ReceiptID, input.Property)
+		return nil, link, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.SetReceiptLink.Tool, Description: operations.SetReceiptLink.Description,
+		Annotations: &mcp.ToolAnnotations{IdempotentHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input setReceiptLinkInput) (*mcp.CallToolResult, service.ReceiptLinkWrite, error) {
+		write, err := svc.SetReceiptLink(ctx, input.ReceiptID, service.ReceiptLinkChange{Property: input.Property, URL: input.URL, Caption: input.Caption, Clear: input.Clear, ExpectedDataVersion: input.ExpectedDataVersion, Apply: input.Apply})
+		return nil, write, err
 	})
 	mcp.AddTool(server, &mcp.Tool{
 		Name: operations.TraceReceiptPayments.Tool, Description: operations.TraceReceiptPayments.Description,
