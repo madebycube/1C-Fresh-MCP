@@ -370,7 +370,7 @@ var CreateReceipt = Spec{
 	Command:     "create receipt",
 	Tool:        "create_supplier_receipt",
 	Description: "Preview or save an unposted supplier goods receipt with validated references and exact amounts.",
-	Usage:       "1c create receipt --organization GUID --supplier GUID --contract GUID --warehouse GUID --department GUID --date YYYY-MM-DD --vat inclusive|exclusive --line PRODUCT_GUID:QUANTITY:PRICE:VAT_CODE[:CHARACTERISTIC_GUID]... [--incoming-number TEXT] [--incoming-date YYYY-MM-DD] [--comment TEXT] [--allow-duplicate] [--apply] [--json]",
+	Usage:       "1c create receipt --organization GUID --supplier GUID --contract GUID --warehouse GUID --department GUID --date YYYY-MM-DD --vat inclusive|exclusive --line PRODUCT_GUID:QUANTITY:PRICE:VAT_CODE[:CHARACTERISTIC_GUID][:unit=GUID][:amount=A][:vat=V]... [--incoming-number TEXT] [--incoming-date YYYY-MM-DD] [--comment TEXT] [--allow-duplicate] [--apply] [--json]",
 	Example:     "1c create receipt --organization ORG_GUID --supplier SUPPLIER_GUID --contract CONTRACT_GUID --warehouse WAREHOUSE_GUID --department DEPARTMENT_GUID --date 2026-10-01 --vat inclusive --line PRODUCT_GUID:3:33.35:НДС22 --incoming-number EX-1",
 }
 
@@ -378,7 +378,7 @@ var UpdateReceipt = Spec{
 	Command:     "update receipt",
 	Tool:        "update_supplier_receipt",
 	Description: "Preview or save changes to an unposted supplier goods receipt, keeping other fields and lines.",
-	Usage:       "1c update receipt GUID [--date YYYY-MM-DD] [--warehouse GUID] [--department GUID] [--incoming-number TEXT] [--incoming-date YYYY-MM-DD] [--comment TEXT] [--set-line N:quantity=Q,price=P,vat=CODE]... [--add-line PRODUCT_GUID:QUANTITY:PRICE:VAT_CODE[:CHARACTERISTIC_GUID]]... [--expect-version DATA_VERSION] [--apply] [--json]",
+	Usage:       "1c update receipt GUID [--date YYYY-MM-DD] [--warehouse GUID] [--department GUID] [--incoming-number TEXT] [--incoming-date YYYY-MM-DD] [--comment TEXT] [--set-line N:quantity=Q,price=P,vat=CODE,amount=A,vat-amount=V]... [--add-line PRODUCT_GUID:QUANTITY:PRICE:VAT_CODE[:CHARACTERISTIC_GUID][:unit=GUID][:amount=A][:vat=V]]... [--expect-version DATA_VERSION] [--apply] [--json]",
 	Example:     "1c update receipt RECEIPT_GUID --set-line 1:quantity=4 --apply",
 }
 
@@ -574,10 +574,18 @@ var ListCashBalances = Spec{
 	Example:     "1c list cash-balances --as-of 2026-09-30",
 }
 
+var ListProductUnits = Spec{
+	Command:     "list product-units",
+	Tool:        "list_product_units",
+	Description: "List a product's base unit and its own units with conversion factors to the base unit.",
+	Usage:       "1c list product-units PRODUCT_GUID [--json]",
+	Example:     "1c list product-units PRODUCT_GUID",
+}
+
 var Topics = []Topic{
 	{Name: "setup", Description: "Connection and local MCP server", Commands: []Spec{Check}},
 	{Name: "company", Description: "Organizations, departments, and contracts", Commands: []Spec{ListOrganizations, ListDepartments, ListContracts}},
-	{Name: "products", Description: "Products, groups, categories, and characteristics", Commands: []Spec{ListProducts, GetProduct, SearchProducts, CreateProduct, UpdateProduct, ListGroups, CreateGroup, UpdateGroup, ListProductCategories, ListProductCharacteristics, ListUnitTypes}},
+	{Name: "products", Description: "Products, groups, categories, and characteristics", Commands: []Spec{ListProducts, GetProduct, SearchProducts, CreateProduct, UpdateProduct, ListGroups, CreateGroup, UpdateGroup, ListProductCategories, ListProductCharacteristics, ListUnitTypes, ListProductUnits}},
 	{Name: "prices", Description: "Price types, currencies, quotes, and source documents", Commands: []Spec{ListPriceTypes, ListCurrencies, GetPrice, ListPrices, ListPriceDocuments, GetPriceDocument}},
 	{Name: "inventory", Description: "Warehouses, stock, and warehouse documents", Commands: []Spec{ListWarehouses, GetStock, ListWarehouseDocuments, GetWarehouseDocument}},
 	{Name: "partners", Description: "Customer and supplier records and folders", Commands: []Spec{ListCounterpartyGroups, CreateCounterpartyGroup, UpdateCounterpartyGroup, ListCustomers, SearchCustomers, GetCustomer, CreateCustomer, UpdateCustomer, ListSuppliers, SearchSuppliers, GetSupplier, CreateSupplier, UpdateSupplier}},

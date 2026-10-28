@@ -158,3 +158,33 @@ func runUnitTypeList(ctx context.Context, svc service.Service, args []string, ou
 	_, err = fmt.Fprintf(out, "%d unit types\n", len(units))
 	return err
 }
+
+func runProductUnitList(ctx context.Context, svc service.Service, args []string, out io.Writer) error {
+	flags := flag.NewFlagSet(operations.ListProductUnits.Command, flag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+	asJSON := flags.Bool("json", false, "print JSON")
+	if err := parseFlags(flags, args); err != nil || flags.NArg() != 1 {
+		return errors.New("usage: " + operations.ListProductUnits.Usage)
+	}
+	units, err := svc.ListProductUnits(ctx, flags.Arg(0))
+	if err != nil {
+		return err
+	}
+	if *asJSON {
+		return json.NewEncoder(out).Encode(units)
+	}
+	writer := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
+	if _, err := fmt.Fprintln(writer, "NAME\tBASE\tFACTOR\tID"); err != nil {
+		return err
+	}
+	for _, unit := range units.Items {
+		factor := string(unit.Factor)
+		if !unit.FactorKnown {
+			factor = "unknown"
+		}
+		if _, err := fmt.Fprintf(writer, "%s\t%t\t%s\t%s\n", flat(unit.Name), unit.Base, factor, unit.ID); err != nil {
+			return err
+		}
+	}
+	return writer.Flush()
+}

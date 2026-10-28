@@ -145,6 +145,10 @@ type listCashBalancesInput struct {
 	AsOf string `json:"as_of,omitempty" jsonschema:"Inclusive date YYYY-MM-DD; default today"`
 }
 
+type listProductUnitsInput struct {
+	ProductID string `json:"product_id" jsonschema:"Product GUID"`
+}
+
 type listCurrenciesInput struct{}
 
 type listCurrenciesOutput struct {
@@ -310,9 +314,12 @@ type traceReceiptPaymentsInput struct {
 type receiptLineInput struct {
 	ProductID        string `json:"product_id" jsonschema:"Stock product GUID"`
 	CharacteristicID string `json:"characteristic_id,omitempty" jsonschema:"Optional characteristic GUID of that product"`
-	Quantity         string `json:"quantity" jsonschema:"Quantity in the base unit, up to 3 decimals"`
+	Quantity         string `json:"quantity" jsonschema:"Quantity in the line's unit, up to 3 decimals"`
 	Price            string `json:"price" jsonschema:"Unit price, up to 2 decimals"`
 	VATRate          string `json:"vat_rate" jsonschema:"VAT rate code such as НДС22, НДС5, or БезНДС"`
+	UnitID           string `json:"unit_id,omitempty" jsonschema:"Optional unit GUID from list_product_units; default is the product's base unit"`
+	Amount           string `json:"amount,omitempty" jsonschema:"Optional line amount from the supplier document; must match quantity × price within price rounding"`
+	VAT              string `json:"vat,omitempty" jsonschema:"Optional line VAT from the supplier document; must be within one kopeck of the rate's VAT"`
 }
 
 type createReceiptInput struct {
@@ -336,6 +343,8 @@ type receiptLineChangeInput struct {
 	Quantity   *string `json:"quantity,omitempty" jsonschema:"Replacement quantity"`
 	Price      *string `json:"price,omitempty" jsonschema:"Replacement unit price"`
 	VATRate    *string `json:"vat_rate,omitempty" jsonschema:"Replacement VAT rate code"`
+	Amount     *string `json:"amount,omitempty" jsonschema:"Explicit line amount from the supplier document"`
+	VAT        *string `json:"vat,omitempty" jsonschema:"Explicit line VAT from the supplier document"`
 }
 
 type updateReceiptInput struct {
@@ -614,6 +623,13 @@ func New(svc service.Service) *mcp.Server {
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, input listCashBalancesInput) (*mcp.CallToolResult, service.CashBalances, error) {
 		balances, err := svc.ListCashBalances(ctx, input.AsOf)
 		return nil, balances, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.ListProductUnits.Tool, Description: operations.ListProductUnits.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input listProductUnitsInput) (*mcp.CallToolResult, service.ProductUnits, error) {
+		units, err := svc.ListProductUnits(ctx, input.ProductID)
+		return nil, units, err
 	})
 	mcp.AddTool(server, &mcp.Tool{
 		Name: operations.ListCurrencies.Tool, Description: operations.ListCurrencies.Description,

@@ -836,3 +836,17 @@ type RegisterQuery struct {
 	EndPeriod   string
 	Dimensions  string
 }
+
+var ProductUnits = CatalogListResource{
+	Name: "Catalog_ЕдиницыИзмерения",
+	Fields: []FieldBinding{
+		{Output: "id", Source: "Ref_Key"},
+		{Output: "code", Source: "Code"},
+		{Output: "name", Source: "Description"},
+		{Output: "owner_id", Source: "Owner"},
+		{Output: "owner_type", Source: "Owner_Type"},
+		{Output: "factor", Source: "Коэффициент"},
+		{Output: "classifier_unit_id", Source: "ЕдиницаИзмеренияПоКлассификатору_Key"},
+		{Output: "deleted", Source: "DeletionMark"},
+	},
+}
