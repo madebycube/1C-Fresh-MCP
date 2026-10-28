@@ -56,8 +56,8 @@ type PaymentCalendarEvidence struct {
 }
 
 type PaymentCalendarRecord struct {
-	InvoiceID     string  `json:"-"`
-	InvoiceType   string  `json:"-"`
+	InvoiceID     string  `json:"invoice_id"`
+	InvoiceType   string  `json:"invoice_type"`
 	RecorderID    string  `json:"recorder_id"`
 	RecorderType  string  `json:"recorder_type"`
 	Period        string  `json:"period"`
