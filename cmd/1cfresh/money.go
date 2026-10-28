@@ -17,11 +17,12 @@ func runMoneyAccountList(ctx context.Context, svc service.Service, args []string
 	flags := flag.NewFlagSet(operations.ListMoneyAccounts.Command, flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	kind := flags.String("kind", "", "cash, bank, or register")
+	organizationID := flags.String("organization", "", "optional organization GUID for bank accounts")
 	asJSON := flags.Bool("json", false, "print JSON")
 	if err := parseFlags(flags, args); err != nil || flags.NArg() != 0 || *kind == "" {
 		return errors.New("usage: " + operations.ListMoneyAccounts.Usage)
 	}
-	accounts, err := svc.ListMoneyAccounts(ctx, *kind)
+	accounts, err := svc.ListOrganizationAccounts(ctx, *kind, *organizationID)
 	if err != nil {
 		return err
 	}

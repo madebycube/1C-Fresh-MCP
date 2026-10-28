@@ -402,7 +402,7 @@ var ListMoneyAccounts = Spec{
 	Command:     "list accounts",
 	Tool:        "list_money_accounts",
 	Description: "List cash accounts, own bank accounts, or retail registers.",
-	Usage:       "1c list accounts --kind cash|bank|register [--json]",
+	Usage:       "1c list accounts --kind cash|bank|register [--organization GUID] [--json]",
 	Example:     "1c list accounts --kind bank",
 }
 
@@ -526,8 +526,33 @@ var DescribeResource = Spec{
 	Example:     "1c describe resource Catalog_ВидыЦен",
 }
 
+var ListOrganizations = Spec{
+	Command:     "list organizations",
+	Tool:        "list_organizations",
+	Description: "List the company's own organizations with their 1C IDs.",
+	Usage:       "1c list organizations [--json]",
+	Example:     "1c list organizations",
+}
+
+var ListDepartments = Spec{
+	Command:     "list departments",
+	Tool:        "list_departments",
+	Description: "List departments (structural units of type department) with their 1C IDs.",
+	Usage:       "1c list departments [--json]",
+	Example:     "1c list departments",
+}
+
+var ListContracts = Spec{
+	Command:     "list contracts",
+	Tool:        "list_contracts",
+	Description: "List counterparty contracts with owner, organization, kind, and settlement currency.",
+	Usage:       "1c list contracts [--counterparty GUID] [--organization GUID] [--kind supplier|customer|other] [--all] [--limit N] [--offset N] [--json]",
+	Example:     "1c list contracts --counterparty SUPPLIER_GUID --kind supplier",
+}
+
 var Topics = []Topic{
 	{Name: "setup", Description: "Connection and local MCP server", Commands: []Spec{Check}},
+	{Name: "company", Description: "Organizations, departments, and contracts", Commands: []Spec{ListOrganizations, ListDepartments, ListContracts}},
 	{Name: "products", Description: "Products, groups, categories, and characteristics", Commands: []Spec{ListProducts, GetProduct, SearchProducts, CreateProduct, UpdateProduct, ListGroups, CreateGroup, UpdateGroup, ListProductCategories, ListProductCharacteristics, ListUnitTypes}},
 	{Name: "prices", Description: "Price types, currencies, quotes, and source documents", Commands: []Spec{ListPriceTypes, ListCurrencies, GetPrice, ListPrices, ListPriceDocuments, GetPriceDocument}},
 	{Name: "inventory", Description: "Warehouses, stock, and warehouse documents", Commands: []Spec{ListWarehouses, GetStock, ListWarehouseDocuments, GetWarehouseDocument}},

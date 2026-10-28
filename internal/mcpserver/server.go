@@ -106,6 +106,25 @@ type updateCounterpartyGroupInput struct {
 
 type listPriceTypesInput struct{}
 
+type listOrganizationsOutput struct {
+	Organizations []service.Organization `json:"organizations"`
+	Count         int                    `json:"count"`
+}
+
+type listDepartmentsOutput struct {
+	Departments []service.Warehouse `json:"departments"`
+	Count       int                 `json:"count"`
+}
+
+type listContractsInput struct {
+	CounterpartyID string `json:"counterparty_id,omitempty" jsonschema:"Optional customer or supplier GUID"`
+	OrganizationID string `json:"organization_id,omitempty" jsonschema:"Optional organization GUID from list_organizations"`
+	Kind           string `json:"kind,omitempty" jsonschema:"Optional contract kind: supplier, customer, or other"`
+	All            bool   `json:"all,omitempty" jsonschema:"Include inactive contracts"`
+	Limit          int    `json:"limit,omitempty" jsonschema:"Maximum results, 1-100; default 20"`
+	Offset         int    `json:"offset,omitempty" jsonschema:"Results to skip"`
+}
+
 type listCurrenciesInput struct{}
 
 type listCurrenciesOutput struct {
@@ -402,7 +421,8 @@ type getWarehouseDocumentInput struct {
 }
 
 type listMoneyAccountsInput struct {
-	Kind string `json:"kind" jsonschema:"cash, bank, or register"`
+	Kind           string `json:"kind" jsonschema:"cash, bank, or register"`
+	OrganizationID string `json:"organization_id,omitempty" jsonschema:"Optional organization GUID; keeps only that organization's bank accounts"`
 }
 
 type listMoneyAccountsOutput struct {
@@ -517,6 +537,31 @@ func New(svc service.Service) *mcp.Server {
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ listPriceTypesInput) (*mcp.CallToolResult, listPriceTypesOutput, error) {
 		priceTypes, err := svc.ListPriceTypes(ctx)
 		return nil, listPriceTypesOutput{PriceTypes: priceTypes, Count: len(priceTypes)}, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.ListOrganizations.Tool, Description: operations.ListOrganizations.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ listCurrenciesInput) (*mcp.CallToolResult, listOrganizationsOutput, error) {
+		items, err := svc.ListOrganizations(ctx)
+		return nil, listOrganizationsOutput{Organizations: items, Count: len(items)}, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.ListDepartments.Tool, Description: operations.ListDepartments.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ listCurrenciesInput) (*mcp.CallToolResult, listDepartmentsOutput, error) {
+		items, err := svc.ListDepartments(ctx)
+		return nil, listDepartmentsOutput{Departments: items, Count: len(items)}, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.ListContracts.Tool, Description: operations.ListContracts.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input listContractsInput) (*mcp.CallToolResult, service.ContractPage, error) {
+		limit := input.Limit
+		if limit == 0 {
+			limit = 20
+		}
+		page, err := svc.ListContracts(ctx, service.ContractFilter{CounterpartyID: input.CounterpartyID, OrganizationID: input.OrganizationID, Kind: input.Kind, All: input.All}, limit, input.Offset)
+		return nil, page, err
 	})
 	mcp.AddTool(server, &mcp.Tool{
 		Name: operations.ListCurrencies.Tool, Description: operations.ListCurrencies.Description,
@@ -906,7 +951,7 @@ func New(svc service.Service) *mcp.Server {
 		Name: operations.ListMoneyAccounts.Tool, Description: operations.ListMoneyAccounts.Description,
 		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, input listMoneyAccountsInput) (*mcp.CallToolResult, listMoneyAccountsOutput, error) {
-		accounts, err := svc.ListMoneyAccounts(ctx, input.Kind)
+		accounts, err := svc.ListOrganizationAccounts(ctx, input.Kind, input.OrganizationID)
 		return nil, listMoneyAccountsOutput{Accounts: accounts, Count: len(accounts)}, err
 	})
 	mcp.AddTool(server, &mcp.Tool{
