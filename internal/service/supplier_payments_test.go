@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-// traceReader applies supplier and invoice filters so tests can check which records a trace reads.
+// traceReader records filters so tests can check that reads avoid them.
 type traceReader struct {
 	rows    map[string][]map[string]any
 	fail    map[string]bool
@@ -90,8 +90,8 @@ func traceFixture() *traceReader {
 		},
 		"Document_РасходИзКассы": {},
 		"AccumulationRegister_ПлатежныйКалендарь_RecordType": {
-			{"Recorder": plan, "Recorder_Type": "StandardODATA.Document_СчетНаОплатуПоставщика", "Period": "2026-09-05T00:00:00", "Active": true, "СчетНаОплату": plan, "СтатусУтвержденияПлатежа": "Утвержден", "Сумма": 1000.10, "СуммаОплаты": 0},
-			{"Recorder": plan, "Recorder_Type": "StandardODATA.Document_СчетНаОплатуПоставщика", "Period": "2026-09-05T00:00:00", "Active": true, "СчетНаОплату": salesID(4), "СтатусУтвержденияПлатежа": "НеУтвержден", "Сумма": 5},
+			{"Recorder": plan, "Recorder_Type": "StandardODATA.Document_СчетНаОплатуПоставщика", "Period": "2026-09-05T00:00:00", "Active": true, "СчетНаОплату": plan, "СчетНаОплату_Type": "StandardODATA.Document_СчетНаОплатуПоставщика", "СтатусУтвержденияПлатежа": "Утвержден", "Сумма": 1000.10, "СуммаОплаты": 0},
+			{"Recorder": plan, "Recorder_Type": "StandardODATA.Document_СчетНаОплатуПоставщика", "Period": "2026-09-05T00:00:00", "Active": true, "СчетНаОплату": salesID(4), "СчетНаОплату_Type": "StandardODATA.Document_СчетНаОплатуПоставщика", "СтатусУтвержденияПлатежа": "НеУтвержден", "Сумма": 5},
 		},
 	}}
 }
@@ -131,8 +131,8 @@ func TestTraceSupplierReceiptCountsOnlyLinkedRecordedPayments(t *testing.T) {
 		}
 	}
 	for _, filter := range reader.filters {
-		if filter != "Контрагент_Key eq guid'"+salesID(50)+"'" {
-			t.Fatalf("unexpected filter %q", filter)
+		if filter != "" {
+			t.Fatalf("reference filters return HTTP 500 in the tested tenant; got %q", filter)
 		}
 	}
 }

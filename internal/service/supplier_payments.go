@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/madebycube/1C-Fresh-MCP/internal/config"
+	"golang.org/x/sync/errgroup"
 )
 
 const maxTraceScan = 5000
@@ -55,6 +56,8 @@ type PaymentCalendarEvidence struct {
 }
 
 type PaymentCalendarRecord struct {
+	InvoiceID     string  `json:"-"`
+	InvoiceType   string  `json:"-"`
 	RecorderID    string  `json:"recorder_id"`
 	RecorderType  string  `json:"recorder_type"`
 	Period        string  `json:"period"`
@@ -168,8 +171,7 @@ func (s Service) GetSupplierPaymentPlan(ctx context.Context, id string) (Supplie
 func (s Service) paymentCalendar(ctx context.Context, invoiceID string) *PaymentCalendarEvidence {
 	register := config.PaymentCalendar
 	evidence := &PaymentCalendarEvidence{ApprovalStates: []string{}, Records: []PaymentCalendarRecord{}}
-	filter := register.InvoiceField + " eq cast(guid'" + strings.ToLower(invoiceID) + "', '" + config.SupplierPaymentPlans.Name + "')"
-	rows, err := s.filteredRows(ctx, register.Name, filter, sourceFields(register.Fields), "Period asc", 500)
+	rows, err := s.scanRows(ctx, register.Name, sourceFields(register.Fields), "", maxDocumentScan)
 	if err != nil {
 		evidence.Error = err.Error()
 		return evidence
@@ -182,6 +184,9 @@ func (s Service) paymentCalendar(ctx context.Context, invoiceID string) *Payment
 			evidence.Records = []PaymentCalendarRecord{}
 			evidence.ApprovalStates = []string{}
 			return evidence
+		}
+		if record.InvoiceType != supplierInvoiceType || !strings.EqualFold(record.InvoiceID, invoiceID) {
+			continue
 		}
 		evidence.Records = append(evidence.Records, record)
 		if record.ApprovalState != "" && !seen[record.ApprovalState] {
@@ -334,11 +339,10 @@ func (s Service) TraceSupplierReceipt(ctx context.Context, id string) (SupplierR
 		"settlements recorded only through debt offsets or opening balances (see supplier reconciliation)",
 	}}
 	complete := true
-	supplierFilter := "Контрагент_Key eq guid'" + strings.ToLower(receipt.SupplierID) + "'"
 
 	planIDs := make(map[string]bool)
-	planRows, err := s.filteredRows(ctx, config.SupplierPaymentPlans.Name, supplierFilter, sourceFields(config.SupplierPaymentPlans.Fields), "Ref_Key asc", maxTraceScan)
-	scan := TraceScan{Resource: config.SupplierPaymentPlans.Name, Rows: len(planRows)}
+	planRows, err := s.allDocumentRows(ctx, config.SupplierPaymentPlans)
+	scan := TraceScan{Resource: config.SupplierPaymentPlans.Name}
 	if err != nil {
 		scan.Error, complete = err.Error(), false
 	}
@@ -347,6 +351,10 @@ func (s Service) TraceSupplierReceipt(ctx context.Context, id string) (SupplierR
 		if err != nil {
 			return SupplierReceiptTrace{}, err
 		}
+		if !strings.EqualFold(item.SupplierID, receipt.SupplierID) {
+			continue
+		}
+		scan.Rows++
 		link := ""
 		switch {
 		case strings.EqualFold(item.BasisID, receipt.ID):
@@ -368,7 +376,7 @@ func (s Service) TraceSupplierReceipt(ctx context.Context, id string) (SupplierR
 	unlinked := make([]TracedPayment, 0)
 	for _, kind := range []string{"payment-order", "bank-out", "cash-out"} {
 		plan := config.SupplierPaymentDocuments[kind]
-		rows, err := s.filteredRows(ctx, plan.Name, supplierFilter, sourceFields(plan.Fields)+","+plan.LinesField, "Ref_Key asc", maxTraceScan)
+		rows, err := s.supplierDocumentsWithLines(ctx, plan, receipt.SupplierID)
 		scan := TraceScan{Resource: plan.Name, Rows: len(rows)}
 		if err != nil {
 			scan.Error, complete = err.Error(), false
@@ -583,9 +591,53 @@ func clearUnlinked(fields ...*string) {
 	}
 }
 
-// filteredRows reads every row matching an OData filter, failing rather than truncating when more than maxRows match.
-func (s Service) filteredRows(ctx context.Context, resource, filter, fields, orderBy string, maxRows int) ([]map[string]json.RawMessage, error) {
-	countParams := url.Values{"$format": {"json"}, "$inlinecount": {"allpages"}, "$filter": {filter}, "$top": {"1"}}
+// supplierDocumentsWithLines scans document headers, keeps the supplier's documents and reads each one's lines by ID.
+// The tested tenant answers HTTP 500 to reference filters, so matching happens locally.
+func (s Service) supplierDocumentsWithLines(ctx context.Context, plan config.DocumentResource, supplierID string) ([]map[string]json.RawMessage, error) {
+	headers, err := s.allDocumentRows(ctx, plan)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]string, 0)
+	for _, row := range headers {
+		var supplier, id string
+		_ = json.Unmarshal(row["Контрагент_Key"], &supplier)
+		_ = json.Unmarshal(row["Ref_Key"], &id)
+		if strings.EqualFold(supplier, supplierID) {
+			ids = append(ids, id)
+		}
+	}
+	if len(ids) > maxTraceScan {
+		return nil, errors.New("more than " + strconv.Itoa(maxTraceScan) + " supplier documents")
+	}
+	rows := make([]map[string]json.RawMessage, len(ids))
+	group, requestContext := errgroup.WithContext(ctx)
+	group.SetLimit(4)
+	for index, id := range ids {
+		index, id := index, id
+		group.Go(func() error {
+			params := url.Values{"$format": {"json"}, "$select": {sourceFields(plan.Fields) + "," + plan.LinesField}}
+			data, err := s.OData.Get(requestContext, plan.Name+"(guid'"+strings.ToLower(id)+"')", params, 4<<20)
+			if err != nil {
+				return err
+			}
+			var row map[string]json.RawMessage
+			if err := json.Unmarshal(data, &row); err != nil || row == nil {
+				return errors.New("invalid OData payment document response")
+			}
+			rows[index] = row
+			return nil
+		})
+	}
+	if err := group.Wait(); err != nil {
+		return nil, err
+	}
+	return rows, nil
+}
+
+// scanRows reads a whole resource page by page, failing rather than truncating when it holds more than maxRows.
+func (s Service) scanRows(ctx context.Context, resource, fields, orderBy string, maxRows int) ([]map[string]json.RawMessage, error) {
+	countParams := url.Values{"$format": {"json"}, "$inlinecount": {"allpages"}, "$select": {fields}, "$top": {"1"}}
 	data, err := s.OData.Get(ctx, resource, countParams, 4<<20)
 	if err != nil {
 		return nil, err
@@ -601,13 +653,16 @@ func (s Service) filteredRows(ctx context.Context, resource, filter, fields, ord
 		return nil, errors.New("invalid OData count")
 	}
 	if count > maxRows {
-		return nil, errors.New("more than " + strconv.Itoa(maxRows) + " matching records")
+		return nil, errors.New("more than " + strconv.Itoa(maxRows) + " records")
 	}
 	rows := make([]map[string]json.RawMessage, 0, count)
 	for offset := 0; offset < count; offset += documentScanPageSize {
 		params := url.Values{
-			"$format": {"json"}, "$filter": {filter}, "$select": {fields}, "$orderby": {orderBy},
+			"$format": {"json"}, "$select": {fields},
 			"$skip": {strconv.Itoa(offset)}, "$top": {strconv.Itoa(min(documentScanPageSize, count-offset))},
+		}
+		if orderBy != "" {
+			params.Set("$orderby", orderBy)
 		}
 		data, err := s.OData.Get(ctx, resource, params, 8<<20)
 		if err != nil {

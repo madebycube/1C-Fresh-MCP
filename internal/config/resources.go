@@ -645,7 +645,7 @@ var SupplierPaymentPlans = DocumentResource{
 	},
 }
 
-// PaymentCalendar is read by invoice reference to report approval state and planned or paid amounts.
+// PaymentCalendar is scanned and matched by invoice reference locally, because the tested tenant rejects reference filters.
 var PaymentCalendar = struct {
 	Name         string
 	InvoiceField string
@@ -654,6 +654,8 @@ var PaymentCalendar = struct {
 	Name:         "AccumulationRegister_ПлатежныйКалендарь_RecordType",
 	InvoiceField: "СчетНаОплату",
 	Fields: []FieldBinding{
+		{Output: "invoice_id", Source: "СчетНаОплату"},
+		{Output: "invoice_type", Source: "СчетНаОплату_Type"},
 		{Output: "recorder_id", Source: "Recorder"},
 		{Output: "recorder_type", Source: "Recorder_Type"},
 		{Output: "period", Source: "Period"},
