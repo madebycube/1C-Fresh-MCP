@@ -598,11 +598,19 @@ var CreateTransfer = Spec{
 	Example:     "1c create transfer --organization ORG_GUID --from WAREHOUSE_GUID --to OTHER_WAREHOUSE_GUID --date 2026-10-05 --line PRODUCT_GUID:3",
 }
 
+var SetPrice = Spec{
+	Command:     "set price",
+	Tool:        "set_product_price",
+	Description: "Preview or save an unposted price-setting document for one product price.",
+	Usage:       "1c set price PRODUCT_GUID --price-type NAME --price DECIMAL --date YYYY-MM-DD [--characteristic GUID] [--comment TEXT] [--apply] [--json]",
+	Example:     "1c set price PRODUCT_GUID --price-type \"Example price\" --price 149.90 --date 2026-11-01",
+}
+
 var Topics = []Topic{
 	{Name: "setup", Description: "Connection and local MCP server", Commands: []Spec{Check}},
 	{Name: "company", Description: "Organizations, departments, and contracts", Commands: []Spec{ListOrganizations, ListDepartments, ListContracts}},
 	{Name: "products", Description: "Products, groups, categories, and characteristics", Commands: []Spec{ListProducts, GetProduct, SearchProducts, CreateProduct, UpdateProduct, ListGroups, CreateGroup, UpdateGroup, ListProductCategories, ListProductCharacteristics, ListUnitTypes, ListProductUnits}},
-	{Name: "prices", Description: "Price types, currencies, quotes, and source documents", Commands: []Spec{ListPriceTypes, ListCurrencies, GetPrice, ListPrices, ListPriceDocuments, GetPriceDocument}},
+	{Name: "prices", Description: "Price types, currencies, quotes, and source documents", Commands: []Spec{ListPriceTypes, ListCurrencies, GetPrice, ListPrices, ListPriceDocuments, GetPriceDocument, SetPrice}},
 	{Name: "inventory", Description: "Warehouses, stock, and warehouse documents", Commands: []Spec{ListWarehouses, GetStock, ListWarehouseDocuments, GetWarehouseDocument, CreateTransfer}},
 	{Name: "partners", Description: "Customer and supplier records and folders", Commands: []Spec{ListCounterpartyGroups, CreateCounterpartyGroup, UpdateCounterpartyGroup, ListCustomers, SearchCustomers, GetCustomer, CreateCustomer, UpdateCustomer, ListSuppliers, SearchSuppliers, GetSupplier, CreateSupplier, UpdateSupplier}},
 	{Name: "sales", Description: "Customer orders and sales documents", Commands: []Spec{ListOrders, GetOrder, ListSales, GetSale, ReportSales}},

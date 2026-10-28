@@ -75,6 +75,7 @@ ln -s /path/to/1C-Fresh-MCP/bin/1c "$HOME/.local/bin/1c"
 1c get price PRODUCT_GUID --price-type "Пример цены" --as-of 2026-09-23
 1c list price-documents --posted false --limit 20
 1c get price-document DOCUMENT_GUID --product PRODUCT_GUID --limit 20
+1c set price PRODUCT_GUID --price-type "Example price" --price 149.90 --date 2026-11-01
 1c list organizations
 1c list departments
 1c list contracts --counterparty SUPPLIER_GUID --kind supplier
@@ -152,6 +153,8 @@ ln -s /path/to/1C-Fresh-MCP/bin/1c "$HOME/.local/bin/1c"
 
 `list price-documents` показывает номера, даты, GUID и состояние проведения документов установки цен, начиная с новых. Парные `--from` и `--to` ограничивают диапазон до 31 дня; `--posted true|false` выбирает проведённые или непроведённые документы. `--limit` и `--offset` делят результат на страницы. `get price-document` читает документ по GUID из списка либо по `source_document_id` из результата `get price` или `list prices`. Показывает номер, дату, состояние проведения и строки с ID товара, вида цен, характеристики, валюты и точной десятичной ценой. `--product PRODUCT_GUID` оставляет строки одного товара; `--limit` и `--offset` делят строки на страницы. Обе команды только читают данные.
 
+`set price PRODUCT_GUID` (в MCP `set_product_price`) показывает предпросмотр цены одного товара; с `--apply` сохраняет **непроведённый** документ установки цен с одной строкой: товар, необязательная характеристика, вид цен по действующему названию, рубль, базовая единица товара и цена (до 2 знаков). Виды цен, которые 1С рассчитывает от другого вида или хранит в другой валюте, отклоняются. После сохранения документ перечитывается и строка сверяется. Текущая цена не меняется, пока документ не проведён в 1С; проверить её можно через `get price`. Неудачное сохранение не повторяется; сначала проверьте `list price-documents --posted false`. На живой базе ещё не проверялось: `Цена` в метаданных 1С — число с плавающей точкой, поэтому при первом реальном использовании сверьте сохранённую цену.
+
 `list organizations` показывает собственные организации, `list departments` — подразделения из справочника структурных единиц. `list contracts` показывает договоры контрагентов с владельцем, организацией, видом (`supplier` — с поставщиком, `customer` — с покупателем) и валютой расчётов; `--counterparty` и `--organization` сужают выборку, `--kind other` — прочие договоры, `--all` добавляет недействительные, `--limit`/`--offset` делят результат на страницы. Фильтры применяются локально после чтения справочника (до 5 000 записей). `list accounts --kind bank --organization GUID` оставляет банковские счета одной организации. ID из этих команд нужны для `create receipt` и `create payment-plan`. Команды только читают данные.
 
 `list warehouses` показывает склады и розничные точки из справочника структурных единиц. `get stock` показывает текущие остатки товара по складам; `--warehouse` ограничивает ответ одним складом, `--characteristic` — одной характеристикой. Количество берётся из виртуальной таблицы `AccumulationRegister_ЗапасыНаСкладах/Balance` и суммируется по характеристикам, партиям, ячейкам и организациям, если характеристика не выбрана. JSON также содержит исходные строки баланса и ID единицы измерения товара. Если 1С не находит описание единицы, её ID остаётся в результате. Это остаток на складе, а не обещание доступности товара для продажи.
@@ -214,7 +217,7 @@ bin/1c mcp
 | Чтение | Изменение |
 | --- | --- |
 | `check_connection` | `create_product_group` |
-| `list_product_groups`, `list_product_categories`, `list_product_characteristics`, `list_price_types`, `list_currencies`, `get_product_price`, `list_price_documents`, `get_price_document`, `list_product_prices` | `update_product_group` |
+| `list_product_groups`, `list_product_categories`, `list_product_characteristics`, `list_price_types`, `list_currencies`, `get_product_price`, `list_price_documents`, `get_price_document`, `list_product_prices` | `update_product_group`, `set_product_price` |
 | `list_counterparty_groups` | `create_counterparty_group`, `update_counterparty_group` |
 | `list_warehouses`, `get_product_stock`, `list_unit_types` | |
 | `find_nomenclature` | `create_product`, `update_product` |

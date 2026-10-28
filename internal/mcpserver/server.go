@@ -338,6 +338,16 @@ type createReceiptInput struct {
 	Apply          bool               `json:"apply,omitempty" jsonschema:"Save the receipt; false only previews it"`
 }
 
+type setPriceInput struct {
+	ProductID        string `json:"product_id" jsonschema:"Product GUID"`
+	CharacteristicID string `json:"characteristic_id,omitempty" jsonschema:"Optional characteristic GUID of that product"`
+	PriceType        string `json:"price_type" jsonschema:"Active price type name from list_price_types"`
+	Price            string `json:"price" jsonschema:"Price in rubles per base unit, up to 2 decimals"`
+	Date             string `json:"date" jsonschema:"Date the price applies from, YYYY-MM-DD"`
+	Comment          string `json:"comment,omitempty" jsonschema:"Optional comment"`
+	Apply            bool   `json:"apply,omitempty" jsonschema:"Save the price document unposted; false only previews it"`
+}
+
 type transferLineInput struct {
 	ProductID        string `json:"product_id" jsonschema:"Stock product GUID"`
 	CharacteristicID string `json:"characteristic_id,omitempty" jsonschema:"Optional characteristic GUID of that product"`
@@ -999,6 +1009,13 @@ func New(svc service.Service) *mcp.Server {
 			IncomingNumber: input.IncomingNumber, IncomingDate: input.IncomingDate, Comment: input.Comment,
 			VATMode: input.VATMode, Lines: receiptLines(input.Lines), AllowDuplicate: input.AllowDuplicate, Apply: input.Apply,
 		})
+		return nil, write, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.SetPrice.Tool, Description: operations.SetPrice.Description,
+		Annotations: &mcp.ToolAnnotations{DestructiveHint: &additive},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input setPriceInput) (*mcp.CallToolResult, service.PriceWrite, error) {
+		write, err := svc.CreatePriceDraft(ctx, service.PriceDraft(input))
 		return nil, write, err
 	})
 	mcp.AddTool(server, &mcp.Tool{
