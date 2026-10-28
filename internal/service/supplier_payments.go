@@ -14,6 +14,7 @@ import (
 )
 
 const maxTraceScan = 5000
+const registerScanPageSize = 500
 
 type SupplierPaymentPlan struct {
 	ID                string                   `json:"id"`
@@ -265,6 +266,7 @@ type TracedPayment struct {
 	BasisID        string             `json:"basis_id,omitempty"`
 	BasisType      string             `json:"basis_type,omitempty"`
 	PaymentOrderID string             `json:"payment_order_id,omitempty"`
+	Link           string             `json:"link"`
 	Allocations    []TracedAllocation `json:"allocations"`
 }
 
@@ -413,6 +415,10 @@ func (s Service) TraceSupplierReceipt(ctx context.Context, id string) (SupplierR
 				continue
 			}
 			payment.Allocations = linked
+			payment.Link = "allocation"
+			if len(linked) == 0 {
+				payment.Link = "basis"
+			}
 			if kind == "payment-order" {
 				paymentOrders[strings.ToLower(payment.ID)] = true
 			}
@@ -434,6 +440,7 @@ func (s Service) TraceSupplierReceipt(ctx context.Context, id string) (SupplierR
 	for _, payment := range unlinked {
 		if payment.Kind == "bank-out" && payment.BasisType == paymentOrderType && paymentOrders[strings.ToLower(payment.BasisID)] {
 			payment.PaymentOrderID = payment.BasisID
+			payment.Link = "payment-order"
 			payment.Allocations = []TracedAllocation{}
 			trace.Payments = append(trace.Payments, payment)
 			continue
@@ -493,6 +500,7 @@ type SettlementMovement struct {
 	PaymentDocumentType string  `json:"payment_document_type,omitempty"`
 	Amount              Decimal `json:"amount"`
 	CurrencyAmount      Decimal `json:"currency_amount"`
+	Counted             bool    `json:"counted"`
 }
 
 var settlementSources = map[string]string{
@@ -525,7 +533,14 @@ func (s Service) receiptSettlements(ctx context.Context, receiptID string) Settl
 			return SettlementEvidence{Error: "settlement records repeated during lookup", Movements: []SettlementMovement{}}
 		}
 		seen[key] = true
-		if movement.DocumentType != supplierReceiptType || !strings.EqualFold(movement.DocumentID, receiptID) {
+		ownDocument := movement.DocumentType == supplierReceiptType && strings.EqualFold(movement.DocumentID, receiptID)
+		if !ownDocument {
+			// The receipt's posting also moves the advance it consumes; list it to name that payment, without counting it.
+			if movement.RecorderType == supplierReceiptType && strings.EqualFold(movement.RecorderID, receiptID) {
+				movement.Source = "advance-consumed"
+				clearUnlinked(&movement.OrganizationID, &movement.SupplierID, &movement.ContractID)
+				evidence.Movements = append(evidence.Movements, movement)
+			}
 			continue
 		}
 		movement.Source = settlementSources[movement.RecorderType]
@@ -538,6 +553,7 @@ func (s Service) receiptSettlements(ctx context.Context, receiptID string) Settl
 		if movement.PaymentDocumentType == "StandardODATA.Undefined" || !linkedGUID(movement.PaymentDocumentID) {
 			movement.PaymentDocumentID, movement.PaymentDocumentType = "", ""
 		}
+		movement.Counted = movement.Active
 		if movement.Active {
 			target := debt
 			if movement.RecordType == "Expense" {
@@ -563,14 +579,17 @@ func applySettlementStatus(summary *SupplierReceiptStatus, evidence SettlementEv
 		summary.Notes = append(summary.Notes, "Supplier-settlement register unavailable, so status falls back to document links: "+evidence.Error)
 		return
 	}
-	summary.Notes = append(summary.Notes, "Status comes from the receipt's movements in the supplier-settlement register, in settlement currency.")
+	summary.Notes = append(summary.Notes, "Status comes from the receipt's movements in the supplier-settlement register, in settlement currency. Document links are a separate view and can overlap with register advance offsets.")
 	outstanding, _ := new(big.Rat).SetString(string(evidence.Outstanding))
 	debt, _ := new(big.Rat).SetString(string(evidence.Debt))
 	switch {
-	case len(evidence.Movements) == 0 || debt == nil || debt.Sign() == 0:
+	case debt == nil || debt.Sign() == 0:
 		summary.Status = "not_in_settlements"
 		summary.Notes = append(summary.Notes, "The receipt has no settlement debt; it may be unposted or recorded elsewhere.")
-	case outstanding.Sign() <= 0:
+	case outstanding.Sign() < 0:
+		summary.Status = "overpaid_in_settlements"
+		summary.Notes = append(summary.Notes, "More was closed against this receipt than its debt; 1C shows the excess as a supplier credit.")
+	case outstanding.Sign() == 0:
 		summary.Status = "closed_in_settlements"
 	case outstanding.Cmp(debt) < 0:
 		summary.Status = "partly_closed_in_settlements"
@@ -784,10 +803,10 @@ func (s Service) scanRows(ctx context.Context, resource, fields, orderBy string,
 		return nil, errors.New("more than " + strconv.Itoa(maxRows) + " records")
 	}
 	rows := make([]map[string]json.RawMessage, 0, count)
-	for offset := 0; offset < count; offset += documentScanPageSize {
+	for offset := 0; offset < count; offset += registerScanPageSize {
 		params := url.Values{
 			"$format": {"json"}, "$select": {fields},
-			"$skip": {strconv.Itoa(offset)}, "$top": {strconv.Itoa(min(documentScanPageSize, count-offset))},
+			"$skip": {strconv.Itoa(offset)}, "$top": {strconv.Itoa(min(registerScanPageSize, count-offset))},
 		}
 		if orderBy != "" {
 			params.Set("$orderby", orderBy)

@@ -120,7 +120,7 @@ func TestTraceSupplierReceiptCountsOnlyLinkedRecordedPayments(t *testing.T) {
 	for _, payment := range trace.Payments {
 		kinds[payment.Number] = payment
 	}
-	if len(kinds) != 4 || kinds["PO1"].Kind != "payment-order" || kinds["B1"].PaymentOrderID != salesID(20) || len(kinds["B1"].Allocations) != 1 || kinds["B-PLAN"].Allocations[0].Link != "payment-plan" || !kinds["UNPOSTED"].Allocations[0].SettlementAmount.equal("300") {
+	if len(kinds) != 4 || kinds["PO1"].Kind != "payment-order" || kinds["B1"].Link != "allocation" || kinds["B1"].PaymentOrderID != salesID(20) || len(kinds["B1"].Allocations) != 1 || kinds["B-PLAN"].Allocations[0].Link != "payment-plan" || !kinds["UNPOSTED"].Allocations[0].SettlementAmount.equal("300") {
 		t.Fatalf("payments: %+v", trace.Payments)
 	}
 	if _, ok := kinds["TAX"]; ok {
@@ -132,14 +132,14 @@ func TestTraceSupplierReceiptCountsOnlyLinkedRecordedPayments(t *testing.T) {
 	}
 	// The register holds the receipt debt, a bank payment and an advance offset; the inactive cash row is listed but not counted.
 	settlements := trace.Settlements
-	if !settlements.Available || len(settlements.Movements) != 4 || settlements.Debt != "1000.1" || settlements.Settled != "500.05" || settlements.Outstanding != "500.05" || trace.Summary.Status != "partly_closed_in_settlements" {
+	if !settlements.Available || len(settlements.Movements) != 5 || settlements.Debt != "1000.1" || settlements.Settled != "500.05" || settlements.Outstanding != "500.05" || trace.Summary.Status != "partly_closed_in_settlements" {
 		t.Fatalf("settlements: %+v, summary %+v", settlements, trace.Summary)
 	}
 	sources := map[string]bool{}
 	for _, movement := range settlements.Movements {
 		sources[movement.Source] = true
 	}
-	if !sources["receipt"] || !sources["advance-offset"] || !sources["bank-out"] || !sources["cash-out"] {
+	if !sources["receipt"] || !sources["advance-offset"] || !sources["advance-consumed"] || !sources["bank-out"] || !sources["cash-out"] {
 		t.Fatalf("sources: %+v", sources)
 	}
 	if len(trace.Candidates) != 1 || trace.Candidates[0].Number != "EQUAL" {
@@ -219,6 +219,11 @@ func TestTraceSettlementStatusClosedAndOpen(t *testing.T) {
 	trace, err := Service{OData: reader}.TraceSupplierReceipt(context.Background(), salesID(1))
 	if err != nil || trace.Summary.Status != "closed_in_settlements" || trace.Settlements.Outstanding != "0" {
 		t.Fatalf("closed: %+v %+v, %v", trace.Summary, trace.Settlements, err)
+	}
+	reader.rows["AccumulationRegister_РасчетыСПоставщиками_RecordType"] = append(register[:len(register):len(register)], map[string]any{"Recorder": salesID(28), "Recorder_Type": "StandardODATA.Document_РасходСоСчета", "LineNumber": "1", "Active": true, "RecordType": "Expense", "Документ": salesID(1), "Документ_Type": "StandardODATA.Document_ПриходнаяНакладная", "СуммаВал": 1})
+	trace, err = Service{OData: reader}.TraceSupplierReceipt(context.Background(), salesID(1))
+	if err != nil || trace.Summary.Status != "overpaid_in_settlements" || trace.Settlements.Outstanding != "-1" {
+		t.Fatalf("overpaid: %+v %+v, %v", trace.Summary, trace.Settlements, err)
 	}
 	reader.rows["AccumulationRegister_РасчетыСПоставщиками_RecordType"] = register[:1]
 	trace, err = Service{OData: reader}.TraceSupplierReceipt(context.Background(), salesID(1))
