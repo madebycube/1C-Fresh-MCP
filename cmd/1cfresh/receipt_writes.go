@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"os"
 	"strconv"
 	"strings"
 
@@ -255,4 +256,46 @@ func or(value, fallback service.Decimal) service.Decimal {
 		return fallback
 	}
 	return value
+}
+
+func runReceiptBatchPreview(ctx context.Context, svc service.Service, args []string, out io.Writer) error {
+	flags := flag.NewFlagSet(operations.PreviewReceipts.Command, flag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+	path := flags.String("file", "", "JSON array of receipt drafts")
+	asJSON := flags.Bool("json", false, "print JSON")
+	if err := parseFlags(flags, args); err != nil || flags.NArg() != 0 || *path == "" {
+		return errors.New("usage: " + operations.PreviewReceipts.Usage)
+	}
+	file, err := os.Open(*path)
+	if err != nil {
+		return errors.New("could not open the receipts file")
+	}
+	defer file.Close()
+	var drafts []service.ReceiptDraft
+	decoder := json.NewDecoder(io.LimitReader(file, 4<<20))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&drafts); err != nil {
+		return fmt.Errorf("receipts file must be a JSON array of receipt drafts: %w", err)
+	}
+	preview, err := svc.PreviewReceiptBatch(ctx, drafts)
+	if err != nil {
+		return err
+	}
+	if *asJSON {
+		return json.NewEncoder(out).Encode(preview)
+	}
+	for _, item := range preview.Items {
+		line := fmt.Sprintf("%d  %s", item.Index, item.Status)
+		if item.Preview != nil {
+			line += fmt.Sprintf("  total %s, VAT %s, %d lines", item.Preview.Amount, item.Preview.VAT, len(item.Preview.Lines))
+		}
+		if item.Reason != "" {
+			line += "  " + flat(item.Reason)
+		}
+		if _, err := fmt.Fprintln(out, line); err != nil {
+			return err
+		}
+	}
+	_, err = fmt.Fprintf(out, "ready %d, exists %d, needs review %d, unsupported %d\n%s\n", preview.Ready, preview.Exists, preview.NeedsReview, preview.Unsupported, preview.Note)
+	return err
 }

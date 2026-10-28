@@ -177,8 +177,8 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(listed.Tools) != 69 {
-		t.Fatalf("got %d tools; want 69", len(listed.Tools))
+	if len(listed.Tools) != 70 {
+		t.Fatalf("got %d tools; want 70", len(listed.Tools))
 	}
 	for _, tool := range listed.Tools {
 		if tool.Annotations == nil {
@@ -216,6 +216,7 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 		{operations.ListPriceDocuments.Tool, map[string]any{"from": "2026-09-23", "to": "2026-09-23", "posted": true, "limit": 1}},
 		{operations.ListPrices.Tool, map[string]any{"price_type": "Retail", "group_id": "00000000-0000-0000-0000-000000000001", "as_of": "2026-09-23", "limit": 1}},
 		{operations.ListWarehouses.Tool, map[string]any{}},
+		{operations.PreviewReceipts.Tool, map[string]any{"receipts": []any{map[string]any{"organization_id": "bad", "supplier_id": "bad", "contract_id": "bad", "warehouse_id": "bad", "department_id": "bad", "date": "2026-10-01", "vat_mode": "inclusive", "lines": []any{}}}}},
 		{operations.ListProductUnits.Tool, map[string]any{"product_id": "00000000-0000-0000-0000-000000000004"}},
 		{operations.ListDebts.Tool, map[string]any{"kind": "customer", "as_of": "2026-09-30"}},
 		{operations.ReportSales.Tool, map[string]any{"from": "2026-09-01", "to": "2026-09-30"}},

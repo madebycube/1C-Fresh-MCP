@@ -130,6 +130,8 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		return runCashBalanceList(ctx, svc, commandArgs, out)
 	case operations.ListProductUnits.Command:
 		return runProductUnitList(ctx, svc, commandArgs, out)
+	case operations.PreviewReceipts.Command:
+		return runReceiptBatchPreview(ctx, svc, commandArgs, out)
 	case operations.ListWarehouses.Command:
 		return runWarehouseList(ctx, svc, commandArgs, out)
 	case operations.GetStock.Command:

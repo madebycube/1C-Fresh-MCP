@@ -368,6 +368,10 @@ type receiptPostingInput struct {
 	Apply               bool   `json:"apply,omitempty" jsonschema:"Run the action; false only previews its impact"`
 }
 
+type previewReceiptsInput struct {
+	Receipts []createReceiptInput `json:"receipts" jsonschema:"Up to 20 receipt drafts in the create_supplier_receipt format; apply and allow_duplicate are ignored"`
+}
+
 func receiptLines(lines []receiptLineInput) []service.ReceiptLineInput {
 	out := make([]service.ReceiptLineInput, len(lines))
 	for i, line := range lines {
@@ -951,6 +955,22 @@ func New(svc service.Service) *mcp.Server {
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, input traceReceiptPaymentsInput) (*mcp.CallToolResult, service.SupplierReceiptTrace, error) {
 		trace, err := svc.TraceSupplierReceipt(ctx, input.ID)
 		return nil, trace, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.PreviewReceipts.Tool, Description: operations.PreviewReceipts.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input previewReceiptsInput) (*mcp.CallToolResult, service.ReceiptBatchPreview, error) {
+		drafts := make([]service.ReceiptDraft, len(input.Receipts))
+		for i, receipt := range input.Receipts {
+			drafts[i] = service.ReceiptDraft{
+				OrganizationID: receipt.OrganizationID, SupplierID: receipt.SupplierID, ContractID: receipt.ContractID,
+				WarehouseID: receipt.WarehouseID, DepartmentID: receipt.DepartmentID, Date: receipt.Date,
+				IncomingNumber: receipt.IncomingNumber, IncomingDate: receipt.IncomingDate, Comment: receipt.Comment,
+				VATMode: receipt.VATMode, Lines: receiptLines(receipt.Lines),
+			}
+		}
+		preview, err := svc.PreviewReceiptBatch(ctx, drafts)
+		return nil, preview, err
 	})
 	mcp.AddTool(server, &mcp.Tool{
 		Name: operations.CreateReceipt.Tool, Description: operations.CreateReceipt.Description,
