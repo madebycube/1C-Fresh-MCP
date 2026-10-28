@@ -339,6 +339,54 @@ type reconcileSupplierInput struct {
 	Offset         int    `json:"offset,omitempty" jsonschema:"Movement offset from a previous next_offset"`
 }
 
+type listLinkPropertiesInput struct{}
+
+type getReceiptLinkInput struct {
+	ReceiptID string `json:"receipt_id" jsonschema:"Supplier goods receipt GUID"`
+	Property  string `json:"property,omitempty" jsonschema:"Property GUID, description, title or name; optional when receipts use exactly one hyperlink property"`
+}
+
+type setReceiptLinkInput struct {
+	ReceiptID           string  `json:"receipt_id" jsonschema:"Supplier goods receipt GUID"`
+	Property            string  `json:"property,omitempty" jsonschema:"Property GUID, description, title or name; optional when receipts use exactly one hyperlink property"`
+	URL                 *string `json:"url,omitempty" jsonschema:"New http or https address; omit to keep the current one"`
+	Caption             *string `json:"caption,omitempty" jsonschema:"New caption; omit to keep the current one, empty shows the URL"`
+	Clear               bool    `json:"clear,omitempty" jsonschema:"Remove the link from this receipt"`
+	ExpectedDataVersion string  `json:"expected_data_version,omitempty" jsonschema:"data_version from the preview; the save fails if the receipt changed since"`
+	Apply               bool    `json:"apply,omitempty" jsonschema:"Save the change; false only previews it"`
+}
+
+type createPaymentPlanInput struct {
+	ReceiptID         string `json:"receipt_id" jsonschema:"Posted supplier goods receipt GUID"`
+	AccountID         string `json:"account_id" jsonschema:"Organization bank account GUID that will pay"`
+	SupplierAccountID string `json:"supplier_account_id,omitempty" jsonschema:"Supplier bank account GUID; optional when the supplier has exactly one"`
+	Date              string `json:"date" jsonschema:"Invoice date YYYY-MM-DD"`
+	PaymentDate       string `json:"payment_date" jsonschema:"Planned payment date YYYY-MM-DD"`
+	Amount            string `json:"amount,omitempty" jsonschema:"Planned amount, up to 2 decimals; defaults to the outstanding debt"`
+	Comment           string `json:"comment,omitempty" jsonschema:"Optional comment added after the receipt reference"`
+	AllowDuplicate    bool   `json:"allow_duplicate,omitempty" jsonschema:"Save even when a plan for this receipt or its supplier order exists"`
+	Apply             bool   `json:"apply,omitempty" jsonschema:"Save the plan; false only previews it"`
+}
+
+type updatePaymentPlanInput struct {
+	ID                  string  `json:"id" jsonschema:"Unposted supplier payment plan (invoice) GUID"`
+	ReceiptID           string  `json:"receipt_id,omitempty" jsonschema:"Receipt GUID; required when changing the amount"`
+	PaymentDate         *string `json:"payment_date,omitempty" jsonschema:"Replacement planned payment date YYYY-MM-DD"`
+	Amount              *string `json:"amount,omitempty" jsonschema:"Replacement planned amount"`
+	AccountID           *string `json:"account_id,omitempty" jsonschema:"Replacement organization bank account GUID"`
+	SupplierAccountID   *string `json:"supplier_account_id,omitempty" jsonschema:"Replacement supplier bank account GUID"`
+	Comment             *string `json:"comment,omitempty" jsonschema:"Replacement comment"`
+	ExpectedDataVersion string  `json:"expected_data_version,omitempty" jsonschema:"data_version from the preview; the save fails if the plan changed since"`
+	Apply               bool    `json:"apply,omitempty" jsonschema:"Save the changes; false only previews them"`
+}
+
+type paymentPlanPostingInput struct {
+	ID                  string `json:"id" jsonschema:"Supplier payment plan (invoice) GUID"`
+	Action              string `json:"action" jsonschema:"post or unpost"`
+	ExpectedDataVersion string `json:"expected_data_version,omitempty" jsonschema:"data_version from the preview; the action fails if the plan changed since"`
+	Apply               bool   `json:"apply,omitempty" jsonschema:"Run the action; false only previews its impact"`
+}
+
 type listWarehouseDocumentsInput struct {
 	Kind        string `json:"kind" jsonschema:"transfer-order, transfer, stock-receipt, or stock-writeoff"`
 	WarehouseID string `json:"warehouse_id,omitempty" jsonschema:"Optional source, reserve, or destination warehouse GUID"`
@@ -738,6 +786,51 @@ func New(svc service.Service) *mcp.Server {
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, input getPaymentPlanInput) (*mcp.CallToolResult, service.SupplierPaymentPlan, error) {
 		item, err := svc.GetSupplierPaymentPlan(ctx, input.ID)
 		return nil, item, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.CreatePaymentPlan.Tool, Description: operations.CreatePaymentPlan.Description,
+		Annotations: &mcp.ToolAnnotations{DestructiveHint: &additive},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input createPaymentPlanInput) (*mcp.CallToolResult, service.PaymentPlanWrite, error) {
+		write, err := svc.CreatePaymentPlanDraft(ctx, service.PaymentPlanDraft(input))
+		return nil, write, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.UpdatePaymentPlan.Tool, Description: operations.UpdatePaymentPlan.Description,
+		Annotations: &mcp.ToolAnnotations{IdempotentHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input updatePaymentPlanInput) (*mcp.CallToolResult, service.PaymentPlanWrite, error) {
+		write, err := svc.AmendPaymentPlan(ctx, input.ID, service.PaymentPlanAmendment{
+			ReceiptID: input.ReceiptID, PaymentDate: input.PaymentDate, Amount: input.Amount, AccountID: input.AccountID,
+			SupplierAccountID: input.SupplierAccountID, Comment: input.Comment, ExpectedDataVersion: input.ExpectedDataVersion, Apply: input.Apply,
+		})
+		return nil, write, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.PostPaymentPlan.Tool, Description: "Preview or run posting (action post) or unposting (action unpost) of a supplier payment plan; posting never approves it or creates a bank payment.",
+		Annotations: &mcp.ToolAnnotations{IdempotentHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input paymentPlanPostingInput) (*mcp.CallToolResult, service.PaymentPlanPosting, error) {
+		posting, err := svc.SetPaymentPlanPosting(ctx, input.ID, input.Action, input.ExpectedDataVersion, input.Apply)
+		return nil, posting, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.ListLinkProperties.Tool, Description: operations.ListLinkProperties.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ listLinkPropertiesInput) (*mcp.CallToolResult, service.LinkPropertyList, error) {
+		list, err := svc.ListLinkProperties(ctx)
+		return nil, list, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.GetReceiptLink.Tool, Description: operations.GetReceiptLink.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input getReceiptLinkInput) (*mcp.CallToolResult, service.ReceiptLink, error) {
+		link, err := svc.GetReceiptLink(ctx, input.ReceiptID, input.Property)
+		return nil, link, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.SetReceiptLink.Tool, Description: operations.SetReceiptLink.Description,
+		Annotations: &mcp.ToolAnnotations{IdempotentHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input setReceiptLinkInput) (*mcp.CallToolResult, service.ReceiptLinkWrite, error) {
+		write, err := svc.SetReceiptLink(ctx, input.ReceiptID, service.ReceiptLinkChange{Property: input.Property, URL: input.URL, Caption: input.Caption, Clear: input.Clear, ExpectedDataVersion: input.ExpectedDataVersion, Apply: input.Apply})
+		return nil, write, err
 	})
 	mcp.AddTool(server, &mcp.Tool{
 		Name: operations.TraceReceiptPayments.Tool, Description: operations.TraceReceiptPayments.Description,

@@ -365,6 +365,8 @@ func (s Service) TraceSupplierReceipt(ctx context.Context, id string) (SupplierR
 			link = "basis-receipt"
 		case receipt.OrderID != "" && strings.EqualFold(item.BasisID, receipt.OrderID):
 			link = "basis-supplier-order"
+		case receipt.IncomingNumber != "" && strings.EqualFold(strings.TrimSpace(item.IncomingNumber), strings.TrimSpace(receipt.IncomingNumber)) && receipt.IncomingDate != "" && strings.HasPrefix(item.IncomingDate, receipt.IncomingDate[:10]):
+			link = "incoming-document"
 		}
 		if link == "" {
 			continue

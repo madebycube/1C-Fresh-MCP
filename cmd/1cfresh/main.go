@@ -193,6 +193,20 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		return runReceiptPosting(ctx, svc, commandArgs, out, "post")
 	case operations.UnpostReceipt.Command:
 		return runReceiptPosting(ctx, svc, commandArgs, out, "unpost")
+	case operations.ListLinkProperties.Command:
+		return runLinkPropertyList(ctx, svc, commandArgs, out)
+	case operations.GetReceiptLink.Command:
+		return runReceiptLinkGet(ctx, svc, commandArgs, out)
+	case operations.SetReceiptLink.Command:
+		return runReceiptLinkSet(ctx, svc, commandArgs, out)
+	case operations.CreatePaymentPlan.Command:
+		return runPaymentPlanCreate(ctx, svc, commandArgs, out)
+	case operations.UpdatePaymentPlan.Command:
+		return runPaymentPlanUpdate(ctx, svc, commandArgs, out)
+	case operations.PostPaymentPlan.Command:
+		return runPaymentPlanPosting(ctx, svc, commandArgs, out, "post")
+	case operations.UnpostPaymentPlan.Command:
+		return runPaymentPlanPosting(ctx, svc, commandArgs, out, "unpost")
 	case operations.ListPaymentPlans.Command:
 		return runPaymentPlanList(ctx, svc, commandArgs, out)
 	case operations.GetPaymentPlan.Command:
