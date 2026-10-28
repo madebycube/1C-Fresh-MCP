@@ -268,6 +268,66 @@ type traceReceiptPaymentsInput struct {
 	ID string `json:"id" jsonschema:"Supplier goods receipt GUID"`
 }
 
+type receiptLineInput struct {
+	ProductID        string `json:"product_id" jsonschema:"Stock product GUID"`
+	CharacteristicID string `json:"characteristic_id,omitempty" jsonschema:"Optional characteristic GUID of that product"`
+	Quantity         string `json:"quantity" jsonschema:"Quantity in the base unit, up to 3 decimals"`
+	Price            string `json:"price" jsonschema:"Unit price, up to 2 decimals"`
+	VATRate          string `json:"vat_rate" jsonschema:"VAT rate code such as НДС22, НДС5, or БезНДС"`
+}
+
+type createReceiptInput struct {
+	OrganizationID string             `json:"organization_id" jsonschema:"Organization GUID"`
+	SupplierID     string             `json:"supplier_id" jsonschema:"Supplier counterparty GUID"`
+	ContractID     string             `json:"contract_id" jsonschema:"Active supplier contract GUID of that organization, in rubles"`
+	WarehouseID    string             `json:"warehouse_id" jsonschema:"Warehouse GUID"`
+	DepartmentID   string             `json:"department_id" jsonschema:"Department GUID"`
+	Date           string             `json:"date" jsonschema:"Receipt date YYYY-MM-DD"`
+	IncomingNumber string             `json:"incoming_number,omitempty" jsonschema:"Supplier document number, used to find duplicates"`
+	IncomingDate   string             `json:"incoming_date,omitempty" jsonschema:"Supplier document date YYYY-MM-DD"`
+	Comment        string             `json:"comment,omitempty" jsonschema:"Optional comment"`
+	VATMode        string             `json:"vat_mode" jsonschema:"inclusive when prices include VAT, otherwise exclusive"`
+	Lines          []receiptLineInput `json:"lines" jsonschema:"Receipt lines"`
+	AllowDuplicate bool               `json:"allow_duplicate,omitempty" jsonschema:"Save even when a receipt with the same supplier number and date exists"`
+	Apply          bool               `json:"apply,omitempty" jsonschema:"Save the receipt; false only previews it"`
+}
+
+type receiptLineChangeInput struct {
+	LineNumber int     `json:"line_number" jsonschema:"Existing line number"`
+	Quantity   *string `json:"quantity,omitempty" jsonschema:"Replacement quantity"`
+	Price      *string `json:"price,omitempty" jsonschema:"Replacement unit price"`
+	VATRate    *string `json:"vat_rate,omitempty" jsonschema:"Replacement VAT rate code"`
+}
+
+type updateReceiptInput struct {
+	ID                  string                   `json:"id" jsonschema:"Unposted supplier goods receipt GUID"`
+	Date                *string                  `json:"date,omitempty" jsonschema:"Replacement date YYYY-MM-DD"`
+	WarehouseID         *string                  `json:"warehouse_id,omitempty" jsonschema:"Replacement warehouse GUID"`
+	DepartmentID        *string                  `json:"department_id,omitempty" jsonschema:"Replacement department GUID"`
+	IncomingNumber      *string                  `json:"incoming_number,omitempty" jsonschema:"Replacement supplier document number"`
+	IncomingDate        *string                  `json:"incoming_date,omitempty" jsonschema:"Replacement supplier document date YYYY-MM-DD"`
+	Comment             *string                  `json:"comment,omitempty" jsonschema:"Replacement comment; empty string clears it"`
+	ChangeLines         []receiptLineChangeInput `json:"change_lines,omitempty" jsonschema:"Changes to existing lines"`
+	AddLines            []receiptLineInput       `json:"add_lines,omitempty" jsonschema:"Lines to append"`
+	ExpectedDataVersion string                   `json:"expected_data_version,omitempty" jsonschema:"data_version from the preview; the save fails if the receipt changed since"`
+	Apply               bool                     `json:"apply,omitempty" jsonschema:"Save the changes; false only previews them"`
+}
+
+type receiptPostingInput struct {
+	ID                  string `json:"id" jsonschema:"Supplier goods receipt GUID"`
+	Action              string `json:"action" jsonschema:"post or unpost"`
+	ExpectedDataVersion string `json:"expected_data_version,omitempty" jsonschema:"data_version from the preview; the action fails if the receipt changed since"`
+	Apply               bool   `json:"apply,omitempty" jsonschema:"Run the action; false only previews its impact"`
+}
+
+func receiptLines(lines []receiptLineInput) []service.ReceiptLineInput {
+	out := make([]service.ReceiptLineInput, len(lines))
+	for i, line := range lines {
+		out[i] = service.ReceiptLineInput(line)
+	}
+	return out
+}
+
 type listWarehouseDocumentsInput struct {
 	Kind        string `json:"kind" jsonschema:"transfer-order, transfer, stock-receipt, or stock-writeoff"`
 	WarehouseID string `json:"warehouse_id,omitempty" jsonschema:"Optional source, reserve, or destination warehouse GUID"`
@@ -674,6 +734,40 @@ func New(svc service.Service) *mcp.Server {
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, input traceReceiptPaymentsInput) (*mcp.CallToolResult, service.SupplierReceiptTrace, error) {
 		trace, err := svc.TraceSupplierReceipt(ctx, input.ID)
 		return nil, trace, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.CreateReceipt.Tool, Description: operations.CreateReceipt.Description,
+		Annotations: &mcp.ToolAnnotations{DestructiveHint: &additive},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input createReceiptInput) (*mcp.CallToolResult, service.ReceiptWrite, error) {
+		write, err := svc.CreateReceiptDraft(ctx, service.ReceiptDraft{
+			OrganizationID: input.OrganizationID, SupplierID: input.SupplierID, ContractID: input.ContractID,
+			WarehouseID: input.WarehouseID, DepartmentID: input.DepartmentID, Date: input.Date,
+			IncomingNumber: input.IncomingNumber, IncomingDate: input.IncomingDate, Comment: input.Comment,
+			VATMode: input.VATMode, Lines: receiptLines(input.Lines), AllowDuplicate: input.AllowDuplicate, Apply: input.Apply,
+		})
+		return nil, write, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.UpdateReceipt.Tool, Description: operations.UpdateReceipt.Description,
+		Annotations: &mcp.ToolAnnotations{IdempotentHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input updateReceiptInput) (*mcp.CallToolResult, service.ReceiptWrite, error) {
+		changes := make([]service.ReceiptLineChange, len(input.ChangeLines))
+		for i, line := range input.ChangeLines {
+			changes[i] = service.ReceiptLineChange(line)
+		}
+		write, err := svc.AmendReceipt(ctx, input.ID, service.ReceiptAmendment{
+			Date: input.Date, WarehouseID: input.WarehouseID, DepartmentID: input.DepartmentID,
+			IncomingNumber: input.IncomingNumber, IncomingDate: input.IncomingDate, Comment: input.Comment,
+			ChangeLines: changes, AddLines: receiptLines(input.AddLines), ExpectedDataVersion: input.ExpectedDataVersion, Apply: input.Apply,
+		})
+		return nil, write, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.PostReceipt.Tool, Description: "Preview or run posting (action post) or unposting (action unpost) of a supplier goods receipt in 1C.",
+		Annotations: &mcp.ToolAnnotations{IdempotentHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input receiptPostingInput) (*mcp.CallToolResult, service.ReceiptPosting, error) {
+		posting, err := svc.SetReceiptPosting(ctx, input.ID, input.Action, input.ExpectedDataVersion, input.Apply)
+		return nil, posting, err
 	})
 	mcp.AddTool(server, &mcp.Tool{
 		Name: operations.ListWarehouseDocuments.Tool, Description: operations.ListWarehouseDocuments.Description,

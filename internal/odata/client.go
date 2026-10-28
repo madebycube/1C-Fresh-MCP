@@ -3,6 +3,7 @@ package odata
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"encoding/xml"
 	"errors"
 	"fmt"
@@ -126,6 +127,63 @@ func (c *Client) Write(ctx context.Context, method, resource string, body []byte
 		return nil, errors.New("OData response exceeded size limit")
 	}
 	return data, nil
+}
+
+// Action runs a 1C document action such as Post or Unpost on one document by GUID.
+func (c *Client) Action(ctx context.Context, resource, action string) ([]byte, error) {
+	name, id, ok := strings.Cut(strings.TrimSuffix(resource, "')"), "(guid'")
+	if !ok || !strings.HasPrefix(name, "Document_") || strings.ContainsAny(name, "/()'") || !guidPattern.MatchString(id) {
+		return nil, errors.New("invalid OData document action target")
+	}
+	query := url.Values{}
+	switch action {
+	case "Post":
+		query.Set("PostingModeOperational", "false")
+	case "Unpost":
+	default:
+		return nil, errors.New("unsupported OData document action")
+	}
+	u := c.base
+	u.Path = strings.TrimRight(u.Path, "/") + "/odata/standard.odata/" + resource + "/" + action
+	u.RawQuery = query.Encode()
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, u.String(), nil)
+	if err != nil {
+		return nil, errors.New("could not create OData action request")
+	}
+	req.SetBasicAuth(c.username, c.password)
+	req.Header.Set("Accept", "application/json")
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return nil, errors.New("OData connection failed")
+	}
+	defer resp.Body.Close()
+	data, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20+1))
+	if err != nil || len(data) > 1<<20 {
+		return nil, errors.New("could not read OData response")
+	}
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
+		return nil, fmt.Errorf("OData returned HTTP %d%s", resp.StatusCode, odataErrorMessage(data))
+	}
+	return data, nil
+}
+
+// odataErrorMessage extracts 1C's own explanation, which says why posting failed.
+func odataErrorMessage(data []byte) string {
+	var response struct {
+		Error struct {
+			Message struct {
+				Value string `json:"value"`
+			} `json:"message"`
+		} `json:"odata.error"`
+	}
+	if json.Unmarshal(data, &response) != nil || response.Error.Message.Value == "" {
+		return ""
+	}
+	message := []rune(strings.TrimSpace(response.Error.Message.Value))
+	if len(message) > 500 {
+		message = message[:500]
+	}
+	return ": " + string(message)
 }
 
 func (c *Client) Check(ctx context.Context) (int, error) {

@@ -111,3 +111,38 @@ func TestStockBalanceUsesValidatedFunctionPath(t *testing.T) {
 		t.Fatal("generic OData read accepted a function path")
 	}
 }
+
+func TestActionPostsDocumentAndExplainsRejection(t *testing.T) {
+	var path, query string
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path, query = r.URL.Path, r.URL.RawQuery
+		if r.Method != http.MethodPost {
+			t.Errorf("method %s", r.Method)
+		}
+		if strings.HasSuffix(r.URL.Path, "/Unpost") {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`{"odata.error":{"code":"","message":{"lang":"ru","value":"Не удалось провести"}}}`))
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+	base, _ := url.Parse(server.URL + "/a/sbm/1")
+	client := New(config.Config{BaseURL: base, Username: "user", Password: "top-secret"})
+	client.http = server.Client()
+	resource := "Document_ПриходнаяНакладная(guid'00000000-0000-0000-0000-000000000001')"
+	if _, err := client.Action(context.Background(), resource, "Post"); err != nil || !strings.HasSuffix(path, "')/Post") || query != "PostingModeOperational=false" {
+		t.Fatalf("post: %v %s %s", err, path, query)
+	}
+	if _, err := client.Action(context.Background(), resource, "Unpost"); err == nil || !strings.Contains(err.Error(), "Не удалось провести") {
+		t.Fatalf("unpost error: %v", err)
+	}
+	for _, bad := range []string{"Catalog_Номенклатура(guid'00000000-0000-0000-0000-000000000001')", "Document_X(guid'x')", "Document_X/Y(guid'00000000-0000-0000-0000-000000000001')"} {
+		if _, err := client.Action(context.Background(), bad, "Post"); err == nil {
+			t.Fatalf("accepted %s", bad)
+		}
+	}
+	if _, err := client.Action(context.Background(), resource, "Delete"); err == nil {
+		t.Fatal("accepted unknown action")
+	}
+}

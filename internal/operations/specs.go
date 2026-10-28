@@ -366,6 +366,38 @@ var TraceReceiptPayments = Spec{
 	Example:     "1c trace receipt-payments RECEIPT_GUID",
 }
 
+var CreateReceipt = Spec{
+	Command:     "create receipt",
+	Tool:        "create_supplier_receipt",
+	Description: "Preview or save an unposted supplier goods receipt with validated references and exact amounts.",
+	Usage:       "1c create receipt --organization GUID --supplier GUID --contract GUID --warehouse GUID --department GUID --date YYYY-MM-DD --vat inclusive|exclusive --line PRODUCT_GUID:QUANTITY:PRICE:VAT_CODE[:CHARACTERISTIC_GUID]... [--incoming-number TEXT] [--incoming-date YYYY-MM-DD] [--comment TEXT] [--allow-duplicate] [--apply] [--json]",
+	Example:     "1c create receipt --organization ORG_GUID --supplier SUPPLIER_GUID --contract CONTRACT_GUID --warehouse WAREHOUSE_GUID --department DEPARTMENT_GUID --date 2026-10-01 --vat inclusive --line PRODUCT_GUID:3:33.35:НДС22 --incoming-number EX-1",
+}
+
+var UpdateReceipt = Spec{
+	Command:     "update receipt",
+	Tool:        "update_supplier_receipt",
+	Description: "Preview or save changes to an unposted supplier goods receipt, keeping other fields and lines.",
+	Usage:       "1c update receipt GUID [--date YYYY-MM-DD] [--warehouse GUID] [--department GUID] [--incoming-number TEXT] [--incoming-date YYYY-MM-DD] [--comment TEXT] [--set-line N:quantity=Q,price=P,vat=CODE]... [--add-line PRODUCT_GUID:QUANTITY:PRICE:VAT_CODE[:CHARACTERISTIC_GUID]]... [--expect-version DATA_VERSION] [--apply] [--json]",
+	Example:     "1c update receipt RECEIPT_GUID --set-line 1:quantity=4 --apply",
+}
+
+var PostReceipt = Spec{
+	Command:     "post receipt",
+	Tool:        "set_supplier_receipt_posting",
+	Description: "Preview or run posting or unposting of a supplier goods receipt in 1C.",
+	Usage:       "1c post receipt GUID [--expect-version DATA_VERSION] [--apply] [--json]",
+	Example:     "1c post receipt RECEIPT_GUID --apply",
+}
+
+var UnpostReceipt = Spec{
+	Command:     "unpost receipt",
+	Tool:        "set_supplier_receipt_posting",
+	Description: "Preview or run unposting of a supplier goods receipt so it can be amended.",
+	Usage:       "1c unpost receipt GUID [--expect-version DATA_VERSION] [--apply] [--json]",
+	Example:     "1c unpost receipt RECEIPT_GUID --apply",
+}
+
 var ListMoneyAccounts = Spec{
 	Command:     "list accounts",
 	Tool:        "list_money_accounts",
@@ -437,7 +469,7 @@ var Topics = []Topic{
 	{Name: "inventory", Description: "Warehouses, stock, and warehouse documents", Commands: []Spec{ListWarehouses, GetStock, ListWarehouseDocuments, GetWarehouseDocument}},
 	{Name: "partners", Description: "Customer and supplier records and folders", Commands: []Spec{ListCounterpartyGroups, CreateCounterpartyGroup, UpdateCounterpartyGroup, ListCustomers, SearchCustomers, GetCustomer, CreateCustomer, UpdateCustomer, ListSuppliers, SearchSuppliers, GetSupplier, CreateSupplier, UpdateSupplier}},
 	{Name: "sales", Description: "Customer orders and sales documents", Commands: []Spec{ListOrders, GetOrder, ListSales, GetSale}},
-	{Name: "purchases", Description: "Supplier orders, goods receipts, and payment plans", Commands: []Spec{ListPurchases, GetPurchase, ListPaymentPlans, GetPaymentPlan, TraceReceiptPayments}},
+	{Name: "purchases", Description: "Supplier orders, goods receipts, and payment plans", Commands: []Spec{ListPurchases, GetPurchase, CreateReceipt, UpdateReceipt, PostReceipt, UnpostReceipt, ListPaymentPlans, GetPaymentPlan, TraceReceiptPayments}},
 	{Name: "money", Description: "Accounts, cash, bank, and card movements", Commands: []Spec{ListMoneyAccounts, ListMoney, GetMoney}},
 	{Name: "receipts", Description: "Fiscal receipts and posting audit", Commands: []Spec{ListReceipts, GetReceipt, AuditUnpostedReceipts}},
 	{Name: "schema", Description: "Search and inspect exposed OData resources", Commands: []Spec{SearchResources, DescribeResource}},

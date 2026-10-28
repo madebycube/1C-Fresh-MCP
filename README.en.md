@@ -107,6 +107,10 @@ Commands follow `1c VERB RESOURCE [OPTIONS]`. `1c --help` lists topics, `1c help
 1c list payment-plans --supplier SUPPLIER_GUID
 1c get payment-plan INVOICE_GUID
 1c trace receipt-payments RECEIPT_GUID
+1c create receipt --organization ORG_GUID --supplier SUPPLIER_GUID --contract CONTRACT_GUID --warehouse WAREHOUSE_GUID --department DEPARTMENT_GUID --date 2026-10-01 --vat inclusive --line PRODUCT_GUID:3:33.35:НДС22 --incoming-number EX-1
+1c update receipt RECEIPT_GUID --set-line 1:quantity=4 --expect-version DATA_VERSION --apply
+1c post receipt RECEIPT_GUID --apply
+1c unpost receipt RECEIPT_GUID --apply
 1c list warehouse-docs --kind transfer --warehouse WAREHOUSE_GUID
 1c list warehouse-docs --kind stock-writeoff --limit 20
 1c get warehouse-doc --kind transfer DOCUMENT_GUID
@@ -149,6 +153,8 @@ Commands follow `1c VERB RESOURCE [OPTIONS]`. `1c --help` lists topics, `1c help
 
 The tested tenant has no payment-request document («Заявка на расходование денежных средств»), so planned supplier payments are read from supplier invoices («Счет на оплату поставщика»). `list payment-plans` filters them by organization, supplier, contract, paying bank account, and dates. `get payment-plan` shows the payment schedule and the payment-calendar register records, including the approval state as stored; an unreadable register is reported as unavailable. `trace receipt-payments` takes a goods receipt and finds supplier invoices based on it or on its supplier order, plus payment orders, bank expenses, and cash expenses with the supplier-payment operation whose payment breakdown references the receipt, invoice, or order, and the receipt's own prepayment offsets. Only posted bank and cash expenses allocated directly to the receipt and the prepayment offsets count as settlement; payment orders, invoices, and approval never do. Equal amounts without a link are listed as candidates, and missing links are reported as "no linked payment found", not unpaid. The overall status comes from the receipt's own movements in the supplier-settlement register: debt (receipt movements) minus closing by payments, advance offsets, or debt offsets (expense movements), in settlement currency; the document-link status is reported separately. Documents and registers are read without `$filter` because the tested tenant answers HTTP 500 to reference filters.
 
+Supplier goods receipts are created, amended, posted, and unposted only after a preview: without `--apply` (or `apply` in MCP) the command validates the organization, supplier, contract (active, of that organization, in rubles), warehouse, department, stock products, and VAT rates by code (`НДС22`, `НДС5`, `БезНДС`…), computes exact amounts and VAT, and lists possible duplicates by incoming number and date. A duplicate blocks creation unless `--allow-duplicate` is given. New receipts are saved unposted, then read back and verified. Only an unposted receipt can be amended; other fields and lines are kept as read, and `--expect-version` rejects the save if the receipt changed since the preview. Posting and unposting use the 1C `Post`/`Unpost` document actions, and 1C's own error text is returned. If a save could not be confirmed, check the receipt list before retrying.
+
 `list accounts` discovers cash desks (`cash`), organization-owned bank accounts (`bank`), and retail registers (`register`). `list money` reads cash receipts and disbursements (`cash-in`, `cash-out`), bank receipts and disbursements (`bank-in`, `bank-out`), card transactions (`card-payment`), and cash shifts (`cash-shift`). Supply an inclusive date range of at most 31 days and a cash desk, bank account, register, or terminal ID with `--account`, `--register`, or `--terminal`. `--limit` and `--offset` page results; `get money` reads a document by GUID. Payroll, tax, employee-payment, and unknown operation types are excluded. Fiscal receipts, card transactions, and bank settlements are distinct documents; `Posted` indicates 1C posting, not payment or reconciliation. These are read-only commands and may scan resource history for several seconds.
 
 ### Audit unposted receipts
@@ -185,13 +191,14 @@ Configure your MCP client to launch this command from the repository directory, 
 - `list_sales_documents` and `get_sales_document`
 - `list_purchase_documents` and `get_purchase_document`
 - `list_supplier_payment_plans`, `get_supplier_payment_plan`, and `trace_supplier_receipt_payments`
+- `create_supplier_receipt`, `update_supplier_receipt`, and `set_supplier_receipt_posting` (write operations)
 - `list_warehouse_documents` and `get_warehouse_document`
 - `list_money_accounts`, `list_money_documents`, and `get_money_document`
 - `list_cash_receipts` and `get_cash_receipt`
 - `audit_unposted_receipts`
 - `create_product_group` and `update_product_group` (write operations)
 
-No generic OData query or tool for deleting or posting data is exposed.
+No generic OData query or tool for deleting data is exposed; posting is limited to supplier goods receipts.
 
 See the [access policy](docs/access-policy.md) for reporting, personnel, payroll, and tax boundaries.
 
