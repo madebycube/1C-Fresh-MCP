@@ -20,13 +20,33 @@ func (r *repeated) String() string         { return strings.Join(*r, " ") }
 func (r *repeated) Set(value string) error { *r = append(*r, value); return nil }
 
 func parseReceiptLine(value string) (service.ReceiptLineInput, error) {
+	usage := errors.New("line must be PRODUCT_GUID:QUANTITY:PRICE:VAT_CODE[:CHARACTERISTIC_GUID][:unit=GUID][:amount=A][:vat=V]")
 	parts := strings.Split(value, ":")
-	if len(parts) != 4 && len(parts) != 5 {
-		return service.ReceiptLineInput{}, errors.New("line must be PRODUCT_GUID:QUANTITY:PRICE:VAT_CODE[:CHARACTERISTIC_GUID]")
+	if len(parts) < 4 {
+		return service.ReceiptLineInput{}, usage
 	}
 	line := service.ReceiptLineInput{ProductID: parts[0], Quantity: parts[1], Price: parts[2], VATRate: parts[3]}
-	if len(parts) == 5 {
-		line.CharacteristicID = parts[4]
+	seen := map[string]bool{}
+	for index, part := range parts[4:] {
+		key, option, ok := strings.Cut(part, "=")
+		if !ok && index == 0 {
+			line.CharacteristicID = part
+			continue
+		}
+		if !ok || seen[key] {
+			return service.ReceiptLineInput{}, usage
+		}
+		seen[key] = true
+		switch key {
+		case "unit":
+			line.UnitID = option
+		case "amount":
+			line.Amount = option
+		case "vat":
+			line.VAT = option
+		default:
+			return service.ReceiptLineInput{}, usage
+		}
 	}
 	return line, nil
 }
@@ -35,7 +55,7 @@ func parseLineChange(value string) (service.ReceiptLineChange, error) {
 	number, assignments, ok := strings.Cut(value, ":")
 	lineNumber, err := strconv.Atoi(number)
 	if !ok || err != nil || lineNumber < 1 {
-		return service.ReceiptLineChange{}, errors.New("set-line must be N:quantity=Q,price=P,vat=CODE")
+		return service.ReceiptLineChange{}, errors.New("set-line must be N:quantity=Q,price=P,vat=CODE,amount=A,vat-amount=V")
 	}
 	change := service.ReceiptLineChange{LineNumber: lineNumber}
 	for _, assignment := range strings.Split(assignments, ",") {
@@ -43,15 +63,19 @@ func parseLineChange(value string) (service.ReceiptLineChange, error) {
 		value := raw
 		switch {
 		case !ok:
-			return service.ReceiptLineChange{}, errors.New("set-line must be N:quantity=Q,price=P,vat=CODE")
+			return service.ReceiptLineChange{}, errors.New("set-line must be N:quantity=Q,price=P,vat=CODE,amount=A,vat-amount=V")
 		case key == "quantity":
 			change.Quantity = &value
 		case key == "price":
 			change.Price = &value
 		case key == "vat":
 			change.VATRate = &value
+		case key == "amount":
+			change.Amount = &value
+		case key == "vat-amount":
+			change.VAT = &value
 		default:
-			return service.ReceiptLineChange{}, errors.New("set-line accepts quantity, price, and vat")
+			return service.ReceiptLineChange{}, errors.New("set-line accepts quantity, price, vat, amount, and vat-amount")
 		}
 	}
 	return change, nil
@@ -198,6 +222,16 @@ func printReceiptWrite(out io.Writer, result service.ReceiptWrite, asJSON bool) 
 		if _, err := fmt.Fprintf(out, "  %d  %s  %s × %s  %s  VAT %s  total %s\n", line.LineNumber, line.ProductID, line.Quantity, line.Price, line.VATRate, line.VAT, line.Total); err != nil {
 			return err
 		}
+		if line.UnitFactor != "" && line.UnitFactor != "1" {
+			if _, err := fmt.Fprintf(out, "     unit %s × %s = %s base units\n", line.UnitID, line.UnitFactor, line.BaseQuantity); err != nil {
+				return err
+			}
+		}
+		if line.ComputedAmount != "" || line.ComputedVAT != "" {
+			if _, err := fmt.Fprintf(out, "     document amounts differ from computed: amount %s, VAT %s\n", or(line.ComputedAmount, line.Amount), or(line.ComputedVAT, line.VAT)); err != nil {
+				return err
+			}
+		}
 	}
 	for _, duplicate := range result.Duplicates {
 		if _, err := fmt.Fprintf(out, "Possible duplicate: %s %s posted %t (%s)\n", flat(duplicate.Number), duplicate.Date, duplicate.Posted, duplicate.ID); err != nil {
@@ -214,4 +248,11 @@ func printReceiptWrite(out io.Writer, result service.ReceiptWrite, asJSON bool) 
 		return err
 	}
 	return nil
+}
+
+func or(value, fallback service.Decimal) service.Decimal {
+	if value == "" {
+		return fallback
+	}
+	return value
 }

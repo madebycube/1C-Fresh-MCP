@@ -20,6 +20,7 @@ const (
 	receiptResourceName  = "Document_ПриходнаяНакладная"
 	receiptOperation     = "ПоступлениеОтПоставщика"
 	unitClassifierType   = "StandardODATA.Catalog_КлассификаторЕдиницИзмерения"
+	productUnitType      = "StandardODATA.Catalog_ЕдиницыИзмерения"
 	maxReceiptLines      = 200
 	maxQuantityScale     = 3
 	maxPriceScale        = 2
@@ -42,6 +43,9 @@ type ReceiptLineInput struct {
 	Quantity         string `json:"quantity"`
 	Price            string `json:"price"`
 	VATRate          string `json:"vat_rate"`
+	UnitID           string `json:"unit_id,omitempty"`
+	Amount           string `json:"amount,omitempty"`
+	VAT              string `json:"vat,omitempty"`
 }
 
 type ReceiptDraft struct {
@@ -65,6 +69,9 @@ type ReceiptPreviewLine struct {
 	ProductID        string  `json:"product_id"`
 	CharacteristicID string  `json:"characteristic_id,omitempty"`
 	UnitID           string  `json:"unit_id"`
+	UnitType         string  `json:"unit_type"`
+	UnitFactor       Decimal `json:"unit_factor,omitempty"`
+	BaseQuantity     Decimal `json:"base_quantity,omitempty"`
 	Quantity         Decimal `json:"quantity"`
 	Price            Decimal `json:"price"`
 	VATRate          string  `json:"vat_rate"`
@@ -72,7 +79,16 @@ type ReceiptPreviewLine struct {
 	Amount           Decimal `json:"amount"`
 	VAT              Decimal `json:"vat"`
 	Total            Decimal `json:"total"`
+	ComputedAmount   Decimal `json:"computed_amount,omitempty"`
+	ComputedVAT      Decimal `json:"computed_vat,omitempty"`
 	Preserved        bool    `json:"preserved,omitempty"`
+}
+
+// lineUnit is the unit a receipt line is entered in; Factor converts it to the product's base unit when known.
+type lineUnit struct {
+	ID     string
+	Type   string
+	Factor Decimal
 }
 
 type ReceiptDuplicate struct {
@@ -207,6 +223,8 @@ type ReceiptLineChange struct {
 	Quantity   *string `json:"quantity,omitempty"`
 	Price      *string `json:"price,omitempty"`
 	VATRate    *string `json:"vat_rate,omitempty"`
+	Amount     *string `json:"amount,omitempty"`
+	VAT        *string `json:"vat,omitempty"`
 }
 
 type ReceiptAmendment struct {
@@ -275,6 +293,12 @@ func (s Service) AmendReceipt(ctx context.Context, id string, change ReceiptAmen
 		seen[lineChange.LineNumber] = true
 		line := &result.Lines[index]
 		input := ReceiptLineInput{ProductID: line.ProductID, CharacteristicID: line.CharacteristicID, Quantity: string(line.Quantity), Price: string(line.Price), VATRate: line.VATRate}
+		if lineChange.Amount != nil {
+			input.Amount = *lineChange.Amount
+		}
+		if lineChange.VAT != nil {
+			input.VAT = *lineChange.VAT
+		}
 		if lineChange.Quantity != nil {
 			input.Quantity = *lineChange.Quantity
 		}
@@ -284,7 +308,7 @@ func (s Service) AmendReceipt(ctx context.Context, id string, change ReceiptAmen
 		if lineChange.VATRate != nil {
 			input.VATRate = *lineChange.VATRate
 		}
-		updated, err := computeReceiptLine(input, line.LineNumber, line.UnitID, result.VATMode, rates)
+		updated, err := computeReceiptLine(input, line.LineNumber, lineUnit{ID: line.UnitID, Type: line.UnitType, Factor: line.UnitFactor}, result.VATMode, rates)
 		if err != nil {
 			return ReceiptWrite{}, fmt.Errorf("line %d: %w", line.LineNumber, err)
 		}
@@ -491,6 +515,12 @@ func (s Service) receiptLine(ctx context.Context, input ReceiptLineInput, number
 	if !linkedGUID(unitID) {
 		return ReceiptPreviewLine{}, errors.New("product has no base unit; unit conversion is not supported")
 	}
+	unit := lineUnit{ID: strings.ToLower(unitID), Type: unitClassifierType}
+	if input.UnitID != "" && !strings.EqualFold(input.UnitID, unitID) {
+		if unit, err = s.productPackagingUnit(ctx, input.ProductID, input.UnitID); err != nil {
+			return ReceiptPreviewLine{}, err
+		}
+	}
 	if input.CharacteristicID != "" {
 		characteristic, err := s.activeRecord(ctx, config.ProductCharacteristics.Name, input.CharacteristicID, "Ref_Key,DeletionMark,Owner,Недействителен")
 		if err != nil {
@@ -500,10 +530,26 @@ func (s Service) receiptLine(ctx context.Context, input ReceiptLineInput, number
 			return ReceiptPreviewLine{}, errors.New("characteristic must be active and belong to the product")
 		}
 	}
-	return computeReceiptLine(input, number, strings.ToLower(unitID), vatMode, rates)
+	return computeReceiptLine(input, number, unit, vatMode, rates)
 }
 
-func computeReceiptLine(input ReceiptLineInput, number int, unitID, vatMode string, rates map[string]vatRate) (ReceiptPreviewLine, error) {
+// productPackagingUnit accepts a product's own unit only when 1C stores a positive conversion factor for it.
+func (s Service) productPackagingUnit(ctx context.Context, productID, unitID string) (lineUnit, error) {
+	row, err := s.activeRecord(ctx, config.ProductUnits.Name, unitID, "Ref_Key,DeletionMark,Owner,Owner_Type,Коэффициент")
+	if err != nil {
+		return lineUnit{}, fmt.Errorf("unit: %w", err)
+	}
+	if !strings.EqualFold(rawString(row["Owner"]), productID) || rawString(row["Owner_Type"]) != productOwnerType {
+		return lineUnit{}, errors.New("unit must be the product's base unit or one of its own units from list product-units")
+	}
+	factor, ok := new(big.Rat).SetString(string(row["Коэффициент"]))
+	if !ok || factor.Sign() <= 0 {
+		return lineUnit{}, errors.New("unit has no confirmed conversion factor to the base unit")
+	}
+	return lineUnit{ID: strings.ToLower(unitID), Type: productUnitType, Factor: Decimal(string(row["Коэффициент"]))}, nil
+}
+
+func computeReceiptLine(input ReceiptLineInput, number int, unit lineUnit, vatMode string, rates map[string]vatRate) (ReceiptPreviewLine, error) {
 	quantity, err := exactDecimal(input.Quantity, maxQuantityScale, false)
 	if err != nil {
 		return ReceiptPreviewLine{}, fmt.Errorf("quantity must be positive with at most %d decimals", maxQuantityScale)
@@ -516,15 +562,35 @@ func computeReceiptLine(input ReceiptLineInput, number int, unitID, vatMode stri
 	if !ok {
 		return ReceiptPreviewLine{}, errors.New("VAT rate must be one of the 1C rate codes, for example НДС22, НДС5 or БезНДС")
 	}
-	amount := roundHalfAway(new(big.Rat).Mul(quantity, price), receiptAmountScale)
-	vat := new(big.Rat)
+	computedAmount := roundHalfAway(new(big.Rat).Mul(quantity, price), receiptAmountScale)
+	amount := computedAmount
+	if input.Amount != "" {
+		if amount, err = exactDecimal(input.Amount, receiptAmountScale, true); err != nil {
+			return ReceiptPreviewLine{}, fmt.Errorf("amount must be nonnegative with at most %d decimals", receiptAmountScale)
+		}
+		// The price is rounded to kopecks, so the document's amount may differ from quantity × price by up to half a kopeck per unit.
+		tolerance := new(big.Rat).Add(new(big.Rat).Mul(quantity, big.NewRat(1, 200)), big.NewRat(1, 200))
+		if new(big.Rat).Abs(new(big.Rat).Sub(amount, new(big.Rat).Mul(quantity, price))).Cmp(tolerance) > 0 {
+			return ReceiptPreviewLine{}, fmt.Errorf("amount %s does not match quantity × price %s within price rounding; check the price", ratDecimal(amount, receiptAmountScale), ratDecimal(computedAmount, receiptAmountScale))
+		}
+	}
+	computedVAT := new(big.Rat)
 	if !rate.NotTaxable {
 		if vatMode == receiptVATIncluded {
-			vat = new(big.Rat).Quo(new(big.Rat).Mul(amount, rate.Percent), new(big.Rat).Add(rate.Percent, big.NewRat(100, 1)))
+			computedVAT = new(big.Rat).Quo(new(big.Rat).Mul(amount, rate.Percent), new(big.Rat).Add(rate.Percent, big.NewRat(100, 1)))
 		} else {
-			vat = new(big.Rat).Quo(new(big.Rat).Mul(amount, rate.Percent), big.NewRat(100, 1))
+			computedVAT = new(big.Rat).Quo(new(big.Rat).Mul(amount, rate.Percent), big.NewRat(100, 1))
 		}
-		vat = roundHalfAway(vat, receiptAmountScale)
+		computedVAT = roundHalfAway(computedVAT, receiptAmountScale)
+	}
+	vat := computedVAT
+	if input.VAT != "" {
+		if vat, err = exactDecimal(input.VAT, receiptAmountScale, true); err != nil {
+			return ReceiptPreviewLine{}, fmt.Errorf("VAT must be nonnegative with at most %d decimals", receiptAmountScale)
+		}
+		if rate.NotTaxable && vat.Sign() != 0 || new(big.Rat).Abs(new(big.Rat).Sub(vat, computedVAT)).Cmp(big.NewRat(1, 100)) > 0 {
+			return ReceiptPreviewLine{}, fmt.Errorf("VAT %s differs from the %s rate's %s by more than one kopeck", ratDecimal(vat, receiptAmountScale), rate.Name, ratDecimal(computedVAT, receiptAmountScale))
+		}
 	}
 	total := new(big.Rat).Set(amount)
 	if vatMode == receiptVATExcluded {
@@ -534,11 +600,22 @@ func computeReceiptLine(input ReceiptLineInput, number int, unitID, vatMode stri
 	if characteristic == emptyGUID {
 		characteristic = ""
 	}
-	return ReceiptPreviewLine{
-		LineNumber: number, ProductID: strings.ToLower(input.ProductID), CharacteristicID: characteristic, UnitID: unitID,
+	line := ReceiptPreviewLine{
+		LineNumber: number, ProductID: strings.ToLower(input.ProductID), CharacteristicID: characteristic, UnitID: unit.ID, UnitType: unit.Type, UnitFactor: unit.Factor,
 		Quantity: ratDecimal(quantity, maxQuantityScale), Price: ratDecimal(price, maxPriceScale), VATRate: rate.Name, VATRateID: rate.ID,
 		Amount: ratDecimal(amount, receiptAmountScale), VAT: ratDecimal(vat, receiptAmountScale), Total: ratDecimal(total, receiptAmountScale),
-	}, nil
+	}
+	if factor, ok := new(big.Rat).SetString(string(unit.Factor)); ok {
+		line.BaseQuantity = Decimal(new(big.Rat).Mul(quantity, factor).FloatString(maxQuantityScale + 3))
+		line.BaseQuantity = Decimal(strings.TrimRight(strings.TrimRight(string(line.BaseQuantity), "0"), "."))
+	}
+	if amount.Cmp(computedAmount) != 0 {
+		line.ComputedAmount = ratDecimal(computedAmount, receiptAmountScale)
+	}
+	if vat.Cmp(computedVAT) != 0 {
+		line.ComputedVAT = ratDecimal(computedVAT, receiptAmountScale)
+	}
+	return line, nil
 }
 
 // existingReceiptLine keeps the amounts 1C stored and only names the line's rate; it is recomputed only when changed.
@@ -552,11 +629,11 @@ func existingReceiptLine(line editableReceiptLine, vatMode string, rates map[str
 	if rateName == "" {
 		return ReceiptPreviewLine{}, errors.New("line uses a VAT rate without a rate code")
 	}
-	if line.UnitType != unitClassifierType {
-		return ReceiptPreviewLine{}, errors.New("line uses a unit outside the unit classifier")
+	if line.UnitType != unitClassifierType && line.UnitType != productUnitType {
+		return ReceiptPreviewLine{}, errors.New("line uses an unsupported unit type")
 	}
 	return ReceiptPreviewLine{
-		LineNumber: line.LineNumber, ProductID: line.ProductID, CharacteristicID: line.CharacteristicID, UnitID: line.UnitID,
+		LineNumber: line.LineNumber, ProductID: line.ProductID, CharacteristicID: line.CharacteristicID, UnitID: line.UnitID, UnitType: line.UnitType,
 		Quantity: line.Quantity, Price: line.Price, VATRate: rateName, VATRateID: line.VATRateID,
 		Amount: line.Amount, VAT: line.VAT, Total: line.Total, Preserved: true,
 	}, nil
@@ -830,7 +907,7 @@ func receiptLineFields(line ReceiptPreviewLine, warehouseID string, original map
 	row["Номенклатура_Key"] = line.ProductID
 	row["Характеристика_Key"] = characteristic
 	row["ЕдиницаИзмерения"] = line.UnitID
-	row["ЕдиницаИзмерения_Type"] = unitClassifierType
+	row["ЕдиницаИзмерения_Type"] = line.UnitType
 	row["Количество"] = json.Number(line.Quantity)
 	row["Цена"] = json.Number(line.Price)
 	row["Сумма"] = json.Number(line.Amount)
