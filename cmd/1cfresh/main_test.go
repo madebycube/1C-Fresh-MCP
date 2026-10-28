@@ -11,7 +11,7 @@ import (
 )
 
 func TestHelpExplainsCommandsWithoutCredentials(t *testing.T) {
-	for _, args := range [][]string{{"--help"}, {"login", "--help"}, {"list", "groups", "--help"}, {"list", "product-categories", "--help"}, {"list", "characteristics", "--help"}, {"list", "currencies", "--help"}, {"list", "prices", "--help"}, {"create", "group", "--help"}, {"update", "group", "--help"}, {"list", "products", "--help"}, {"get", "product", "--help"}, {"create", "product", "--help"}, {"update", "product", "--help"}, {"get", "price", "--help"}, {"list", "warehouses", "--help"}, {"get", "stock", "--help"}, {"list", "customers", "--help"}, {"search", "customers", "--help"}, {"get", "customer", "--help"}, {"create", "customer", "--help"}, {"update", "customer", "--help"}, {"list", "suppliers", "--help"}, {"search", "suppliers", "--help"}, {"get", "supplier", "--help"}, {"create", "supplier", "--help"}, {"update", "supplier", "--help"}, {"list", "sales", "--help"}, {"get", "sale", "--help"}, {"list", "purchases", "--help"}, {"get", "purchase", "--help"}, {"list", "payment-plans", "--help"}, {"get", "payment-plan", "--help"}, {"trace", "receipt-payments", "--help"}, {"reconcile", "supplier", "--help"}, {"create", "receipt", "--help"}, {"update", "receipt", "--help"}, {"post", "receipt", "--help"}, {"unpost", "receipt", "--help"}, {"list", "link-properties", "--help"}, {"get", "receipt-link", "--help"}, {"set", "receipt-link", "--help"}, {"create", "payment-plan", "--help"}, {"update", "payment-plan", "--help"}, {"post", "payment-plan", "--help"}, {"unpost", "payment-plan", "--help"}, {"list", "warehouse-docs", "--help"}, {"get", "warehouse-doc", "--help"}, {"list", "accounts", "--help"}, {"list", "money", "--help"}, {"get", "money", "--help"}, {"help", "list", "price-types"}, {"list", "unit-types", "--help"}} {
+	for _, args := range [][]string{{"--help"}, {"login", "--help"}, {"list", "groups", "--help"}, {"list", "product-categories", "--help"}, {"list", "characteristics", "--help"}, {"list", "currencies", "--help"}, {"list", "prices", "--help"}, {"create", "group", "--help"}, {"update", "group", "--help"}, {"list", "products", "--help"}, {"get", "product", "--help"}, {"create", "product", "--help"}, {"update", "product", "--help"}, {"get", "price", "--help"}, {"list", "warehouses", "--help"}, {"get", "stock", "--help"}, {"list", "customers", "--help"}, {"search", "customers", "--help"}, {"get", "customer", "--help"}, {"create", "customer", "--help"}, {"update", "customer", "--help"}, {"list", "suppliers", "--help"}, {"search", "suppliers", "--help"}, {"get", "supplier", "--help"}, {"create", "supplier", "--help"}, {"update", "supplier", "--help"}, {"list", "sales", "--help"}, {"get", "sale", "--help"}, {"list", "purchases", "--help"}, {"get", "purchase", "--help"}, {"list", "payment-plans", "--help"}, {"get", "payment-plan", "--help"}, {"trace", "receipt-payments", "--help"}, {"reconcile", "supplier", "--help"}, {"create", "receipt", "--help"}, {"update", "receipt", "--help"}, {"post", "receipt", "--help"}, {"unpost", "receipt", "--help"}, {"list", "link-properties", "--help"}, {"get", "receipt-link", "--help"}, {"set", "receipt-link", "--help"}, {"create", "payment-plan", "--help"}, {"update", "payment-plan", "--help"}, {"post", "payment-plan", "--help"}, {"unpost", "payment-plan", "--help"}, {"list", "warehouse-docs", "--help"}, {"get", "warehouse-doc", "--help"}, {"list", "accounts", "--help"}, {"list", "money", "--help"}, {"get", "money", "--help"}, {"help", "list", "price-types"}, {"list", "unit-types", "--help"}, {"create", "transfer", "--help"}} {
 		var output bytes.Buffer
 		if err := run(context.Background(), args, &output); err != nil {
 			t.Fatalf("help %v: %v", args, err)
@@ -90,6 +90,18 @@ func TestLegacyCommandsRemainAliases(t *testing.T) {
 		command, _ := parseCommand(strings.Fields(legacy))
 		if command != canonical {
 			t.Errorf("%s became %s; want %s", legacy, command, canonical)
+		}
+	}
+}
+
+func TestParseTransferLine(t *testing.T) {
+	line, err := parseTransferLine("P:2.5:C:unit=U")
+	if err != nil || line.ProductID != "P" || line.Quantity != "2.5" || line.CharacteristicID != "C" || line.UnitID != "U" {
+		t.Fatalf("%+v %v", line, err)
+	}
+	for _, bad := range []string{"P", "P:1:unit=A:unit=B", "P:1:x=y", "P:1:C:D"} {
+		if _, err := parseTransferLine(bad); err == nil {
+			t.Errorf("%s accepted", bad)
 		}
 	}
 }

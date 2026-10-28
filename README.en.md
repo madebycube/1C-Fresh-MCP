@@ -127,6 +127,7 @@ Commands follow `1c VERB RESOURCE [OPTIONS]`. `1c --help` lists topics, `1c help
 1c list warehouse-docs --kind transfer --warehouse WAREHOUSE_GUID
 1c list warehouse-docs --kind stock-writeoff --limit 20
 1c get warehouse-doc --kind transfer DOCUMENT_GUID
+1c create transfer --organization ORG_GUID --from WAREHOUSE_GUID --to OTHER_WAREHOUSE_GUID --date 2026-10-05 --line PRODUCT_GUID:3
 1c list cash-balances --as-of 2026-09-30
 1c list debts --kind customer --as-of 2026-09-30
 1c list accounts --kind bank
@@ -167,6 +168,8 @@ Commands follow `1c VERB RESOURCE [OPTIONS]`. `1c --help` lists topics, `1c help
 `list orders` shows customer orders newest first. Use `--customer`, paired `--from` and `--to`, `--limit`, and `--offset` to filter and page results. JSON returns `items`, `total`, and `next_offset`.
 
 `list suppliers` and `search suppliers` show counterparties marked as suppliers. `list purchases --kind order` reads supplier orders, while `--kind receipt` selects incoming goods documents whose operation is supplier receipt. `list warehouse-docs` reads transfer orders (`transfer-order`), stock movements whose operation is transfer (`transfer`), stock receipts (`stock-receipt`), and stock writeoffs (`stock-writeoff`). Filter by supplier or warehouse ID; a transfer matches either its source or destination warehouse. Both lists support dates, `--limit`, and `--offset`. `get purchase` and `get warehouse-doc` include product lines and available linked document IDs. `Posted` indicates posting in 1C, not fulfillment or physical receipt. There are no transfer orders in the tested tenant, so getting one by GUID has not been verified live.
+
+`create transfer` (MCP `create_stock_transfer`) previews a stock transfer between two active warehouses of one organization; `--apply` saves it unposted with the predefined «Перемещение» operation and the ruble currency, then reads it back and checks the warehouses and lines. Lines are `PRODUCT_GUID:QUANTITY[:CHARACTERISTIC_GUID][:unit=GUID]`; a unit other than the base unit must be one of the product's own units with a conversion factor (see `list product-units`). Only stock items are accepted. Nothing moves until the transfer is posted in 1C, and 1C checks the available stock then. A failed save is never retried; check `list warehouse-docs --kind transfer` first.
 
 The tested tenant has no payment-request document («Заявка на расходование денежных средств»), so planned supplier payments are read from supplier invoices («Счет на оплату поставщика»). `list payment-plans` filters them by organization, supplier, contract, paying bank account, and dates. `get payment-plan` shows the payment schedule and the payment-calendar register records, including the approval state as stored; an unreadable register is reported as unavailable. `trace receipt-payments` takes a goods receipt and finds supplier invoices based on it or on its supplier order, plus payment orders, bank expenses, and cash expenses with the supplier-payment operation whose payment breakdown references the receipt, invoice, or order, and the receipt's own prepayment offsets. Only posted bank and cash expenses allocated directly to the receipt and the prepayment offsets count as settlement; payment orders, invoices, and approval never do. Equal amounts without a link are listed as candidates, and missing links are reported as "no linked payment found", not unpaid. The overall status comes from the receipt's own movements in the supplier-settlement register: debt (receipt movements) minus closing by payments, advance offsets, or debt offsets (expense movements), in settlement currency; the document-link status is reported separately. Documents and registers are read without `$filter` because the tested tenant answers HTTP 500 to reference filters.
 
@@ -225,6 +228,7 @@ Configure your MCP client to launch this command from the repository directory, 
 - `list_receipt_link_properties`, `get_receipt_document_link`, and `set_receipt_document_link` (write operation)
 - `create_supplier_payment_plan`, `update_supplier_payment_plan`, and `set_supplier_payment_plan_posting` (write operations)
 - `list_warehouse_documents` and `get_warehouse_document`
+- `create_stock_transfer` (write operation)
 - `list_money_accounts`, `list_money_documents`, and `get_money_document`
 - `list_cash_receipts` and `get_cash_receipt`
 - `audit_unposted_receipts`
