@@ -590,12 +590,20 @@ var PreviewReceipts = Spec{
 	Example:     "1c preview receipts --file receipts.json",
 }
 
+var CreateTransfer = Spec{
+	Command:     "create transfer",
+	Tool:        "create_stock_transfer",
+	Description: "Preview or save an unposted transfer of stock between two warehouses.",
+	Usage:       "1c create transfer --organization GUID --from WAREHOUSE_GUID --to WAREHOUSE_GUID --date YYYY-MM-DD --line PRODUCT_GUID:QUANTITY[:CHARACTERISTIC_GUID][:unit=GUID]... [--comment TEXT] [--apply] [--json]",
+	Example:     "1c create transfer --organization ORG_GUID --from WAREHOUSE_GUID --to OTHER_WAREHOUSE_GUID --date 2026-10-05 --line PRODUCT_GUID:3",
+}
+
 var Topics = []Topic{
 	{Name: "setup", Description: "Connection and local MCP server", Commands: []Spec{Check}},
 	{Name: "company", Description: "Organizations, departments, and contracts", Commands: []Spec{ListOrganizations, ListDepartments, ListContracts}},
 	{Name: "products", Description: "Products, groups, categories, and characteristics", Commands: []Spec{ListProducts, GetProduct, SearchProducts, CreateProduct, UpdateProduct, ListGroups, CreateGroup, UpdateGroup, ListProductCategories, ListProductCharacteristics, ListUnitTypes, ListProductUnits}},
 	{Name: "prices", Description: "Price types, currencies, quotes, and source documents", Commands: []Spec{ListPriceTypes, ListCurrencies, GetPrice, ListPrices, ListPriceDocuments, GetPriceDocument}},
-	{Name: "inventory", Description: "Warehouses, stock, and warehouse documents", Commands: []Spec{ListWarehouses, GetStock, ListWarehouseDocuments, GetWarehouseDocument}},
+	{Name: "inventory", Description: "Warehouses, stock, and warehouse documents", Commands: []Spec{ListWarehouses, GetStock, ListWarehouseDocuments, GetWarehouseDocument, CreateTransfer}},
 	{Name: "partners", Description: "Customer and supplier records and folders", Commands: []Spec{ListCounterpartyGroups, CreateCounterpartyGroup, UpdateCounterpartyGroup, ListCustomers, SearchCustomers, GetCustomer, CreateCustomer, UpdateCustomer, ListSuppliers, SearchSuppliers, GetSupplier, CreateSupplier, UpdateSupplier}},
 	{Name: "sales", Description: "Customer orders and sales documents", Commands: []Spec{ListOrders, GetOrder, ListSales, GetSale, ReportSales}},
 	{Name: "purchases", Description: "Supplier orders, goods receipts, and payment plans", Commands: []Spec{ListPurchases, GetPurchase, PreviewReceipts, CreateReceipt, UpdateReceipt, PostReceipt, UnpostReceipt, ListLinkProperties, GetReceiptLink, SetReceiptLink, ListPaymentPlans, GetPaymentPlan, CreatePaymentPlan, UpdatePaymentPlan, PostPaymentPlan, UnpostPaymentPlan, TraceReceiptPayments, ReconcileSupplier}},

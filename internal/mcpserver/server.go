@@ -338,6 +338,23 @@ type createReceiptInput struct {
 	Apply          bool               `json:"apply,omitempty" jsonschema:"Save the receipt; false only previews it"`
 }
 
+type transferLineInput struct {
+	ProductID        string `json:"product_id" jsonschema:"Stock product GUID"`
+	CharacteristicID string `json:"characteristic_id,omitempty" jsonschema:"Optional characteristic GUID of that product"`
+	Quantity         string `json:"quantity" jsonschema:"Quantity in the line's unit, up to 3 decimals"`
+	UnitID           string `json:"unit_id,omitempty" jsonschema:"Optional unit GUID from list_product_units; default is the product's base unit"`
+}
+
+type createTransferInput struct {
+	OrganizationID  string              `json:"organization_id" jsonschema:"Organization GUID"`
+	FromWarehouseID string              `json:"from_warehouse_id" jsonschema:"Source warehouse GUID"`
+	ToWarehouseID   string              `json:"to_warehouse_id" jsonschema:"Destination warehouse GUID, different from the source"`
+	Date            string              `json:"date" jsonschema:"Transfer date YYYY-MM-DD"`
+	Comment         string              `json:"comment,omitempty" jsonschema:"Optional comment"`
+	Lines           []transferLineInput `json:"lines" jsonschema:"Goods to move"`
+	Apply           bool                `json:"apply,omitempty" jsonschema:"Save the transfer unposted; false only previews it"`
+}
+
 type receiptLineChangeInput struct {
 	LineNumber int     `json:"line_number" jsonschema:"Existing line number"`
 	Quantity   *string `json:"quantity,omitempty" jsonschema:"Replacement quantity"`
@@ -981,6 +998,20 @@ func New(svc service.Service) *mcp.Server {
 			WarehouseID: input.WarehouseID, DepartmentID: input.DepartmentID, Date: input.Date,
 			IncomingNumber: input.IncomingNumber, IncomingDate: input.IncomingDate, Comment: input.Comment,
 			VATMode: input.VATMode, Lines: receiptLines(input.Lines), AllowDuplicate: input.AllowDuplicate, Apply: input.Apply,
+		})
+		return nil, write, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.CreateTransfer.Tool, Description: operations.CreateTransfer.Description,
+		Annotations: &mcp.ToolAnnotations{DestructiveHint: &additive},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input createTransferInput) (*mcp.CallToolResult, service.TransferWrite, error) {
+		lines := make([]service.TransferLineInput, len(input.Lines))
+		for i, line := range input.Lines {
+			lines[i] = service.TransferLineInput(line)
+		}
+		write, err := svc.CreateTransferDraft(ctx, service.TransferDraft{
+			OrganizationID: input.OrganizationID, FromWarehouseID: input.FromWarehouseID, ToWarehouseID: input.ToWarehouseID,
+			Date: input.Date, Comment: input.Comment, Lines: lines, Apply: input.Apply,
 		})
 		return nil, write, err
 	})

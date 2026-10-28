@@ -235,6 +235,8 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		return runOperationalList(ctx, svc, commandArgs, out, "warehouse")
 	case operations.GetWarehouseDocument.Command:
 		return runOperationalGet(ctx, svc, commandArgs, out, "warehouse")
+	case operations.CreateTransfer.Command:
+		return runTransferCreate(ctx, svc, commandArgs, out)
 	case operations.ListMoneyAccounts.Command:
 		return runMoneyAccountList(ctx, svc, commandArgs, out)
 	case operations.ListMoney.Command:
