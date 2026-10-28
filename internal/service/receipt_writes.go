@@ -84,6 +84,13 @@ type ReceiptPreviewLine struct {
 	Preserved        bool    `json:"preserved,omitempty"`
 }
 
+// unsupportedError marks a receipt this tool cannot write at all, as opposed to one with fixable input.
+type unsupportedError struct{ message string }
+
+func (e unsupportedError) Error() string { return e.message }
+
+func unsupported(message string) error { return unsupportedError{message} }
+
 // lineUnit is the unit a receipt line is entered in; Factor converts it to the product's base unit when known.
 type lineUnit struct {
 	ID     string
@@ -484,7 +491,7 @@ func (s Service) validateReceiptHeader(ctx context.Context, input ReceiptDraft) 
 	currencyID := rawString(contract["ВалютаРасчетов_Key"])
 	currency, err := s.activeRecord(ctx, config.Currencies.Name, currencyID, "Ref_Key,DeletionMark,Code")
 	if err != nil || rawString(currency["Code"]) != receiptBaseCurrency {
-		return ReceiptWrite{}, errors.New("only contracts settled in rubles are supported; foreign-currency receipts need an exchange rate this tool does not set")
+		return ReceiptWrite{}, unsupported("only contracts settled in rubles are supported; foreign-currency receipts need an exchange rate this tool does not set")
 	}
 	for label, pair := range map[string][2]string{"warehouse": {input.WarehouseID, "Склад"}, "department": {input.DepartmentID, "Подразделение"}} {
 		unit, err := s.activeRecord(ctx, config.Warehouses.Name, pair[0], "Ref_Key,DeletionMark,ТипСтруктурнойЕдиницы,Недействителен")
@@ -509,11 +516,11 @@ func (s Service) receiptLine(ctx context.Context, input ReceiptLineInput, number
 		return ReceiptPreviewLine{}, fmt.Errorf("product: %w", err)
 	}
 	if string(product["IsFolder"]) != "false" || rawString(product["ТипНоменклатуры"]) != receiptStockProducts {
-		return ReceiptPreviewLine{}, errors.New("product must be an active stock item; services belong to the receipt's expenses")
+		return ReceiptPreviewLine{}, unsupported("product must be an active stock item; services belong to the receipt's expenses")
 	}
 	unitID := rawString(product["ЕдиницаИзмерения_Key"])
 	if !linkedGUID(unitID) {
-		return ReceiptPreviewLine{}, errors.New("product has no base unit; unit conversion is not supported")
+		return ReceiptPreviewLine{}, unsupported("product has no base unit; unit conversion is not supported")
 	}
 	unit := lineUnit{ID: strings.ToLower(unitID), Type: unitClassifierType}
 	if input.UnitID != "" && !strings.EqualFold(input.UnitID, unitID) {
