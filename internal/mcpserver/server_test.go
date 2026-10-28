@@ -56,6 +56,12 @@ func (stubReader) Get(_ context.Context, resource string, params url.Values, _ i
 	if resource == "Catalog_Контрагенты" {
 		return []byte(`{"odata.count":"2","value":[{"Ref_Key":"00000000-0000-0000-0000-000000000001","Code":"G1","Description":"Example folder","Parent_Key":"00000000-0000-0000-0000-000000000000","IsFolder":true,"DeletionMark":false},{"Ref_Key":"00000000-0000-0000-0000-000000000007","Code":"C1","Description":"Example customer","IsFolder":false,"DeletionMark":false,"Недействителен":false,"Покупатель":true,"Поставщик":true}]}`), nil
 	}
+	if resource == "Catalog_Организации" {
+		return []byte(`{"odata.count":"1","value":[{"Ref_Key":"00000000-0000-0000-0000-000000000015","Code":"O1","Description":"Example organization","DeletionMark":false}]}`), nil
+	}
+	if resource == "Catalog_ДоговорыКонтрагентов" {
+		return []byte(`{"odata.count":"1","value":[{"Ref_Key":"00000000-0000-0000-0000-000000000016","Description":"Example contract","ВидДоговора":"СПоставщиком","Owner":"00000000-0000-0000-0000-000000000007","Организация_Key":"00000000-0000-0000-0000-000000000015","DeletionMark":false,"Недействителен":false}]}`), nil
+	}
 	if resource == "Catalog_Кассы" {
 		return []byte(`{"odata.count":"1","value":[{"Ref_Key":"00000000-0000-0000-0000-000000000011","Code":"C1","Description":"Cash desk","DeletionMark":false,"Недействителен":false}]}`), nil
 	}
@@ -154,8 +160,8 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(listed.Tools) != 62 {
-		t.Fatalf("got %d tools; want 62", len(listed.Tools))
+	if len(listed.Tools) != 65 {
+		t.Fatalf("got %d tools; want 65", len(listed.Tools))
 	}
 	for _, tool := range listed.Tools {
 		if tool.Annotations == nil {
@@ -193,6 +199,9 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 		{operations.ListPriceDocuments.Tool, map[string]any{"from": "2026-09-23", "to": "2026-09-23", "posted": true, "limit": 1}},
 		{operations.ListPrices.Tool, map[string]any{"price_type": "Retail", "group_id": "00000000-0000-0000-0000-000000000001", "as_of": "2026-09-23", "limit": 1}},
 		{operations.ListWarehouses.Tool, map[string]any{}},
+		{operations.ListOrganizations.Tool, map[string]any{}},
+		{operations.ListDepartments.Tool, map[string]any{}},
+		{operations.ListContracts.Tool, map[string]any{"kind": "supplier"}},
 		{operations.GetStock.Tool, map[string]any{"product_id": "00000000-0000-0000-0000-000000000004"}},
 		{operations.SearchProducts.Tool, map[string]any{"query": "Chair", "limit": 2}},
 		{operations.ListProducts.Tool, map[string]any{"limit": 2, "group_id": "00000000-0000-0000-0000-000000000001"}},

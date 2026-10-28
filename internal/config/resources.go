@@ -797,3 +797,32 @@ var SupplierSettlements = struct {
 		{Output: "allocation_method", Source: "СпособЗачета"},
 	},
 }
+
+var Organizations = CatalogListResource{
+	Name: "Catalog_Организации",
+	Fields: []FieldBinding{
+		{Output: "id", Source: "Ref_Key"},
+		{Output: "code", Source: "Code"},
+		{Output: "name", Source: "Description"},
+		{Output: "full_name", Source: "НаименованиеПолное"},
+		{Output: "deleted", Source: "DeletionMark"},
+	},
+}
+
+var Contracts = CatalogListResource{
+	Name: "Catalog_ДоговорыКонтрагентов",
+	Fields: []FieldBinding{
+		{Output: "id", Source: "Ref_Key"},
+		{Output: "code", Source: "Code"},
+		{Output: "name", Source: "Description"},
+		{Output: "number", Source: "НомерДоговора"},
+		{Output: "date", Source: "ДатаДоговора"},
+		{Output: "kind", Source: "ВидДоговора"},
+		{Output: "counterparty_id", Source: "Owner"},
+		{Output: "organization_id", Source: "Организация_Key"},
+		{Output: "currency_id", Source: "ВалютаРасчетов_Key"},
+		{Output: "conventional_units", Source: "РасчетыВУсловныхЕдиницах"},
+		{Output: "deleted", Source: "DeletionMark"},
+		{Output: "inactive", Source: "Недействителен"},
+	},
+}

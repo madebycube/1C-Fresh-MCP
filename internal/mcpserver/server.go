@@ -106,6 +106,28 @@ type updateCounterpartyGroupInput struct {
 
 type listPriceTypesInput struct{}
 
+type listOrganizationsOutput struct {
+	Organizations []service.Organization `json:"organizations"`
+	Count         int                    `json:"count"`
+}
+
+type listDepartmentsOutput struct {
+	Departments []service.Warehouse `json:"departments"`
+	Count       int                 `json:"count"`
+}
+
+type listContractsInput struct {
+	CounterpartyID string `json:"counterparty_id,omitempty" jsonschema:"Optional customer or supplier GUID"`
+	OrganizationID string `json:"organization_id,omitempty" jsonschema:"Optional organization GUID from list_organizations"`
+	Kind           string `json:"kind,omitempty" jsonschema:"Optional contract kind: supplier or customer"`
+	All            bool   `json:"all,omitempty" jsonschema:"Include inactive contracts"`
+}
+
+type listContractsOutput struct {
+	Contracts []service.Contract `json:"contracts"`
+	Count     int                `json:"count"`
+}
+
 type listCurrenciesInput struct{}
 
 type listCurrenciesOutput struct {
@@ -517,6 +539,27 @@ func New(svc service.Service) *mcp.Server {
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ listPriceTypesInput) (*mcp.CallToolResult, listPriceTypesOutput, error) {
 		priceTypes, err := svc.ListPriceTypes(ctx)
 		return nil, listPriceTypesOutput{PriceTypes: priceTypes, Count: len(priceTypes)}, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.ListOrganizations.Tool, Description: operations.ListOrganizations.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ listCurrenciesInput) (*mcp.CallToolResult, listOrganizationsOutput, error) {
+		items, err := svc.ListOrganizations(ctx)
+		return nil, listOrganizationsOutput{Organizations: items, Count: len(items)}, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.ListDepartments.Tool, Description: operations.ListDepartments.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ listCurrenciesInput) (*mcp.CallToolResult, listDepartmentsOutput, error) {
+		items, err := svc.ListDepartments(ctx)
+		return nil, listDepartmentsOutput{Departments: items, Count: len(items)}, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.ListContracts.Tool, Description: operations.ListContracts.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input listContractsInput) (*mcp.CallToolResult, listContractsOutput, error) {
+		items, err := svc.ListContracts(ctx, service.ContractFilter{CounterpartyID: input.CounterpartyID, OrganizationID: input.OrganizationID, Kind: input.Kind, All: input.All})
+		return nil, listContractsOutput{Contracts: items, Count: len(items)}, err
 	})
 	mcp.AddTool(server, &mcp.Tool{
 		Name: operations.ListCurrencies.Tool, Description: operations.ListCurrencies.Description,

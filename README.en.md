@@ -73,6 +73,9 @@ Commands follow `1c VERB RESOURCE [OPTIONS]`. `1c --help` lists topics, `1c help
 1c get price PRODUCT_GUID --price-type "Example price" --as-of 2026-09-23
 1c list price-documents --posted false --limit 20
 1c get price-document DOCUMENT_GUID --product PRODUCT_GUID --limit 20
+1c list organizations
+1c list departments
+1c list contracts --counterparty SUPPLIER_GUID --kind supplier
 1c list warehouses
 1c get stock PRODUCT_GUID --warehouse WAREHOUSE_GUID
 1c list products --limit 20
@@ -143,6 +146,8 @@ Commands follow `1c VERB RESOURCE [OPTIONS]`. `1c --help` lists topics, `1c help
 `get price` finds the latest price for a product and named price type as of `--as-of` (today by default). It uses posted, non-deleted documents. Omit `--characteristic GUID` for a price without a characteristic or pass a variant's GUID. When no price exists, the result has `found: false`. JSON includes the exact decimal price string, currency ID and, when the catalog is available, its code and symbol, plus source document ID, date, and line number. The command scans price document history, so it may take some time.
 
 `list price-documents` shows price-setting document numbers, dates, GUIDs, and posting status, newest first. Paired `--from` and `--to` bound a date range to 31 days; `--posted true|false` filters posted or unposted documents. `--limit` and `--offset` page through results. `get price-document` reads a GUID from the list or the `source_document_id` from a `get price` or `list prices` result. It shows the document number, date, posting status, and price lines with product, price type, characteristic, and currency IDs plus exact decimal prices. `--product PRODUCT_GUID` filters to one product; `--limit` and `--offset` page through matching lines. Both commands are read-only.
+
+`list organizations` shows the company's own organizations; `list departments` shows departments from the structural units catalog. `list contracts` shows counterparty contracts with owner, organization, kind (`supplier` or `customer`), and settlement currency; `--counterparty` and `--organization` narrow the list, and `--all` includes inactive contracts. Filters run locally after reading the catalog (up to 5,000 records). Use these IDs with `create receipt` and `create payment-plan`. These commands are read-only.
 
 `list warehouses` shows warehouses and retail stores from the structural units catalog. `get stock` shows current product balances by warehouse; `--warehouse` selects one, and `--characteristic` selects a product characteristic. Quantities come from the `AccumulationRegister_ЗапасыНаСкладах/Balance` virtual table and are summed across characteristics, batches, cells, and organizations when no characteristic is selected. JSON also includes the source balance rows and product unit ID. If 1C cannot resolve the unit's description, its ID remains available. A stock balance does not promise that the product is available to sell.
 

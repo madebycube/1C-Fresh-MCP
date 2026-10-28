@@ -116,6 +116,12 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		return runPriceDocumentList(ctx, svc, commandArgs, out)
 	case operations.ListPrices.Command:
 		return runPriceList(ctx, svc, commandArgs, out)
+	case operations.ListOrganizations.Command:
+		return runOrganizationList(ctx, svc, commandArgs, out)
+	case operations.ListDepartments.Command:
+		return runDepartmentList(ctx, svc, commandArgs, out)
+	case operations.ListContracts.Command:
+		return runContractList(ctx, svc, commandArgs, out)
 	case operations.ListWarehouses.Command:
 		return runWarehouseList(ctx, svc, commandArgs, out)
 	case operations.GetStock.Command:
