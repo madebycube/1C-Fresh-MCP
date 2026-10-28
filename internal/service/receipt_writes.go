@@ -648,16 +648,7 @@ func (s Service) vatRates(ctx context.Context) (map[string]vatRate, error) {
 }
 
 func (s Service) receiptBusinessOperation(ctx context.Context) (string, error) {
-	rows, err := s.scanRows(ctx, "Catalog_ХозяйственныеОперации", "Ref_Key,DeletionMark,PredefinedDataName", "", 2000)
-	if err != nil {
-		return "", err
-	}
-	for _, row := range rows {
-		if rawString(row["PredefinedDataName"]) == receiptOperation && string(row["DeletionMark"]) != "true" {
-			return strings.ToLower(rawString(row["Ref_Key"])), nil
-		}
-	}
-	return "", errors.New("predefined business operation for supplier receipts was not found")
+	return s.predefinedOperation(ctx, receiptOperation)
 }
 
 func (s Service) activeRecord(ctx context.Context, resource, id, fields string) (map[string]json.RawMessage, error) {

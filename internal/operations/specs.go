@@ -422,6 +422,38 @@ var GetMoney = Spec{
 	Example:     "1c get money --kind card-payment DOCUMENT_GUID",
 }
 
+var CreatePaymentPlan = Spec{
+	Command:     "create payment-plan",
+	Tool:        "create_supplier_payment_plan",
+	Description: "Preview or save an unposted supplier invoice that plans payment of a goods receipt, checking outstanding debt, existing plans, and payments first.",
+	Usage:       "1c create payment-plan --receipt GUID --account ORG_BANK_ACCOUNT_GUID --date YYYY-MM-DD --payment-date YYYY-MM-DD [--amount AMOUNT] [--supplier-account GUID] [--comment TEXT] [--allow-duplicate] [--apply] [--json]",
+	Example:     "1c create payment-plan --receipt RECEIPT_GUID --account ACCOUNT_GUID --date 2026-10-01 --payment-date 2026-10-10 --amount 400",
+}
+
+var UpdatePaymentPlan = Spec{
+	Command:     "update payment-plan",
+	Tool:        "update_supplier_payment_plan",
+	Description: "Preview or save changes to an unposted single-line supplier payment plan, keeping other fields.",
+	Usage:       "1c update payment-plan GUID [--payment-date YYYY-MM-DD] [--amount AMOUNT --receipt GUID] [--account GUID] [--supplier-account GUID] [--comment TEXT] [--expect-version DATA_VERSION] [--apply] [--json]",
+	Example:     "1c update payment-plan INVOICE_GUID --amount 500 --receipt RECEIPT_GUID --apply",
+}
+
+var PostPaymentPlan = Spec{
+	Command:     "post payment-plan",
+	Tool:        "set_supplier_payment_plan_posting",
+	Description: "Preview or run posting of a supplier payment plan into the payment calendar; never approves it.",
+	Usage:       "1c post payment-plan GUID [--expect-version DATA_VERSION] [--apply] [--json]",
+	Example:     "1c post payment-plan INVOICE_GUID --apply",
+}
+
+var UnpostPaymentPlan = Spec{
+	Command:     "unpost payment-plan",
+	Tool:        "set_supplier_payment_plan_posting",
+	Description: "Preview or run unposting of a supplier payment plan so it can be amended.",
+	Usage:       "1c unpost payment-plan GUID [--expect-version DATA_VERSION] [--apply] [--json]",
+	Example:     "1c unpost payment-plan INVOICE_GUID --apply",
+}
+
 var ListReceipts = Spec{
 	Command:     "list receipts",
 	Tool:        "list_cash_receipts",
@@ -469,7 +501,7 @@ var Topics = []Topic{
 	{Name: "inventory", Description: "Warehouses, stock, and warehouse documents", Commands: []Spec{ListWarehouses, GetStock, ListWarehouseDocuments, GetWarehouseDocument}},
 	{Name: "partners", Description: "Customer and supplier records and folders", Commands: []Spec{ListCounterpartyGroups, CreateCounterpartyGroup, UpdateCounterpartyGroup, ListCustomers, SearchCustomers, GetCustomer, CreateCustomer, UpdateCustomer, ListSuppliers, SearchSuppliers, GetSupplier, CreateSupplier, UpdateSupplier}},
 	{Name: "sales", Description: "Customer orders and sales documents", Commands: []Spec{ListOrders, GetOrder, ListSales, GetSale}},
-	{Name: "purchases", Description: "Supplier orders, goods receipts, and payment plans", Commands: []Spec{ListPurchases, GetPurchase, CreateReceipt, UpdateReceipt, PostReceipt, UnpostReceipt, ListPaymentPlans, GetPaymentPlan, TraceReceiptPayments}},
+	{Name: "purchases", Description: "Supplier orders, goods receipts, and payment plans", Commands: []Spec{ListPurchases, GetPurchase, CreateReceipt, UpdateReceipt, PostReceipt, UnpostReceipt, ListPaymentPlans, GetPaymentPlan, CreatePaymentPlan, UpdatePaymentPlan, PostPaymentPlan, UnpostPaymentPlan, TraceReceiptPayments}},
 	{Name: "money", Description: "Accounts, cash, bank, and card movements", Commands: []Spec{ListMoneyAccounts, ListMoney, GetMoney}},
 	{Name: "receipts", Description: "Fiscal receipts and posting audit", Commands: []Spec{ListReceipts, GetReceipt, AuditUnpostedReceipts}},
 	{Name: "schema", Description: "Search and inspect exposed OData resources", Commands: []Spec{SearchResources, DescribeResource}},
