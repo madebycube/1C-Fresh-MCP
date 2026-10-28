@@ -434,12 +434,15 @@ func (s Service) fillPlanAccounts(ctx context.Context, result *PaymentPlanWrite,
 	if !linkedGUID(accountID) {
 		return errors.New("choose the organization's paying bank account explicitly (account_id)")
 	}
-	account, err := s.activeRecord(ctx, bankAccountsResourceName, accountID, "Ref_Key,DeletionMark,Owner,Owner_Type")
+	account, err := s.activeRecord(ctx, bankAccountsResourceName, accountID, bankAccountFields)
 	if err != nil {
 		return fmt.Errorf("paying account: %w", err)
 	}
 	if rawString(account["Owner_Type"]) != organizationOwnerType || !strings.EqualFold(rawString(account["Owner"]), result.OrganizationID) {
 		return errors.New("paying account must belong to the receipt's organization")
+	}
+	if err := checkPlanAccount(account, "paying", result.CurrencyID, result.PaymentDate); err != nil {
+		return err
 	}
 	result.AccountID = strings.ToLower(accountID)
 	if supplierAccountID == "" {
@@ -459,12 +462,15 @@ func (s Service) fillPlanAccounts(ctx context.Context, result *PaymentPlanWrite,
 			return errors.New("the supplier has no bank account in 1C; add one before planning a bank payment")
 		}
 	}
-	supplierAccount, err := s.activeRecord(ctx, bankAccountsResourceName, supplierAccountID, "Ref_Key,DeletionMark,Owner,Owner_Type")
+	supplierAccount, err := s.activeRecord(ctx, bankAccountsResourceName, supplierAccountID, bankAccountFields)
 	if err != nil {
 		return fmt.Errorf("supplier account: %w", err)
 	}
 	if rawString(supplierAccount["Owner_Type"]) != counterpartyOwnerType || !strings.EqualFold(rawString(supplierAccount["Owner"]), result.SupplierID) {
 		return errors.New("supplier account must belong to the receipt's supplier")
+	}
+	if err := checkPlanAccount(supplierAccount, "supplier", result.CurrencyID, result.PaymentDate); err != nil {
+		return err
 	}
 	result.SupplierAccountID = strings.ToLower(supplierAccountID)
 	contract, err := s.activeRecord(ctx, "Catalog_ДоговорыКонтрагентов", result.ContractID, "Ref_Key,DeletionMark,СтатьяДДСПоУмолчанию_Key")
@@ -473,6 +479,19 @@ func (s Service) fillPlanAccounts(ctx context.Context, result *PaymentPlanWrite,
 	}
 	if article := rawString(contract["СтатьяДДСПоУмолчанию_Key"]); linkedGUID(article) {
 		result.PaymentArticleID = article
+	}
+	return nil
+}
+
+const bankAccountFields = "Ref_Key,DeletionMark,Owner,Owner_Type,ВалютаДенежныхСредств_Key,ДатаЗакрытия"
+
+// checkPlanAccount refuses an account in another currency than the contract or one closed by the payment date.
+func checkPlanAccount(account map[string]json.RawMessage, label, currencyID, paymentDate string) error {
+	if currency := rawString(account["ВалютаДенежныхСредств_Key"]); linkedGUID(currency) && !strings.EqualFold(currency, currencyID) {
+		return fmt.Errorf("%s account currency differs from the contract's settlement currency", label)
+	}
+	if closed := rawString(account["ДатаЗакрытия"]); closed != "" && !strings.HasPrefix(closed, "0001-01-01") && closed[:min(10, len(closed))] <= paymentDate {
+		return fmt.Errorf("%s account is closed on %s, before the payment date", label, closed[:min(10, len(closed))])
 	}
 	return nil
 }

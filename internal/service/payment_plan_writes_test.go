@@ -82,8 +82,10 @@ func planFixture() *planWriter {
 		},
 		"AccumulationRegister_ПлатежныйКалендарь_RecordType": {},
 		bankAccountsResourceName: {
-			{"Ref_Key": salesID(110), "DeletionMark": false, "Owner": org, "Owner_Type": organizationOwnerType},
-			{"Ref_Key": salesID(111), "DeletionMark": false, "Owner": supplier, "Owner_Type": counterpartyOwnerType},
+			{"Ref_Key": salesID(110), "DeletionMark": false, "Owner": org, "Owner_Type": organizationOwnerType, "ВалютаДенежныхСредств_Key": currency, "ДатаЗакрытия": "0001-01-01T00:00:00"},
+			{"Ref_Key": salesID(111), "DeletionMark": false, "Owner": supplier, "Owner_Type": counterpartyOwnerType, "ВалютаДенежныхСредств_Key": currency},
+			{"Ref_Key": salesID(114), "DeletionMark": false, "Owner": org, "Owner_Type": organizationOwnerType, "ВалютаДенежныхСредств_Key": salesID(99)},
+			{"Ref_Key": salesID(115), "DeletionMark": false, "Owner": org, "Owner_Type": organizationOwnerType, "ВалютаДенежныхСредств_Key": currency, "ДатаЗакрытия": "2026-09-01T00:00:00"},
 			{"Ref_Key": salesID(112), "DeletionMark": true, "Owner": supplier, "Owner_Type": counterpartyOwnerType},
 			{"Ref_Key": salesID(113), "DeletionMark": false, "Owner": salesID(81), "Owner_Type": organizationOwnerType},
 		},
@@ -232,5 +234,16 @@ func TestPaymentPlanLifecycleAmendPostAndUnpost(t *testing.T) {
 	}
 	if posting, err = svc.SetPaymentPlanPosting(context.Background(), created.ID, "unpost", "", true); err != nil || posting.Posted || fake.actions[1] != "Unpost" {
 		t.Fatalf("unpost: %+v, %v", posting, err)
+	}
+}
+
+func TestPaymentPlanRefusesAccountsInOtherCurrencyOrClosed(t *testing.T) {
+	for account, want := range map[string]string{salesID(114): "currency differs", salesID(115): "is closed on 2026-09-01"} {
+		fake := planFixture()
+		input := planDraftInput()
+		input.AccountID, input.Apply = account, true
+		if _, err := (Service{OData: fake}).CreatePaymentPlanDraft(context.Background(), input); err == nil || !strings.Contains(err.Error(), want) || len(fake.writes) != 0 {
+			t.Fatalf("account %s: %v, writes %v", account, err, fake.writes)
+		}
 	}
 }
