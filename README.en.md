@@ -100,6 +100,7 @@ Commands follow `1c VERB RESOURCE [OPTIONS]`. `1c --help` lists topics, `1c help
 1c list orders --limit 20
 1c list orders --customer CUSTOMER_GUID --from 2026-09-01 --to 2026-09-30 --offset 20
 1c get order --json ORDER_GUID
+1c report sales --from 2026-09-01 --to 2026-09-30 --by customer
 1c list sales --kind shipment --limit 20
 1c list sales --kind return --customer CUSTOMER_GUID
 1c list sales --kind invoice --from 2026-09-01 --to 2026-09-30
@@ -124,6 +125,8 @@ Commands follow `1c VERB RESOURCE [OPTIONS]`. `1c --help` lists topics, `1c help
 1c list warehouse-docs --kind transfer --warehouse WAREHOUSE_GUID
 1c list warehouse-docs --kind stock-writeoff --limit 20
 1c get warehouse-doc --kind transfer DOCUMENT_GUID
+1c list cash-balances --as-of 2026-09-30
+1c list debts --kind customer --as-of 2026-09-30
 1c list accounts --kind bank
 1c list accounts --kind cash
 1c list accounts --kind register
@@ -172,6 +175,8 @@ Supplier goods receipts are created, amended, posted, and unposted only after a 
 The primary-document link is an additional property that 1C shows as a hyperlink on the receipt. `list link-properties` discovers such properties (string type, shown as hyperlink) and whether the «Документ_ПриходнаяНакладная» property set includes them; no GUID or name is hard-coded. `get receipt-link` reads the URL and caption separately: the caption is stored in «Значение» and `<a href = "…">caption</a>` in «ТекстоваяСтрока». `set receipt-link` changes the URL and/or caption (an empty caption shows the URL) or removes the link with `--clear`; other properties, lines, payments, and the comment stay as read. A missing or ambiguous property stops the command without creating configuration. Saves are guarded by the data version and read back; if 1C changes the posting state on save, the command reports it instead of reposting. The URL is never opened and its sharing is not changed.
 
 `create payment-plan` creates a supplier invoice («Счет на оплату поставщика») with one payment-calendar line for a posted goods receipt; in the tested tenant this invoice is the payment request. Without `--apply` it shows the debt from the supplier-settlement register, existing plans, linked payments, and amount-only candidates. By default it plans the whole outstanding debt; `--amount` plans part of it, never more than is outstanding. The organization account (`--account`) must be chosen explicitly; the supplier account is the supplier's only active account or `--supplier-account`. 1C takes the cash-flow item from the contract, and the preview shows it. The invoice basis field can only reference a supplier order, so the receipt is named in the comment ("Приходная накладная № … от …") and its incoming number and date are copied; `trace receipt-payments` links the plan by them (`incoming-document`). A settled receipt, incomplete evidence, or an existing plan blocks saving (the last unless `--allow-duplicate`). The invoice is saved unposted; `post payment-plan` puts it in the payment calendar but never approves it or creates a payment order: 1C sets the approval state, which is shown after posting. `update payment-plan` changes only an unposted single-line plan; a new amount is checked against the outstanding debt and needs `--receipt`.
+
+`list cash-balances` shows money balances by bank account and cash desk with currency at the end of `--as-of` (today by default) from `AccumulationRegister_ДенежныеСредства/Balance`. `list debts --kind customer|supplier` sums customer or supplier settlement-register balances by counterparty: debt (`Долг`), advance (`Аванс`, stored as a negative amount), and net. Counterparties whose debt and advance cancel out to a zero net are left out. `--counterparty` keeps one counterparty. `report sales` sums quantity, amount, VAT, and cost from `AccumulationRegister_Продажи/Turnovers` over a period of up to one year, by product (`--by product`), customer (`customer`), or both (`product-customer`), largest amount first; sales without a counterparty appear as `(no counterparty)`. It is computed from OData, not the official 1C report; compare it with the report before relying on it. These commands are read-only.
 
 `list accounts` discovers cash desks (`cash`), organization-owned bank accounts (`bank`), and retail registers (`register`). `list money` reads cash receipts and disbursements (`cash-in`, `cash-out`), bank receipts and disbursements (`bank-in`, `bank-out`), card transactions (`card-payment`), and cash shifts (`cash-shift`). Supply an inclusive date range of at most 31 days and a cash desk, bank account, register, or terminal ID with `--account`, `--register`, or `--terminal`. `--limit` and `--offset` page results; `get money` reads a document by GUID. Payroll, tax, employee-payment, and unknown operation types are excluded. Fiscal receipts, card transactions, and bank settlements are distinct documents; `Posted` indicates 1C posting, not payment or reconciliation. These are read-only commands and may scan resource history for several seconds.
 

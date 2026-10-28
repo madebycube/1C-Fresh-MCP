@@ -122,6 +122,12 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		return runDepartmentList(ctx, svc, commandArgs, out)
 	case operations.ListContracts.Command:
 		return runContractList(ctx, svc, commandArgs, out)
+	case operations.ListDebts.Command:
+		return runDebtList(ctx, svc, commandArgs, out)
+	case operations.ReportSales.Command:
+		return runSalesReport(ctx, svc, commandArgs, out)
+	case operations.ListCashBalances.Command:
+		return runCashBalanceList(ctx, svc, commandArgs, out)
 	case operations.ListWarehouses.Command:
 		return runWarehouseList(ctx, svc, commandArgs, out)
 	case operations.GetStock.Command:

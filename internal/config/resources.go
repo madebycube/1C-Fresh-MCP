@@ -826,3 +826,13 @@ var Contracts = CatalogListResource{
 		{Output: "inactive", Source: "Недействителен"},
 	},
 }
+
+// RegisterQuery selects an accumulation register virtual table. Balance uses Period; Turnovers uses StartPeriod and EndPeriod.
+type RegisterQuery struct {
+	Register    string
+	Table       string
+	Period      string
+	StartPeriod string
+	EndPeriod   string
+	Dimensions  string
+}

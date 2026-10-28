@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/madebycube/1C-Fresh-MCP/internal/config"
 	"github.com/madebycube/1C-Fresh-MCP/internal/operations"
 	"github.com/madebycube/1C-Fresh-MCP/internal/service"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -43,6 +44,9 @@ func (stubReader) Get(_ context.Context, resource string, params url.Values, _ i
 	}
 	if resource == "Catalog_ВидыЦен" {
 		return []byte(`{"odata.count":"1","value":[{"Ref_Key":"00000000-0000-0000-0000-000000000002","Description":"Retail","DeletionMark":false,"Недействителен":false}]}`), nil
+	}
+	if resource == "Catalog_БанковскиеСчета" {
+		return []byte(`{"odata.count":"0","value":[]}`), nil
 	}
 	if resource == "Catalog_Валюты" {
 		return []byte(`{"odata.count":"1","value":[{"Ref_Key":"00000000-0000-0000-0000-000000000016","Code":"643","Description":"Ruble","СимвольноеПредставление":"₽","DeletionMark":false}]}`), nil
@@ -138,6 +142,16 @@ func (stubReader) Write(_ context.Context, method, _ string, _ []byte, _ string)
 	return nil, nil
 }
 
+func (stubReader) GetRegisterTable(_ context.Context, query config.RegisterQuery, _ url.Values, _ int64) ([]byte, error) {
+	switch query.Register {
+	case "AccumulationRegister_Продажи":
+		return []byte(`{"odata.count":"1","value":[{"Номенклатура_Key":"00000000-0000-0000-0000-000000000004","КоличествоTurnover":2,"СуммаTurnover":240,"СуммаНДСTurnover":40,"СебестоимостьTurnover":100}]}`), nil
+	case "AccumulationRegister_ДенежныеСредства":
+		return []byte(`{"odata.count":"1","value":[{"БанковскийСчетКасса":"00000000-0000-0000-0000-000000000011","БанковскийСчетКасса_Type":"StandardODATA.Catalog_Кассы","Валюта_Key":"00000000-0000-0000-0000-000000000006","СуммаBalance":50,"СуммаВалBalance":50}]}`), nil
+	}
+	return []byte(`{"odata.count":"1","value":[{"Контрагент_Key":"00000000-0000-0000-0000-000000000007","ТипРасчетов":"Долг","СуммаBalance":120.5}]}`), nil
+}
+
 func (stubReader) GetStockBalance(_ context.Context, productID string, _ url.Values, _ int64) ([]byte, error) {
 	return []byte(`{"odata.count":"1","value":[{"Номенклатура_Key":"` + productID + `","СтруктурнаяЕдиница_Key":"00000000-0000-0000-0000-000000000006","Характеристика_Key":"00000000-0000-0000-0000-000000000000","Организация_Key":"00000000-0000-0000-0000-000000000000","Партия_Key":"00000000-0000-0000-0000-000000000000","Ячейка_Key":"00000000-0000-0000-0000-000000000000","КоличествоBalance":3.5}]}`), nil
 }
@@ -160,8 +174,8 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(listed.Tools) != 65 {
-		t.Fatalf("got %d tools; want 65", len(listed.Tools))
+	if len(listed.Tools) != 68 {
+		t.Fatalf("got %d tools; want 68", len(listed.Tools))
 	}
 	for _, tool := range listed.Tools {
 		if tool.Annotations == nil {
@@ -199,6 +213,9 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 		{operations.ListPriceDocuments.Tool, map[string]any{"from": "2026-09-23", "to": "2026-09-23", "posted": true, "limit": 1}},
 		{operations.ListPrices.Tool, map[string]any{"price_type": "Retail", "group_id": "00000000-0000-0000-0000-000000000001", "as_of": "2026-09-23", "limit": 1}},
 		{operations.ListWarehouses.Tool, map[string]any{}},
+		{operations.ListDebts.Tool, map[string]any{"kind": "customer", "as_of": "2026-09-30"}},
+		{operations.ReportSales.Tool, map[string]any{"from": "2026-09-01", "to": "2026-09-30"}},
+		{operations.ListCashBalances.Tool, map[string]any{"as_of": "2026-09-30"}},
 		{operations.ListOrganizations.Tool, map[string]any{}},
 		{operations.ListDepartments.Tool, map[string]any{}},
 		{operations.ListContracts.Tool, map[string]any{"kind": "supplier"}},
