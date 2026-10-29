@@ -51,6 +51,7 @@ type updateProductInput struct {
 	FullName *string `json:"full_name,omitempty" jsonschema:"Replacement full name; empty string clears it"`
 	Article  *string `json:"article,omitempty" jsonschema:"Replacement article; empty string clears it"`
 	GroupID  *string `json:"group_id,omitempty" jsonschema:"Destination active product group GUID"`
+	VATRate  *string `json:"vat_rate,omitempty" jsonschema:"Default VAT rate code such as НДС22, НДС5, or БезНДС"`
 }
 
 type listGroupsInput struct {
@@ -375,15 +376,18 @@ type receiptLineChangeInput struct {
 }
 
 type updateReceiptInput struct {
-	ID                  string                   `json:"id" jsonschema:"Unposted supplier goods receipt GUID"`
+	ID                  string                   `json:"id" jsonschema:"Supplier goods receipt GUID; a posted one needs repost"`
 	Date                *string                  `json:"date,omitempty" jsonschema:"Replacement date YYYY-MM-DD"`
 	WarehouseID         *string                  `json:"warehouse_id,omitempty" jsonschema:"Replacement warehouse GUID"`
 	DepartmentID        *string                  `json:"department_id,omitempty" jsonschema:"Replacement department GUID"`
 	IncomingNumber      *string                  `json:"incoming_number,omitempty" jsonschema:"Replacement supplier document number"`
 	IncomingDate        *string                  `json:"incoming_date,omitempty" jsonschema:"Replacement supplier document date YYYY-MM-DD"`
 	Comment             *string                  `json:"comment,omitempty" jsonschema:"Replacement comment; empty string clears it"`
+	VATMode             *string                  `json:"vat_mode,omitempty" jsonschema:"inclusive or exclusive; recomputes VAT and totals of every line, keeping line amounts"`
+	VATRate             *string                  `json:"vat_rate,omitempty" jsonschema:"VAT rate code such as НДС22 or БезНДС applied to every line, keeping line amounts"`
 	ChangeLines         []receiptLineChangeInput `json:"change_lines,omitempty" jsonschema:"Changes to existing lines"`
 	AddLines            []receiptLineInput       `json:"add_lines,omitempty" jsonschema:"Lines to append"`
+	Repost              bool                     `json:"repost,omitempty" jsonschema:"For a posted receipt: unpost it, save the changes, and post it again"`
 	ExpectedDataVersion string                   `json:"expected_data_version,omitempty" jsonschema:"data_version from the preview; the save fails if the receipt changed since"`
 	Apply               bool                     `json:"apply,omitempty" jsonschema:"Save the changes; false only previews them"`
 }
@@ -769,7 +773,7 @@ func New(svc service.Service) *mcp.Server {
 		Name: operations.UpdateProduct.Tool, Description: operations.UpdateProduct.Description,
 		Annotations: &mcp.ToolAnnotations{IdempotentHint: true},
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, input updateProductInput) (*mcp.CallToolResult, service.ProductChange, error) {
-		change, err := svc.UpdateProduct(ctx, input.ID, service.ProductPatch{Name: input.Name, FullName: input.FullName, Article: input.Article, GroupID: input.GroupID})
+		change, err := svc.UpdateProduct(ctx, input.ID, service.ProductPatch{Name: input.Name, FullName: input.FullName, Article: input.Article, GroupID: input.GroupID, VATRate: input.VATRate})
 		return nil, change, err
 	})
 	mcp.AddTool(server, &mcp.Tool{
@@ -1043,7 +1047,8 @@ func New(svc service.Service) *mcp.Server {
 		write, err := svc.AmendReceipt(ctx, input.ID, service.ReceiptAmendment{
 			Date: input.Date, WarehouseID: input.WarehouseID, DepartmentID: input.DepartmentID,
 			IncomingNumber: input.IncomingNumber, IncomingDate: input.IncomingDate, Comment: input.Comment,
-			ChangeLines: changes, AddLines: receiptLines(input.AddLines), ExpectedDataVersion: input.ExpectedDataVersion, Apply: input.Apply,
+			VATMode: input.VATMode, VATRate: input.VATRate,
+			ChangeLines: changes, AddLines: receiptLines(input.AddLines), Repost: input.Repost, ExpectedDataVersion: input.ExpectedDataVersion, Apply: input.Apply,
 		})
 		return nil, write, err
 	})

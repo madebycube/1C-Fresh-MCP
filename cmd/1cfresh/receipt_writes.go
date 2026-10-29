@@ -125,7 +125,7 @@ func runReceiptUpdate(ctx context.Context, svc service.Service, args []string, o
 	flags.SetOutput(io.Discard)
 	var change service.ReceiptAmendment
 	var setLines, addLines repeated
-	text := map[string]**string{"date": &change.Date, "warehouse": &change.WarehouseID, "department": &change.DepartmentID, "incoming-number": &change.IncomingNumber, "incoming-date": &change.IncomingDate, "comment": &change.Comment}
+	text := map[string]**string{"date": &change.Date, "warehouse": &change.WarehouseID, "department": &change.DepartmentID, "incoming-number": &change.IncomingNumber, "incoming-date": &change.IncomingDate, "comment": &change.Comment, "vat": &change.VATMode, "vat-rate": &change.VATRate}
 	values := map[string]*string{}
 	for name := range text {
 		values[name] = flags.String(name, "", name)
@@ -133,6 +133,7 @@ func runReceiptUpdate(ctx context.Context, svc service.Service, args []string, o
 	flags.Var(&setLines, "set-line", "line change")
 	flags.Var(&addLines, "add-line", "new goods line")
 	flags.StringVar(&change.ExpectedDataVersion, "expect-version", "", "data version from the preview")
+	flags.BoolVar(&change.Repost, "repost", false, "unpost a posted receipt, amend it, and post it again")
 	flags.BoolVar(&change.Apply, "apply", false, "save the change")
 	asJSON := flags.Bool("json", false, "print JSON")
 	if err := parseFlags(flags, args); err != nil || flags.NArg() != 1 {

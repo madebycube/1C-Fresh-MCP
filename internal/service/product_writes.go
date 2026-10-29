@@ -16,15 +16,18 @@ type ProductPatch struct {
 	FullName *string `json:"full_name,omitempty"`
 	Article  *string `json:"article,omitempty"`
 	GroupID  *string `json:"group_id,omitempty"`
+	VATRate  *string `json:"vat_rate,omitempty"`
 }
 
 type ProductChange struct {
-	ID       string `json:"id"`
-	Name     string `json:"name"`
-	FullName string `json:"full_name"`
-	Article  string `json:"article"`
-	GroupID  string `json:"group_id"`
-	Applied  bool   `json:"applied"`
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	FullName  string `json:"full_name"`
+	Article   string `json:"article"`
+	GroupID   string `json:"group_id"`
+	VATRate   string `json:"vat_rate,omitempty"`
+	VATRateID string `json:"vat_rate_id,omitempty"`
+	Applied   bool   `json:"applied"`
 }
 
 type editableProduct struct {
@@ -34,6 +37,7 @@ type editableProduct struct {
 	FullName    string `json:"НаименованиеПолное"`
 	Article     string `json:"Артикул"`
 	GroupID     string `json:"Parent_Key"`
+	VATRateID   string `json:"СтавкаНДС_Key"`
 	IsFolder    *bool  `json:"IsFolder"`
 	Deleted     *bool  `json:"DeletionMark"`
 	DataVersion string `json:"DataVersion"`
@@ -43,7 +47,7 @@ func (s Service) UpdateProduct(ctx context.Context, id string, patch ProductPatc
 	if !guidPattern.MatchString(id) || strings.EqualFold(id, emptyGUID) {
 		return ProductChange{}, errors.New("product ID must be a nonzero GUID")
 	}
-	if patch.Name == nil && patch.FullName == nil && patch.Article == nil && patch.GroupID == nil {
+	if patch.Name == nil && patch.FullName == nil && patch.Article == nil && patch.GroupID == nil && patch.VATRate == nil {
 		return ProductChange{}, errors.New("provide at least one product field to update")
 	}
 	fields := make(map[string]string)
@@ -79,7 +83,22 @@ func (s Service) UpdateProduct(ctx context.Context, id string, patch ProductPatc
 		}
 		fields["Parent_Key"] = strings.ToLower(*patch.GroupID)
 	}
-	params := url.Values{"$format": {"json"}, "$select": {"Ref_Key,Description,НаименованиеПолное,Артикул,Parent_Key,IsFolder,DeletionMark,DataVersion"}}
+	var rate vatRate
+	selectFields := "Ref_Key,Description,НаименованиеПолное,Артикул,Parent_Key,IsFolder,DeletionMark,DataVersion"
+	if patch.VATRate != nil {
+		rates, err := s.vatRates(ctx)
+		if err != nil {
+			return ProductChange{}, err
+		}
+		var ok bool
+		if rate, ok = rates[strings.TrimSpace(*patch.VATRate)]; !ok {
+			return ProductChange{}, errors.New("VAT rate must be one of the 1C rate codes, for example НДС22, НДС5 or БезНДС")
+		}
+		fields["СтавкаНДС_Key"] = rate.ID
+		// The rate is read only when asked for, so other updates do not depend on this field being published.
+		selectFields += ",СтавкаНДС_Key"
+	}
+	params := url.Values{"$format": {"json"}, "$select": {selectFields}}
 	data, err := s.OData.Get(ctx, nomenclatureResource(id), params, 1<<20)
 	if err != nil {
 		return ProductChange{}, err
@@ -114,6 +133,12 @@ func (s Service) UpdateProduct(ctx context.Context, id string, patch ProductPatc
 		change.GroupID = value
 		if strings.EqualFold(value, current.GroupID) {
 			delete(fields, "Parent_Key")
+		}
+	}
+	if value, ok := fields["СтавкаНДС_Key"]; ok {
+		change.VATRate, change.VATRateID = rate.Name, value
+		if strings.EqualFold(value, current.VATRateID) {
+			delete(fields, "СтавкаНДС_Key")
 		}
 	}
 	if len(fields) == 0 {

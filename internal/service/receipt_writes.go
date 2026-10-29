@@ -241,20 +241,24 @@ type ReceiptAmendment struct {
 	IncomingNumber      *string             `json:"incoming_number,omitempty"`
 	IncomingDate        *string             `json:"incoming_date,omitempty"`
 	Comment             *string             `json:"comment,omitempty"`
+	VATMode             *string             `json:"vat_mode,omitempty"`
+	VATRate             *string             `json:"vat_rate,omitempty"`
 	ChangeLines         []ReceiptLineChange `json:"change_lines,omitempty"`
 	AddLines            []ReceiptLineInput  `json:"add_lines,omitempty"`
+	Repost              bool                `json:"repost,omitempty"`
 	ExpectedDataVersion string              `json:"expected_data_version,omitempty"`
 	Apply               bool                `json:"apply,omitempty"`
 }
 
 // AmendReceipt previews and, with Apply, saves changes to an unposted receipt, keeping every other field and line as read.
+// With Repost a posted receipt is unposted, changed and posted again.
 func (s Service) AmendReceipt(ctx context.Context, id string, change ReceiptAmendment) (ReceiptWrite, error) {
 	current, err := s.readEditableReceipt(ctx, id)
 	if err != nil {
 		return ReceiptWrite{}, err
 	}
-	if current.Posted {
-		return ReceiptWrite{}, errors.New("receipt is posted; unpost it explicitly first, amend, then post it again")
+	if current.Posted && !change.Repost {
+		return ReceiptWrite{}, errors.New("receipt is posted; pass repost to unpost, amend and post it again, or unpost it explicitly first")
 	}
 	if change.ExpectedDataVersion != "" && change.ExpectedDataVersion != current.DataVersion {
 		return ReceiptWrite{}, errors.New("receipt changed since the preview; preview again")
@@ -273,6 +277,7 @@ func (s Service) AmendReceipt(ctx context.Context, id string, change ReceiptAmen
 	setText(&draft.IncomingNumber, change.IncomingNumber, "incoming number")
 	setText(&draft.IncomingDate, change.IncomingDate, "incoming date")
 	setText(&draft.Comment, change.Comment, "comment")
+	setText(&draft.VATMode, change.VATMode, "VAT mode")
 	result, err := s.validateReceiptHeader(ctx, draft)
 	if err != nil {
 		return ReceiptWrite{}, err
@@ -289,6 +294,25 @@ func (s Service) AmendReceipt(ctx context.Context, id string, change ReceiptAmen
 		}
 		byNumber[line.LineNumber] = index
 		result.Lines = append(result.Lines, preview)
+	}
+	// A new VAT mode or a rate for every line keeps each line's stored amount and recomputes its VAT and total.
+	modeChanged := result.VATMode != current.draft().VATMode
+	for index := range result.Lines {
+		line := &result.Lines[index]
+		rate := line.VATRate
+		if change.VATRate != nil {
+			rate = *change.VATRate
+		}
+		if !modeChanged && rate == line.VATRate {
+			continue
+		}
+		input := ReceiptLineInput{ProductID: line.ProductID, CharacteristicID: line.CharacteristicID, Quantity: string(line.Quantity), Price: string(line.Price), VATRate: rate, Amount: string(line.Amount)}
+		updated, err := computeReceiptLine(input, line.LineNumber, lineUnit{ID: line.UnitID, Type: line.UnitType}, result.VATMode, rates)
+		if err != nil {
+			return ReceiptWrite{}, fmt.Errorf("line %d: %w", line.LineNumber, err)
+		}
+		*line = updated
+		changes = append(changes, fmt.Sprintf("line %d VAT", line.LineNumber))
 	}
 	before := ReceiptTotals{Amount: current.Amount, VAT: current.VAT, Lines: len(current.Lines)}
 	seen := make(map[int]bool)
@@ -340,11 +364,18 @@ func (s Service) AmendReceipt(ctx context.Context, id string, change ReceiptAmen
 		changes = append(changes, fmt.Sprintf("new line %d", next))
 	}
 	finishReceiptTotals(&result)
-	if current.Taxation != "" {
-		// An amendment keeps the receipt's taxation; only a new draft derives it from its rates.
+	if current.Taxation != "" && change.VATRate == nil {
+		// An amendment keeps the receipt's taxation unless every line gets a new rate; a new draft derives it from its rates.
 		result.Taxation = current.Taxation
 	}
-	result.ID, result.DataVersion, result.Before, result.Changes = current.ID, current.DataVersion, &before, changes
+	result.ID, result.DataVersion, result.Before, result.Changes, result.Posted = current.ID, current.DataVersion, &before, changes, current.Posted
+	if current.Posted {
+		result.Impact = []string{
+			"unposts the receipt, removing its stock and supplier-settlement movements, saves the changes, then posts it again",
+			fmt.Sprintf("after posting: %d lines in warehouse %s and a supplier debt of %s on contract %s; 1C may offset open advances", len(result.Lines), result.WarehouseID, result.Amount, result.ContractID),
+			"if a step fails the receipt is left unposted; read it before retrying",
+		}
+	}
 	duplicates, err := s.receiptDuplicates(ctx, result, current.ID)
 	if err != nil {
 		return ReceiptWrite{}, err
@@ -371,7 +402,28 @@ func (s Service) AmendReceipt(ctx context.Context, id string, change ReceiptAmen
 	if err != nil {
 		return ReceiptWrite{}, errors.New("could not encode receipt")
 	}
-	if _, err := writer.Write(ctx, http.MethodPatch, receiptResource(current.ID), body, current.DataVersion); err != nil {
+	version := current.DataVersion
+	var actor documentActor
+	if current.Posted {
+		if actor, ok = s.OData.(documentActor); !ok {
+			return ReceiptWrite{}, errors.New("OData client does not support document actions")
+		}
+		if _, err := actor.Action(ctx, receiptResource(current.ID), "Unpost"); err != nil {
+			return ReceiptWrite{}, fmt.Errorf("1C rejected unpost; nothing was changed or the state is uncertain, so read the receipt before retrying: %w", err)
+		}
+		unposted, err := s.readEditableReceipt(ctx, current.ID)
+		if err != nil {
+			return ReceiptWrite{}, fmt.Errorf("receipt was unposted but could not be read back; no changes were saved: %w", err)
+		}
+		if unposted.Posted || !decimalEqual(unposted.Amount, current.Amount) || len(unposted.Lines) != len(current.Lines) {
+			return ReceiptWrite{}, errors.New("receipt did not unpost cleanly; no changes were saved, check it in 1C")
+		}
+		version = unposted.DataVersion
+	}
+	if _, err := writer.Write(ctx, http.MethodPatch, receiptResource(current.ID), body, version); err != nil {
+		if current.Posted {
+			return ReceiptWrite{}, fmt.Errorf("receipt was unposted but the changes were not saved; it is left unposted: %w", err)
+		}
 		return ReceiptWrite{}, err
 	}
 	saved, err := s.readEditableReceipt(ctx, current.ID)
@@ -379,7 +431,18 @@ func (s Service) AmendReceipt(ctx context.Context, id string, change ReceiptAmen
 		return ReceiptWrite{}, fmt.Errorf("receipt was updated but could not be read back: %w", err)
 	}
 	if err := verifyReceiptSaved(saved, result); err != nil {
-		return ReceiptWrite{}, fmt.Errorf("receipt was updated but differs from the request: %w", err)
+		return ReceiptWrite{}, fmt.Errorf("receipt was updated but differs from the request; it is left unposted: %w", err)
+	}
+	if current.Posted {
+		if _, err := actor.Action(ctx, receiptResource(current.ID), "Post"); err != nil {
+			return ReceiptWrite{}, fmt.Errorf("changes were saved but 1C rejected posting; the receipt is left unposted: %w", err)
+		}
+		if saved, err = s.readEditableReceipt(ctx, current.ID); err != nil {
+			return ReceiptWrite{}, fmt.Errorf("changes were saved and posting was sent, but the receipt could not be read back: %w", err)
+		}
+		if !saved.Posted {
+			return ReceiptWrite{}, errors.New("changes were saved but posting did not take effect; the receipt is left unposted")
+		}
 	}
 	result.Applied, result.DataVersion, result.Posted = true, saved.DataVersion, saved.Posted
 	return result, nil
