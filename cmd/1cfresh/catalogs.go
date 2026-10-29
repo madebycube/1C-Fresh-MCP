@@ -188,3 +188,68 @@ func runProductUnitList(ctx context.Context, svc service.Service, args []string,
 	}
 	return writer.Flush()
 }
+
+func runProductUnitCreate(ctx context.Context, svc service.Service, args []string, out io.Writer) error {
+	spec := operations.CreateProductUnit
+	flags := flag.NewFlagSet(spec.Command, flag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+	var input service.ProductUnitCreate
+	flags.StringVar(&input.UnitTypeID, "unit-type", "", "classifier unit GUID")
+	flags.StringVar(&input.Factor, "factor", "", "base units in one of this unit")
+	flags.StringVar(&input.Name, "name", "", "unit name")
+	asJSON := flags.Bool("json", false, "print JSON")
+	if err := parseFlags(flags, args); err != nil || flags.NArg() != 1 || input.UnitTypeID == "" || input.Factor == "" {
+		return errors.New("usage: " + spec.Usage)
+	}
+	input.ProductID = flags.Arg(0)
+	created, err := svc.CreateProductUnit(ctx, input)
+	if err != nil {
+		return err
+	}
+	if *asJSON {
+		return json.NewEncoder(out).Encode(created)
+	}
+	_, err = fmt.Fprintf(out, "Created unit %s = %s base units (%s)\n", flat(created.Name), created.Factor, created.ID)
+	return err
+}
+
+func runProductUnitUpdate(ctx context.Context, svc service.Service, args []string, out io.Writer) error {
+	spec := operations.UpdateProductUnit
+	flags := flag.NewFlagSet(spec.Command, flag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+	name := flags.String("name", "", "replacement unit name")
+	factor := flags.String("factor", "", "replacement factor")
+	asJSON := flags.Bool("json", false, "print JSON")
+	if err := parseFlags(flags, args); err != nil || flags.NArg() != 1 {
+		return errors.New("usage: " + spec.Usage)
+	}
+	var patch service.ProductUnitPatch
+	flags.Visit(func(option *flag.Flag) {
+		switch option.Name {
+		case "name":
+			patch.Name = name
+		case "factor":
+			patch.Factor = factor
+		}
+	})
+	change, err := svc.UpdateProductUnit(ctx, flags.Arg(0), patch)
+	if err != nil {
+		return err
+	}
+	if *asJSON {
+		return json.NewEncoder(out).Encode(change)
+	}
+	if !change.Applied {
+		_, err = fmt.Fprintf(out, "Unit already has those values (%s)\n", change.ID)
+		return err
+	}
+	if _, err = fmt.Fprintf(out, "Updated unit %s = %s base units (%s)\n", flat(change.Name), change.Factor, change.ID); err != nil {
+		return err
+	}
+	for _, warning := range change.Warnings {
+		if _, err = fmt.Fprintln(out, "Note: "+warning); err != nil {
+			return err
+		}
+	}
+	return nil
+}
