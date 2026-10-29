@@ -169,6 +169,10 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		return writer.Flush()
 	case operations.UpdateProduct.Command:
 		return runProductUpdate(ctx, svc, commandArgs, out)
+	case operations.CreateProductUnit.Command:
+		return runProductUnitCreate(ctx, svc, commandArgs, out)
+	case operations.UpdateProductUnit.Command:
+		return runProductUnitUpdate(ctx, svc, commandArgs, out)
 	case operations.ListOrders.Command:
 		return runOrderList(ctx, svc, commandArgs, out)
 	case operations.GetOrder.Command:

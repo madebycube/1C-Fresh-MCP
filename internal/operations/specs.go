@@ -582,6 +582,22 @@ var ListProductUnits = Spec{
 	Example:     "1c list product-units PRODUCT_GUID",
 }
 
+var CreateProductUnit = Spec{
+	Command:     "create product-unit",
+	Tool:        "create_product_unit",
+	Description: "Add a packaging unit to a product card with its factor to the base unit.",
+	Usage:       "1c create product-unit PRODUCT_GUID --unit-type GUID --factor NUMBER [--name TEXT] [--json]",
+	Example:     "1c create product-unit PRODUCT_GUID --unit-type UNIT_TYPE_GUID --factor 12 --name кор",
+}
+
+var UpdateProductUnit = Spec{
+	Command:     "update product-unit",
+	Tool:        "update_product_unit",
+	Description: "Rename a product's own unit or change its factor to the base unit.",
+	Usage:       "1c update product-unit UNIT_GUID [--name TEXT] [--factor NUMBER] [--json]",
+	Example:     "1c update product-unit UNIT_GUID --factor 10",
+}
+
 var PreviewReceipts = Spec{
 	Command:     "preview receipts",
 	Tool:        "preview_supplier_receipts",
@@ -609,7 +625,7 @@ var SetPrice = Spec{
 var Topics = []Topic{
 	{Name: "setup", Description: "Connection and local MCP server", Commands: []Spec{Check}},
 	{Name: "company", Description: "Organizations, departments, and contracts", Commands: []Spec{ListOrganizations, ListDepartments, ListContracts}},
-	{Name: "products", Description: "Products, groups, categories, and characteristics", Commands: []Spec{ListProducts, GetProduct, SearchProducts, CreateProduct, UpdateProduct, ListGroups, CreateGroup, UpdateGroup, ListProductCategories, ListProductCharacteristics, ListUnitTypes, ListProductUnits}},
+	{Name: "products", Description: "Products, groups, categories, and characteristics", Commands: []Spec{ListProducts, GetProduct, SearchProducts, CreateProduct, UpdateProduct, ListGroups, CreateGroup, UpdateGroup, ListProductCategories, ListProductCharacteristics, ListUnitTypes, ListProductUnits, CreateProductUnit, UpdateProductUnit}},
 	{Name: "prices", Description: "Price types, currencies, quotes, and source documents", Commands: []Spec{ListPriceTypes, ListCurrencies, GetPrice, ListPrices, ListPriceDocuments, GetPriceDocument, SetPrice}},
 	{Name: "inventory", Description: "Warehouses, stock, and warehouse documents", Commands: []Spec{ListWarehouses, GetStock, ListWarehouseDocuments, GetWarehouseDocument, CreateTransfer}},
 	{Name: "partners", Description: "Customer and supplier records and folders", Commands: []Spec{ListCounterpartyGroups, CreateCounterpartyGroup, UpdateCounterpartyGroup, ListCustomers, SearchCustomers, GetCustomer, CreateCustomer, UpdateCustomer, ListSuppliers, SearchSuppliers, GetSupplier, CreateSupplier, UpdateSupplier}},

@@ -150,6 +150,19 @@ type listProductUnitsInput struct {
 	ProductID string `json:"product_id" jsonschema:"Product GUID"`
 }
 
+type createProductUnitInput struct {
+	ProductID  string `json:"product_id" jsonschema:"Product GUID"`
+	UnitTypeID string `json:"unit_type_id" jsonschema:"Classifier unit GUID from list_unit_types"`
+	Factor     string `json:"factor" jsonschema:"How many base units one of this unit holds, for example 12"`
+	Name       string `json:"name,omitempty" jsonschema:"Unit name; defaults to the classifier name"`
+}
+
+type updateProductUnitInput struct {
+	ID     string  `json:"id" jsonschema:"Product's own unit GUID from list_product_units"`
+	Name   *string `json:"name,omitempty" jsonschema:"Replacement unit name"`
+	Factor *string `json:"factor,omitempty" jsonschema:"Replacement factor to the base unit"`
+}
+
 type listCurrenciesInput struct{}
 
 type listCurrenciesOutput struct {
@@ -665,6 +678,20 @@ func New(svc service.Service) *mcp.Server {
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, input listProductUnitsInput) (*mcp.CallToolResult, service.ProductUnits, error) {
 		units, err := svc.ListProductUnits(ctx, input.ProductID)
 		return nil, units, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.CreateProductUnit.Tool, Description: operations.CreateProductUnit.Description,
+		Annotations: &mcp.ToolAnnotations{DestructiveHint: &additive},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input createProductUnitInput) (*mcp.CallToolResult, service.ProductUnitChange, error) {
+		created, err := svc.CreateProductUnit(ctx, service.ProductUnitCreate(input))
+		return nil, created, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.UpdateProductUnit.Tool, Description: operations.UpdateProductUnit.Description,
+		Annotations: &mcp.ToolAnnotations{IdempotentHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input updateProductUnitInput) (*mcp.CallToolResult, service.ProductUnitChange, error) {
+		change, err := svc.UpdateProductUnit(ctx, input.ID, service.ProductUnitPatch{Name: input.Name, Factor: input.Factor})
+		return nil, change, err
 	})
 	mcp.AddTool(server, &mcp.Tool{
 		Name: operations.ListCurrencies.Tool, Description: operations.ListCurrencies.Description,
