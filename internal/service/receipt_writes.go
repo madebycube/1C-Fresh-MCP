@@ -241,6 +241,8 @@ type ReceiptAmendment struct {
 	IncomingNumber      *string             `json:"incoming_number,omitempty"`
 	IncomingDate        *string             `json:"incoming_date,omitempty"`
 	Comment             *string             `json:"comment,omitempty"`
+	VATMode             *string             `json:"vat_mode,omitempty"`
+	VATRate             *string             `json:"vat_rate,omitempty"`
 	ChangeLines         []ReceiptLineChange `json:"change_lines,omitempty"`
 	AddLines            []ReceiptLineInput  `json:"add_lines,omitempty"`
 	ExpectedDataVersion string              `json:"expected_data_version,omitempty"`
@@ -273,6 +275,7 @@ func (s Service) AmendReceipt(ctx context.Context, id string, change ReceiptAmen
 	setText(&draft.IncomingNumber, change.IncomingNumber, "incoming number")
 	setText(&draft.IncomingDate, change.IncomingDate, "incoming date")
 	setText(&draft.Comment, change.Comment, "comment")
+	setText(&draft.VATMode, change.VATMode, "VAT mode")
 	result, err := s.validateReceiptHeader(ctx, draft)
 	if err != nil {
 		return ReceiptWrite{}, err
@@ -289,6 +292,25 @@ func (s Service) AmendReceipt(ctx context.Context, id string, change ReceiptAmen
 		}
 		byNumber[line.LineNumber] = index
 		result.Lines = append(result.Lines, preview)
+	}
+	// A new VAT mode or a rate for every line keeps each line's stored amount and recomputes its VAT and total.
+	modeChanged := result.VATMode != current.draft().VATMode
+	for index := range result.Lines {
+		line := &result.Lines[index]
+		rate := line.VATRate
+		if change.VATRate != nil {
+			rate = *change.VATRate
+		}
+		if !modeChanged && rate == line.VATRate {
+			continue
+		}
+		input := ReceiptLineInput{ProductID: line.ProductID, CharacteristicID: line.CharacteristicID, Quantity: string(line.Quantity), Price: string(line.Price), VATRate: rate, Amount: string(line.Amount)}
+		updated, err := computeReceiptLine(input, line.LineNumber, lineUnit{ID: line.UnitID, Type: line.UnitType}, result.VATMode, rates)
+		if err != nil {
+			return ReceiptWrite{}, fmt.Errorf("line %d: %w", line.LineNumber, err)
+		}
+		*line = updated
+		changes = append(changes, fmt.Sprintf("line %d VAT", line.LineNumber))
 	}
 	before := ReceiptTotals{Amount: current.Amount, VAT: current.VAT, Lines: len(current.Lines)}
 	seen := make(map[int]bool)
@@ -340,8 +362,8 @@ func (s Service) AmendReceipt(ctx context.Context, id string, change ReceiptAmen
 		changes = append(changes, fmt.Sprintf("new line %d", next))
 	}
 	finishReceiptTotals(&result)
-	if current.Taxation != "" {
-		// An amendment keeps the receipt's taxation; only a new draft derives it from its rates.
+	if current.Taxation != "" && change.VATRate == nil {
+		// An amendment keeps the receipt's taxation unless every line gets a new rate; a new draft derives it from its rates.
 		result.Taxation = current.Taxation
 	}
 	result.ID, result.DataVersion, result.Before, result.Changes = current.ID, current.DataVersion, &before, changes

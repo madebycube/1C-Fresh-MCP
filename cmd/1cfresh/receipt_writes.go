@@ -125,7 +125,7 @@ func runReceiptUpdate(ctx context.Context, svc service.Service, args []string, o
 	flags.SetOutput(io.Discard)
 	var change service.ReceiptAmendment
 	var setLines, addLines repeated
-	text := map[string]**string{"date": &change.Date, "warehouse": &change.WarehouseID, "department": &change.DepartmentID, "incoming-number": &change.IncomingNumber, "incoming-date": &change.IncomingDate, "comment": &change.Comment}
+	text := map[string]**string{"date": &change.Date, "warehouse": &change.WarehouseID, "department": &change.DepartmentID, "incoming-number": &change.IncomingNumber, "incoming-date": &change.IncomingDate, "comment": &change.Comment, "vat": &change.VATMode, "vat-rate": &change.VATRate}
 	values := map[string]*string{}
 	for name := range text {
 		values[name] = flags.String(name, "", name)

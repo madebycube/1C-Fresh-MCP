@@ -211,3 +211,85 @@ func TestReceiptLifecycleCreateAmendPost(t *testing.T) {
 		t.Fatal("receipt without data version unposted")
 	}
 }
+
+func TestAmendReceiptChangesVATModeAndRatesKeepingAmounts(t *testing.T) {
+	fake := receiptFixture()
+	svc := Service{OData: fake}
+	input := receiptDraftInput()
+	input.Apply = true
+	created, err := svc.CreateReceiptDraft(context.Background(), input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	exclusive := receiptVATExcluded
+	preview, err := svc.AmendReceipt(context.Background(), created.ID, ReceiptAmendment{VATMode: &exclusive})
+	if err != nil || preview.Applied || preview.VATMode != receiptVATExcluded {
+		t.Fatalf("mode preview: %+v, %v", preview, err)
+	}
+	// 100.05 × 22 / 100 = 22.011 → 22.01 on top of the unchanged amount.
+	if first := preview.Lines[0]; first.Amount != "100.05" || first.VAT != "22.01" || first.Total != "122.06" || preview.Amount != "123.06" || len(fake.writes) != 1 {
+		t.Fatalf("mode lines: %+v writes=%v", preview, fake.writes)
+	}
+	rate := "НДС22"
+	preview, err = svc.AmendReceipt(context.Background(), created.ID, ReceiptAmendment{VATRate: &rate})
+	// Only the untaxed line changes: 1 × 22 / 122 = 0.1803… → 0.18.
+	if err != nil || preview.Lines[0].VAT != "18.04" || preview.Lines[1].VAT != "0.18" || preview.Lines[1].VATRateID != salesID(70) || preview.Amount != "101.05" || preview.VAT != "18.22" || len(preview.Changes) != 1 || preview.Taxation != receiptTaxed {
+		t.Fatalf("rate preview: %+v, %v", preview, err)
+	}
+	// НДС10 has two active copies in 1C, so it is ambiguous and refused.
+	for _, bad := range []string{"НДС99", "НДС10", ""} {
+		if _, err := svc.AmendReceipt(context.Background(), created.ID, ReceiptAmendment{VATRate: &bad, Apply: true}); err == nil || len(fake.writes) != 1 {
+			t.Fatalf("accepted VAT rate %q: %v", bad, err)
+		}
+	}
+	wrongMode := "gross"
+	if _, err := svc.AmendReceipt(context.Background(), created.ID, ReceiptAmendment{VATMode: &wrongMode, Apply: true}); err == nil || len(fake.writes) != 1 {
+		t.Fatalf("accepted VAT mode %q: %v", wrongMode, err)
+	}
+	amended, err := svc.AmendReceipt(context.Background(), created.ID, ReceiptAmendment{VATMode: &exclusive, ExpectedDataVersion: "v1", Apply: true})
+	if err != nil || !amended.Applied {
+		t.Fatalf("mode apply: %+v, %v", amended, err)
+	}
+	saved := fake.rows[receiptResourceName][1]
+	if saved["СуммаВключаетНДС"] != false || saved["СуммаДокумента"] != json.Number("123.06") || saved["Запасы"].([]any)[0].(map[string]any)["СуммаНДС"] != json.Number("22.01") {
+		t.Fatalf("saved: %+v", saved)
+	}
+}
+
+type productVATWriter struct {
+	*traceReader
+	body    map[string]any
+	ifMatch string
+	writes  int
+}
+
+func (w *productVATWriter) Write(_ context.Context, method, resource string, body []byte, ifMatch string) ([]byte, error) {
+	w.writes++
+	w.ifMatch = ifMatch
+	if method != http.MethodPatch || resource != nomenclatureResource(salesID(64)) {
+		return nil, errors.New("unexpected write")
+	}
+	return nil, json.Unmarshal(body, &w.body)
+}
+
+func TestUpdateProductSetsVATRateByCode(t *testing.T) {
+	fake := &productVATWriter{traceReader: receiptFixture().traceReader}
+	product := fake.rows["Catalog_Номенклатура"][0]
+	product["DataVersion"], product["СтавкаНДС_Key"] = "p1", salesID(72)
+	svc := Service{OData: fake}
+	rate := "НДС22"
+	change, err := svc.UpdateProduct(context.Background(), salesID(64), ProductPatch{VATRate: &rate})
+	if err != nil || !change.Applied || change.VATRate != "НДС22" || change.VATRateID != salesID(70) || fake.ifMatch != "p1" || len(fake.body) != 1 || fake.body["СтавкаНДС_Key"] != salesID(70) {
+		t.Fatalf("change=%+v body=%+v err=%v", change, fake.body, err)
+	}
+	same := "БезНДС"
+	if change, err := svc.UpdateProduct(context.Background(), salesID(64), ProductPatch{VATRate: &same}); err != nil || change.Applied || fake.writes != 1 {
+		t.Fatalf("unchanged rate wrote: %+v %v", change, err)
+	}
+	// НДС10 has two active copies in 1C, so it is ambiguous and refused.
+	for _, bad := range []string{"НДС10", "22%", "НДС22_122"} {
+		if _, err := svc.UpdateProduct(context.Background(), salesID(64), ProductPatch{VATRate: &bad}); err == nil || fake.writes != 1 {
+			t.Fatalf("accepted VAT rate %q: %v", bad, err)
+		}
+	}
+}

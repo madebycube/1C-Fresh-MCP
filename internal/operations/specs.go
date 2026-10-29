@@ -193,8 +193,8 @@ var CreateProduct = Spec{
 var UpdateProduct = Spec{
 	Command:     "update product",
 	Tool:        "update_product",
-	Description: "Edit a product name, full name, article, or group by 1C ID.",
-	Usage:       "1c update product GUID [--name TEXT] [--full-name TEXT] [--article TEXT] [--group GUID] [--json]",
+	Description: "Edit a product name, full name, article, group, or default VAT rate by 1C ID.",
+	Usage:       "1c update product GUID [--name TEXT] [--full-name TEXT] [--article TEXT] [--group GUID] [--vat-rate CODE] [--json]",
 	Example:     "1c update product PRODUCT_GUID --group GROUP_GUID",
 }
 
@@ -377,8 +377,8 @@ var CreateReceipt = Spec{
 var UpdateReceipt = Spec{
 	Command:     "update receipt",
 	Tool:        "update_supplier_receipt",
-	Description: "Preview or save changes to an unposted supplier goods receipt, keeping other fields and lines.",
-	Usage:       "1c update receipt GUID [--date YYYY-MM-DD] [--warehouse GUID] [--department GUID] [--incoming-number TEXT] [--incoming-date YYYY-MM-DD] [--comment TEXT] [--set-line N:quantity=Q,price=P,vat=CODE,amount=A,vat-amount=V]... [--add-line PRODUCT_GUID:QUANTITY:PRICE:VAT_CODE[:CHARACTERISTIC_GUID][:unit=GUID][:amount=A][:vat=V]]... [--expect-version DATA_VERSION] [--apply] [--json]",
+	Description: "Preview or save changes to an unposted supplier goods receipt, including VAT mode and rates, keeping other fields and lines.",
+	Usage:       "1c update receipt GUID [--date YYYY-MM-DD] [--warehouse GUID] [--department GUID] [--incoming-number TEXT] [--incoming-date YYYY-MM-DD] [--comment TEXT] [--vat inclusive|exclusive] [--vat-rate CODE] [--set-line N:quantity=Q,price=P,vat=CODE,amount=A,vat-amount=V]... [--add-line PRODUCT_GUID:QUANTITY:PRICE:VAT_CODE[:CHARACTERISTIC_GUID][:unit=GUID][:amount=A][:vat=V]]... [--expect-version DATA_VERSION] [--apply] [--json]",
 	Example:     "1c update receipt RECEIPT_GUID --set-line 1:quantity=4 --apply",
 }
 
