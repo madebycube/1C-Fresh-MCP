@@ -376,7 +376,7 @@ type receiptLineChangeInput struct {
 }
 
 type updateReceiptInput struct {
-	ID                  string                   `json:"id" jsonschema:"Unposted supplier goods receipt GUID"`
+	ID                  string                   `json:"id" jsonschema:"Supplier goods receipt GUID; a posted one needs repost"`
 	Date                *string                  `json:"date,omitempty" jsonschema:"Replacement date YYYY-MM-DD"`
 	WarehouseID         *string                  `json:"warehouse_id,omitempty" jsonschema:"Replacement warehouse GUID"`
 	DepartmentID        *string                  `json:"department_id,omitempty" jsonschema:"Replacement department GUID"`
@@ -387,6 +387,7 @@ type updateReceiptInput struct {
 	VATRate             *string                  `json:"vat_rate,omitempty" jsonschema:"VAT rate code such as НДС22 or БезНДС applied to every line, keeping line amounts"`
 	ChangeLines         []receiptLineChangeInput `json:"change_lines,omitempty" jsonschema:"Changes to existing lines"`
 	AddLines            []receiptLineInput       `json:"add_lines,omitempty" jsonschema:"Lines to append"`
+	Repost              bool                     `json:"repost,omitempty" jsonschema:"For a posted receipt: unpost it, save the changes, and post it again"`
 	ExpectedDataVersion string                   `json:"expected_data_version,omitempty" jsonschema:"data_version from the preview; the save fails if the receipt changed since"`
 	Apply               bool                     `json:"apply,omitempty" jsonschema:"Save the changes; false only previews them"`
 }
@@ -1047,7 +1048,7 @@ func New(svc service.Service) *mcp.Server {
 			Date: input.Date, WarehouseID: input.WarehouseID, DepartmentID: input.DepartmentID,
 			IncomingNumber: input.IncomingNumber, IncomingDate: input.IncomingDate, Comment: input.Comment,
 			VATMode: input.VATMode, VATRate: input.VATRate,
-			ChangeLines: changes, AddLines: receiptLines(input.AddLines), ExpectedDataVersion: input.ExpectedDataVersion, Apply: input.Apply,
+			ChangeLines: changes, AddLines: receiptLines(input.AddLines), Repost: input.Repost, ExpectedDataVersion: input.ExpectedDataVersion, Apply: input.Apply,
 		})
 		return nil, write, err
 	})

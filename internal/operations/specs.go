@@ -377,8 +377,8 @@ var CreateReceipt = Spec{
 var UpdateReceipt = Spec{
 	Command:     "update receipt",
 	Tool:        "update_supplier_receipt",
-	Description: "Preview or save changes to an unposted supplier goods receipt, including VAT mode and rates, keeping other fields and lines.",
-	Usage:       "1c update receipt GUID [--date YYYY-MM-DD] [--warehouse GUID] [--department GUID] [--incoming-number TEXT] [--incoming-date YYYY-MM-DD] [--comment TEXT] [--vat inclusive|exclusive] [--vat-rate CODE] [--set-line N:quantity=Q,price=P,vat=CODE,amount=A,vat-amount=V]... [--add-line PRODUCT_GUID:QUANTITY:PRICE:VAT_CODE[:CHARACTERISTIC_GUID][:unit=GUID][:amount=A][:vat=V]]... [--expect-version DATA_VERSION] [--apply] [--json]",
+	Description: "Preview or save changes to a supplier goods receipt, including VAT mode and rates, keeping other fields and lines; a posted receipt needs repost.",
+	Usage:       "1c update receipt GUID [--date YYYY-MM-DD] [--warehouse GUID] [--department GUID] [--incoming-number TEXT] [--incoming-date YYYY-MM-DD] [--comment TEXT] [--vat inclusive|exclusive] [--vat-rate CODE] [--set-line N:quantity=Q,price=P,vat=CODE,amount=A,vat-amount=V]... [--add-line PRODUCT_GUID:QUANTITY:PRICE:VAT_CODE[:CHARACTERISTIC_GUID][:unit=GUID][:amount=A][:vat=V]]... [--repost] [--expect-version DATA_VERSION] [--apply] [--json]",
 	Example:     "1c update receipt RECEIPT_GUID --set-line 1:quantity=4 --apply",
 }
 

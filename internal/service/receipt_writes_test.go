@@ -12,9 +12,10 @@ import (
 // receiptWriter stores written receipts so reads after a write see what 1C would return.
 type receiptWriter struct {
 	*traceReader
-	writes   []string
-	actions  []string
-	failPost bool
+	writes     []string
+	actions    []string
+	failPost   bool
+	failAction string
 }
 
 func (w *receiptWriter) Write(_ context.Context, method, resource string, body []byte, ifMatch string) ([]byte, error) {
@@ -49,6 +50,9 @@ func (w *receiptWriter) Write(_ context.Context, method, resource string, body [
 
 func (w *receiptWriter) Action(_ context.Context, resource, action string) ([]byte, error) {
 	w.actions = append(w.actions, action)
+	if action == w.failAction {
+		return nil, errors.New("1C refused the action")
+	}
 	for _, row := range w.rows[receiptResourceName] {
 		if strings.Contains(resource, row["Ref_Key"].(string)) {
 			row["Posted"] = action == "Post"
@@ -291,5 +295,52 @@ func TestUpdateProductSetsVATRateByCode(t *testing.T) {
 		if _, err := svc.UpdateProduct(context.Background(), salesID(64), ProductPatch{VATRate: &bad}); err == nil || fake.writes != 1 {
 			t.Fatalf("accepted VAT rate %q: %v", bad, err)
 		}
+	}
+}
+
+func TestAmendReceiptRepostsPostedReceipt(t *testing.T) {
+	fake := receiptFixture()
+	svc := Service{OData: fake}
+	input := receiptDraftInput()
+	input.Apply = true
+	created, err := svc.CreateReceiptDraft(context.Background(), input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.SetReceiptPosting(context.Background(), created.ID, "post", "", true); err != nil {
+		t.Fatal(err)
+	}
+	quantity := "4"
+	change := ReceiptAmendment{ChangeLines: []ReceiptLineChange{{LineNumber: 1, Quantity: &quantity}}}
+	if _, err := svc.AmendReceipt(context.Background(), created.ID, change); err == nil || !strings.Contains(err.Error(), "repost") {
+		t.Fatalf("posted receipt amended without repost: %v", err)
+	}
+	change.Repost = true
+	preview, err := svc.AmendReceipt(context.Background(), created.ID, change)
+	if err != nil || preview.Applied || !preview.Posted || len(fake.actions) != 1 || !strings.Contains(preview.Impact[0], "unposts") {
+		t.Fatalf("repost preview: %+v, %v, actions=%v", preview, err, fake.actions)
+	}
+	change.Apply = true
+	amended, err := svc.AmendReceipt(context.Background(), created.ID, change)
+	if err != nil || !amended.Applied || !amended.Posted || amended.Amount != "134.4" {
+		t.Fatalf("repost: %+v, %v", amended, err)
+	}
+	if strings.Join(fake.actions, ",") != "Post,Unpost,Post" || fake.writes[len(fake.writes)-1] != "PATCH "+receiptResource(created.ID) {
+		t.Fatalf("actions=%v writes=%v", fake.actions, fake.writes)
+	}
+	saved := fake.rows[receiptResourceName][1]
+	if saved["Posted"] != true || saved["СуммаДокумента"] != json.Number("134.4") {
+		t.Fatalf("saved: %+v", saved)
+	}
+	fake.failAction = "Post"
+	quantity = "5"
+	if _, err := svc.AmendReceipt(context.Background(), created.ID, change); err == nil || !strings.Contains(err.Error(), "left unposted") || saved["Posted"] != false {
+		t.Fatalf("failed repost not reported: %v, posted=%v", err, saved["Posted"])
+	}
+	fake.failAction, saved["Posted"] = "Unpost", true
+	writes := len(fake.writes)
+	quantity = "6"
+	if _, err := svc.AmendReceipt(context.Background(), created.ID, change); err == nil || len(fake.writes) != writes || saved["Posted"] != true {
+		t.Fatalf("receipt changed after a refused unpost: %v writes=%v", err, fake.writes)
 	}
 }

@@ -133,6 +133,7 @@ func runReceiptUpdate(ctx context.Context, svc service.Service, args []string, o
 	flags.Var(&setLines, "set-line", "line change")
 	flags.Var(&addLines, "add-line", "new goods line")
 	flags.StringVar(&change.ExpectedDataVersion, "expect-version", "", "data version from the preview")
+	flags.BoolVar(&change.Repost, "repost", false, "unpost a posted receipt, amend it, and post it again")
 	flags.BoolVar(&change.Apply, "apply", false, "save the change")
 	asJSON := flags.Bool("json", false, "print JSON")
 	if err := parseFlags(flags, args); err != nil || flags.NArg() != 1 {
