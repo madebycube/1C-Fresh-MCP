@@ -67,12 +67,22 @@ func runPaymentPlanGet(ctx context.Context, svc service.Service, args []string, 
 	if *asJSON {
 		return json.NewEncoder(out).Encode(item)
 	}
-	if _, err := fmt.Fprintf(out, "Payment plan %s\nDate: %s\nPosted: %t\nAmount: %s\nIncoming: %s %s\nOrganization ID: %s\nSupplier ID: %s\nContract ID: %s\nAccount ID: %s\nSupplier account ID: %s\nPlan payment: %t\nBasis ID: %s\nID: %s\n\nSchedule:\n", flat(item.Number), flat(item.Date), item.Posted, item.Amount, flat(item.IncomingNumber), flat(item.IncomingDate), item.OrganizationID, item.SupplierID, item.ContractID, item.AccountID, item.SupplierAccountID, item.PlanPayment, item.BasisID, item.ID); err != nil {
+	if _, err := fmt.Fprintf(out, "Payment plan %s\nStatus: %s\nDate: %s\nPosted: %t\nAmount: %s\nIncoming: %s %s\nOrganization ID: %s\nSupplier ID: %s\nContract ID: %s\nAccount ID: %s\nSupplier account ID: %s\nPlan payment: %t\nBasis ID: %s\nID: %s\n\nSchedule:\n", flat(item.Number), item.Status, flat(item.Date), item.Posted, item.Amount, flat(item.IncomingNumber), flat(item.IncomingDate), item.OrganizationID, item.SupplierID, item.ContractID, item.AccountID, item.SupplierAccountID, item.PlanPayment, item.BasisID, item.ID); err != nil {
 		return err
 	}
 	for _, line := range item.Schedule {
 		if _, err := fmt.Fprintf(out, "  %s  %s  %s%%  %s\n", line.LineNumber, flat(line.Date), line.Percent, line.Amount); err != nil {
 			return err
+		}
+	}
+	if item.Payments != nil {
+		if _, err := fmt.Fprintf(out, "\nPaid by linked bank and cash expenses: %s (complete %t)\n", item.Payments.Paid, item.Payments.Complete); err != nil {
+			return err
+		}
+		for _, payment := range item.Payments.Payments {
+			if _, err := fmt.Fprintf(out, "  %s %s %s amount %s posted %t (%s)\n", payment.Kind, flat(payment.Number), payment.Date, payment.Amount, payment.Posted, payment.Link); err != nil {
+				return err
+			}
 		}
 	}
 	if item.Calendar == nil || !item.Calendar.Available {
