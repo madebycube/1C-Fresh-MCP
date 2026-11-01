@@ -177,8 +177,8 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(listed.Tools) != 82 {
-		t.Fatalf("got %d tools; want 82", len(listed.Tools))
+	if len(listed.Tools) != 83 {
+		t.Fatalf("got %d tools; want 83", len(listed.Tools))
 	}
 	for _, tool := range listed.Tools {
 		if tool.Annotations == nil {
@@ -221,6 +221,7 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 		{operations.ListDebts.Tool, map[string]any{"kind": "customer", "as_of": "2026-09-30"}},
 		{operations.ReportSales.Tool, map[string]any{"from": "2026-09-01", "to": "2026-09-30"}},
 		{operations.ListCashBalances.Tool, map[string]any{"as_of": "2026-09-30"}},
+		{operations.ReportCashFlow.Tool, map[string]any{"from": "2026-09-01", "to": "2026-09-30"}},
 		{operations.ListOrganizations.Tool, map[string]any{}},
 		{operations.ListDepartments.Tool, map[string]any{}},
 		{operations.ListContracts.Tool, map[string]any{"kind": "supplier"}},

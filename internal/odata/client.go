@@ -64,7 +64,7 @@ var (
 	registerTimePattern = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$`)
 )
 
-// GetRegisterTable reads a Balance or Turnovers virtual table. Every argument is validated so callers cannot inject OData syntax.
+// GetRegisterTable reads a Balance, Turnovers, or BalanceAndTurnovers virtual table. Every argument is validated so callers cannot inject OData syntax.
 func (c *Client) GetRegisterTable(ctx context.Context, query config.RegisterQuery, params url.Values, maxBytes int64) ([]byte, error) {
 	resource, err := RegisterTableResource(query)
 	if err != nil {
@@ -85,7 +85,7 @@ func RegisterTableResource(query config.RegisterQuery) (string, error) {
 			return "", errors.New("balance takes only a period")
 		}
 		periods = append(periods, [2]string{"Period", query.Period})
-	case "Turnovers":
+	case "Turnovers", "BalanceAndTurnovers":
 		if query.Period != "" {
 			return "", errors.New("turnovers take a start and end period")
 		}

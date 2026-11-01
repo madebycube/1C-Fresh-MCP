@@ -297,23 +297,9 @@ func (s Service) ListCashBalances(ctx context.Context, asOf string) (CashBalance
 			return CashBalances{}, errors.New("invalid OData money amount")
 		}
 	}
-	names := map[string]string{}
-	for _, kind := range []string{"bank", "cash"} {
-		accounts, err := s.ListMoneyAccounts(ctx, kind)
-		if err != nil {
-			return CashBalances{}, err
-		}
-		for _, account := range accounts {
-			names[strings.ToLower(account.ID)] = account.Name
-		}
-	}
-	currencies, err := s.ListCurrencies(ctx)
+	names, codes, err := s.cashLabels(ctx)
 	if err != nil {
 		return CashBalances{}, err
-	}
-	codes := map[string]string{}
-	for _, currency := range currencies {
-		codes[strings.ToLower(currency.ID)] = currency.Code
 	}
 	items := make([]CashBalance, 0, len(byKey))
 	for k, item := range byKey {
@@ -329,6 +315,29 @@ func (s Service) ListCashBalances(ctx context.Context, asOf string) (CashBalance
 		return items[i].AccountID+items[i].CurrencyID < items[j].AccountID+items[j].CurrencyID
 	})
 	return CashBalances{AsOf: asOf, Total: total.Decimal(), Count: len(items), Items: items, Source: register + "/Balance"}, nil
+}
+
+// cashLabels maps money account IDs to names and currency IDs to codes.
+func (s Service) cashLabels(ctx context.Context) (map[string]string, map[string]string, error) {
+	names := map[string]string{}
+	for _, kind := range []string{"bank", "cash"} {
+		accounts, err := s.ListMoneyAccounts(ctx, kind)
+		if err != nil {
+			return nil, nil, err
+		}
+		for _, account := range accounts {
+			names[strings.ToLower(account.ID)] = account.Name
+		}
+	}
+	currencies, err := s.ListCurrencies(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	codes := map[string]string{}
+	for _, currency := range currencies {
+		codes[strings.ToLower(currency.ID)] = currency.Code
+	}
+	return names, codes, nil
 }
 
 // registerAsOf turns an inclusive YYYY-MM-DD date into 1C's exclusive balance period; empty means today.

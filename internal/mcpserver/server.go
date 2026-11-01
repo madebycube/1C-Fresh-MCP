@@ -146,6 +146,11 @@ type listCashBalancesInput struct {
 	AsOf string `json:"as_of,omitempty" jsonschema:"Inclusive date YYYY-MM-DD; default today"`
 }
 
+type reportCashFlowInput struct {
+	From string `json:"from" jsonschema:"Start date YYYY-MM-DD"`
+	To   string `json:"to" jsonschema:"Inclusive end date YYYY-MM-DD, at most one year after from"`
+}
+
 type listProductUnitsInput struct {
 	ProductID string `json:"product_id" jsonschema:"Product GUID"`
 }
@@ -795,6 +800,13 @@ func New(svc service.Service) *mcp.Server {
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, input listCashBalancesInput) (*mcp.CallToolResult, service.CashBalances, error) {
 		balances, err := svc.ListCashBalances(ctx, input.AsOf)
 		return nil, balances, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.ReportCashFlow.Tool, Description: operations.ReportCashFlow.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input reportCashFlowInput) (*mcp.CallToolResult, service.CashFlowReport, error) {
+		report, err := svc.ReportCashFlow(ctx, input.From, input.To)
+		return nil, report, err
 	})
 	mcp.AddTool(server, &mcp.Tool{
 		Name: operations.ListProductUnits.Tool, Description: operations.ListProductUnits.Description,

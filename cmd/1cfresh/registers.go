@@ -117,6 +117,37 @@ func runCashBalanceList(ctx context.Context, svc service.Service, args []string,
 	return writer.Flush()
 }
 
+func runCashFlowReport(ctx context.Context, svc service.Service, args []string, out io.Writer) error {
+	flags := flag.NewFlagSet("report cash-flow", flag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+	from := flags.String("from", "", "start date, YYYY-MM-DD")
+	to := flags.String("to", "", "end date, YYYY-MM-DD")
+	asJSON := flags.Bool("json", false, "print JSON")
+	if err := parseFlags(flags, args); err != nil || flags.NArg() != 0 || *from == "" || *to == "" {
+		return errors.New("usage: " + operations.ReportCashFlow.Usage)
+	}
+	report, err := svc.ReportCashFlow(ctx, *from, *to)
+	if err != nil {
+		return err
+	}
+	if *asJSON {
+		return json.NewEncoder(out).Encode(report)
+	}
+	writer := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
+	if _, err := fmt.Fprintln(writer, "KIND\tACCOUNT\tCURRENCY\tOPENING\tRECEIPTS\tPAYMENTS\tCLOSING\tID"); err != nil {
+		return err
+	}
+	for _, item := range report.Items {
+		if _, err := fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", item.AccountKind, flat(item.AccountName), item.CurrencyCode, item.Opening, item.Receipts, item.Payments, item.Closing, item.AccountID); err != nil {
+			return err
+		}
+	}
+	if _, err := fmt.Fprintf(writer, "TOTAL\t\t\t%s\t%s\t%s\t%s\t\n", report.TotalOpening, report.TotalReceipts, report.TotalPayments, report.TotalClosing); err != nil {
+		return err
+	}
+	return writer.Flush()
+}
+
 func printNextOffset(out io.Writer, next *int) error {
 	if next == nil {
 		return nil

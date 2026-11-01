@@ -590,6 +590,14 @@ var ListCashBalances = Spec{
 	Example:     "1c list cash-balances --as-of 2026-09-30",
 }
 
+var ReportCashFlow = Spec{
+	Command:     "report cash-flow",
+	Tool:        "report_cash_flow",
+	Description: "Show opening balance, receipts, payments, and closing balance per bank account or cash desk for a period.",
+	Usage:       "1c report cash-flow --from YYYY-MM-DD --to YYYY-MM-DD [--json]",
+	Example:     "1c report cash-flow --from 2026-09-01 --to 2026-09-30",
+}
+
 var ListProductUnits = Spec{
 	Command:     "list product-units",
 	Tool:        "list_product_units",
@@ -703,7 +711,7 @@ var Topics = []Topic{
 	{Name: "partners", Description: "Customer and supplier records and folders", Commands: []Spec{ListCounterpartyGroups, CreateCounterpartyGroup, UpdateCounterpartyGroup, ListCustomers, SearchCustomers, GetCustomer, CreateCustomer, UpdateCustomer, ListSuppliers, SearchSuppliers, GetSupplier, CreateSupplier, UpdateSupplier}},
 	{Name: "sales", Description: "Customer orders and sales documents", Commands: []Spec{ListOrders, GetOrder, GetOrderPayments, ListSales, GetSale, ReportSales}},
 	{Name: "purchases", Description: "Supplier orders, goods receipts, and payment plans", Commands: []Spec{ListPurchases, GetPurchase, GetSupplierOrder, CreateSupplierOrder, UpdateSupplierOrder, PostSupplierOrder, UnpostSupplierOrder, CreateReceiptFromOrder, LinkReceiptToOrder, PreviewReceipts, CreateReceipt, UpdateReceipt, PostReceipt, UnpostReceipt, ListLinkProperties, GetReceiptLink, SetReceiptLink, ListPaymentPlans, GetPaymentPlan, CreatePaymentPlan, CreatePrepaymentPlan, UpdatePaymentPlan, PostPaymentPlan, UnpostPaymentPlan, TraceReceiptPayments, ReconcileSupplier}},
-	{Name: "money", Description: "Accounts, cash, bank, and card movements", Commands: []Spec{ListMoneyAccounts, ListMoney, GetMoney, ListCashBalances, ListDebts}},
+	{Name: "money", Description: "Accounts, cash, bank, and card movements", Commands: []Spec{ListMoneyAccounts, ListMoney, GetMoney, ListCashBalances, ReportCashFlow, ListDebts}},
 	{Name: "receipts", Description: "Fiscal receipts and posting audit", Commands: []Spec{ListReceipts, GetReceipt, AuditUnpostedReceipts}},
 	{Name: "schema", Description: "Search and inspect exposed OData resources", Commands: []Spec{SearchResources, DescribeResource}},
 }

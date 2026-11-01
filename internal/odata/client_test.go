@@ -152,6 +152,13 @@ func TestRegisterTableResourceValidatesArguments(t *testing.T) {
 	if err != nil || got != "AccumulationRegister_Продажи/Turnovers(StartPeriod=datetime'2026-09-01T00:00:00',EndPeriod=datetime'2026-09-30T23:59:59',Dimensions='Номенклатура,Контрагент')" {
 		t.Fatalf("turnovers: %q, %v", got, err)
 	}
+	got, err = RegisterTableResource(config.RegisterQuery{Register: "AccumulationRegister_ДенежныеСредства", Table: "BalanceAndTurnovers", StartPeriod: "2026-09-01T00:00:00", EndPeriod: "2026-09-30T23:59:59", Dimensions: "БанковскийСчетКасса,Валюта"})
+	if err != nil || got != "AccumulationRegister_ДенежныеСредства/BalanceAndTurnovers(StartPeriod=datetime'2026-09-01T00:00:00',EndPeriod=datetime'2026-09-30T23:59:59',Dimensions='БанковскийСчетКасса,Валюта')" {
+		t.Fatalf("balance and turnovers: %q, %v", got, err)
+	}
+	if _, err := RegisterTableResource(config.RegisterQuery{Register: "AccumulationRegister_ДенежныеСредства", Table: "BalanceAndTurnovers", Period: "2026-09-01T00:00:00"}); err == nil {
+		t.Fatal("balance and turnovers must reject a single period")
+	}
 	got, err = RegisterTableResource(config.RegisterQuery{Register: "AccumulationRegister_ДенежныеСредства", Table: "Balance"})
 	if err != nil || got != "AccumulationRegister_ДенежныеСредства/Balance()" {
 		t.Fatalf("balance: %q, %v", got, err)
