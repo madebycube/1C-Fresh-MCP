@@ -392,6 +392,106 @@ type updateReceiptInput struct {
 	Apply               bool                     `json:"apply,omitempty" jsonschema:"Save the changes; false only previews them"`
 }
 
+type supplierOrderLineInput struct {
+	ProductID        string `json:"product_id" jsonschema:"Stock product GUID"`
+	CharacteristicID string `json:"characteristic_id,omitempty" jsonschema:"Optional characteristic GUID of that product"`
+	Quantity         string `json:"quantity" jsonschema:"Quantity in the line's unit, up to 3 decimals"`
+	Price            string `json:"price" jsonschema:"Unit price before discount, up to 2 decimals"`
+	VATRate          string `json:"vat_rate" jsonschema:"VAT rate code such as НДС22, НДС5, or БезНДС"`
+	DiscountPercent  string `json:"discount_percent,omitempty" jsonschema:"Optional discount percent 0–100"`
+	UnitID           string `json:"unit_id,omitempty" jsonschema:"Optional unit GUID from list_product_units; default is the product's base unit"`
+	Amount           string `json:"amount,omitempty" jsonschema:"Optional line amount after discount from the supplier invoice; must match within rounding"`
+	VAT              string `json:"vat,omitempty" jsonschema:"Optional line VAT from the supplier invoice; must be within one kopeck"`
+	DeliveryDate     string `json:"delivery_date,omitempty" jsonschema:"Optional expected delivery date of this line YYYY-MM-DD"`
+}
+
+type supplierOrderPaymentInput struct {
+	Date    string `json:"date" jsonschema:"Planned payment date YYYY-MM-DD"`
+	Percent string `json:"percent,omitempty" jsonschema:"Percent of the order total; give this or amount"`
+	Amount  string `json:"amount,omitempty" jsonschema:"Exact amount; give this or percent"`
+}
+
+type createSupplierOrderInput struct {
+	OrganizationID string                      `json:"organization_id" jsonschema:"Organization GUID"`
+	SupplierID     string                      `json:"supplier_id" jsonschema:"Supplier counterparty GUID"`
+	ContractID     string                      `json:"contract_id" jsonschema:"Active supplier contract GUID of that organization, in rubles"`
+	WarehouseID    string                      `json:"warehouse_id" jsonschema:"Warehouse GUID the goods are expected at"`
+	DepartmentID   string                      `json:"department_id" jsonschema:"Department GUID"`
+	Date           string                      `json:"date" jsonschema:"Order date YYYY-MM-DD"`
+	InvoiceNumber  string                      `json:"invoice_number,omitempty" jsonschema:"Supplier invoice number, used to find duplicates"`
+	InvoiceDate    string                      `json:"invoice_date,omitempty" jsonschema:"Supplier invoice date YYYY-MM-DD"`
+	DeliveryDate   string                      `json:"delivery_date,omitempty" jsonschema:"Expected delivery date YYYY-MM-DD"`
+	StateID        string                      `json:"state_id,omitempty" jsonschema:"Optional order state GUID; default copies the newest order's state"`
+	Comment        string                      `json:"comment,omitempty" jsonschema:"Optional comment, for example a link to the supplier invoice"`
+	VATMode        string                      `json:"vat_mode" jsonschema:"inclusive when prices include VAT, otherwise exclusive"`
+	Lines          []supplierOrderLineInput    `json:"lines" jsonschema:"Ordered goods"`
+	Payments       []supplierOrderPaymentInput `json:"payments,omitempty" jsonschema:"Optional payment schedule adding up to the order total, such as a prepayment and the rest after delivery"`
+	PaymentType    string                      `json:"payment_type,omitempty" jsonschema:"bank or cash; default bank"`
+	BankAccountID  string                      `json:"bank_account_id,omitempty" jsonschema:"Optional organization's own bank account GUID to pay from"`
+	CashBoxID      string                      `json:"cash_box_id,omitempty" jsonschema:"Optional cash box GUID to pay from with payment_type cash"`
+	AllowDuplicate bool                        `json:"allow_duplicate,omitempty" jsonschema:"Save even when an order for the same supplier invoice exists"`
+	Apply          bool                        `json:"apply,omitempty" jsonschema:"Save the order unposted; false only previews it"`
+}
+
+type supplierOrderLineChangeInput struct {
+	LineNumber      int     `json:"line_number" jsonschema:"Existing line number"`
+	Quantity        *string `json:"quantity,omitempty" jsonschema:"Replacement quantity"`
+	Price           *string `json:"price,omitempty" jsonschema:"Replacement unit price"`
+	VATRate         *string `json:"vat_rate,omitempty" jsonschema:"Replacement VAT rate code"`
+	DiscountPercent *string `json:"discount_percent,omitempty" jsonschema:"Replacement discount percent"`
+	Amount          *string `json:"amount,omitempty" jsonschema:"Explicit line amount after discount"`
+	VAT             *string `json:"vat,omitempty" jsonschema:"Explicit line VAT"`
+	DeliveryDate    *string `json:"delivery_date,omitempty" jsonschema:"Replacement line delivery date YYYY-MM-DD"`
+}
+
+type updateSupplierOrderInput struct {
+	ID                  string                         `json:"id" jsonschema:"Supplier order GUID; a posted one needs repost"`
+	Date                *string                        `json:"date,omitempty" jsonschema:"Replacement date YYYY-MM-DD"`
+	WarehouseID         *string                        `json:"warehouse_id,omitempty" jsonschema:"Replacement warehouse GUID"`
+	DepartmentID        *string                        `json:"department_id,omitempty" jsonschema:"Replacement department GUID"`
+	InvoiceNumber       *string                        `json:"invoice_number,omitempty" jsonschema:"Replacement supplier invoice number"`
+	InvoiceDate         *string                        `json:"invoice_date,omitempty" jsonschema:"Replacement supplier invoice date"`
+	DeliveryDate        *string                        `json:"delivery_date,omitempty" jsonschema:"Replacement expected delivery date"`
+	StateID             *string                        `json:"state_id,omitempty" jsonschema:"Replacement order state GUID"`
+	Comment             *string                        `json:"comment,omitempty" jsonschema:"Replacement comment; empty string clears it"`
+	ChangeLines         []supplierOrderLineChangeInput `json:"change_lines,omitempty" jsonschema:"Changes to existing lines"`
+	AddLines            []supplierOrderLineInput       `json:"add_lines,omitempty" jsonschema:"Lines to append"`
+	Payments            []supplierOrderPaymentInput    `json:"payments,omitempty" jsonschema:"Replacement payment schedule"`
+	ClearPayments       bool                           `json:"clear_payments,omitempty" jsonschema:"Remove the payment schedule"`
+	PaymentType         *string                        `json:"payment_type,omitempty" jsonschema:"bank or cash"`
+	BankAccountID       *string                        `json:"bank_account_id,omitempty" jsonschema:"Organization's own bank account GUID"`
+	CashBoxID           *string                        `json:"cash_box_id,omitempty" jsonschema:"Cash box GUID"`
+	Repost              bool                           `json:"repost,omitempty" jsonschema:"For a posted order: unpost it, save the changes, and post it again"`
+	ExpectedDataVersion string                         `json:"expected_data_version,omitempty" jsonschema:"data_version from the preview; the save fails if the order changed since"`
+	Apply               bool                           `json:"apply,omitempty" jsonschema:"Save the changes; false only previews them"`
+}
+
+type orderReceiptLineInput struct {
+	LineNumber int    `json:"line_number" jsonschema:"Order line number"`
+	Quantity   string `json:"quantity" jsonschema:"Quantity that actually arrived, at most what the order still expects"`
+}
+
+type createReceiptFromOrderInput struct {
+	OrderID        string                  `json:"order_id" jsonschema:"Posted supplier order GUID"`
+	Date           string                  `json:"date" jsonschema:"Receipt date YYYY-MM-DD"`
+	WarehouseID    string                  `json:"warehouse_id,omitempty" jsonschema:"Optional warehouse GUID; default is the order's"`
+	IncomingNumber string                  `json:"incoming_number,omitempty" jsonschema:"Supplier delivery document number (УПД), used to find duplicates"`
+	IncomingDate   string                  `json:"incoming_date,omitempty" jsonschema:"Supplier delivery document date YYYY-MM-DD"`
+	Comment        string                  `json:"comment,omitempty" jsonschema:"Optional comment"`
+	Lines          []orderReceiptLineInput `json:"lines,omitempty" jsonschema:"Received order lines; omit with all_remaining"`
+	AllRemaining   bool                    `json:"all_remaining,omitempty" jsonschema:"Receive everything still expected"`
+	AllowDuplicate bool                    `json:"allow_duplicate,omitempty" jsonschema:"Save even when a receipt with the same supplier number exists"`
+	Apply          bool                    `json:"apply,omitempty" jsonschema:"Save the receipt unposted; false only previews it"`
+}
+
+type linkReceiptToOrderInput struct {
+	ReceiptID           string `json:"receipt_id" jsonschema:"Existing supplier goods receipt GUID"`
+	OrderID             string `json:"order_id" jsonschema:"Posted supplier order GUID"`
+	Repost              bool   `json:"repost,omitempty" jsonschema:"For a posted receipt: unpost it, link it, and post it again"`
+	ExpectedDataVersion string `json:"expected_data_version,omitempty" jsonschema:"Receipt data_version from the preview"`
+	Apply               bool   `json:"apply,omitempty" jsonschema:"Save the link; false only previews the match"`
+}
+
 type receiptPostingInput struct {
 	ID                  string `json:"id" jsonschema:"Supplier goods receipt GUID"`
 	Action              string `json:"action" jsonschema:"post or unpost"`
@@ -1148,5 +1248,84 @@ func New(svc service.Service) *mcp.Server {
 		result, err := svc.DescribeResource(ctx, input.Name)
 		return nil, result, err
 	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.GetSupplierOrder.Tool, Description: operations.GetSupplierOrder.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input getPaymentPlanInput) (*mcp.CallToolResult, service.SupplierOrderStatus, error) {
+		status, err := svc.GetSupplierOrderStatus(ctx, input.ID)
+		return nil, status, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.CreateSupplierOrder.Tool, Description: operations.CreateSupplierOrder.Description,
+		Annotations: &mcp.ToolAnnotations{DestructiveHint: &additive},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input createSupplierOrderInput) (*mcp.CallToolResult, service.SupplierOrderWrite, error) {
+		write, err := svc.CreateSupplierOrderDraft(ctx, service.SupplierOrderDraft{
+			OrganizationID: input.OrganizationID, SupplierID: input.SupplierID, ContractID: input.ContractID, WarehouseID: input.WarehouseID, DepartmentID: input.DepartmentID,
+			Date: input.Date, InvoiceNumber: input.InvoiceNumber, InvoiceDate: input.InvoiceDate, DeliveryDate: input.DeliveryDate, StateID: input.StateID, Comment: input.Comment,
+			VATMode: input.VATMode, Lines: orderLines(input.Lines), Payments: orderPayments(input.Payments), PaymentType: input.PaymentType,
+			BankAccountID: input.BankAccountID, CashBoxID: input.CashBoxID, AllowDuplicate: input.AllowDuplicate, Apply: input.Apply,
+		})
+		return nil, write, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.UpdateSupplierOrder.Tool, Description: operations.UpdateSupplierOrder.Description,
+		Annotations: &mcp.ToolAnnotations{IdempotentHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input updateSupplierOrderInput) (*mcp.CallToolResult, service.SupplierOrderWrite, error) {
+		changes := make([]service.SupplierOrderLineChange, len(input.ChangeLines))
+		for i, line := range input.ChangeLines {
+			changes[i] = service.SupplierOrderLineChange(line)
+		}
+		write, err := svc.AmendSupplierOrder(ctx, input.ID, service.SupplierOrderAmendment{
+			Date: input.Date, WarehouseID: input.WarehouseID, DepartmentID: input.DepartmentID, InvoiceNumber: input.InvoiceNumber, InvoiceDate: input.InvoiceDate,
+			DeliveryDate: input.DeliveryDate, StateID: input.StateID, Comment: input.Comment, ChangeLines: changes, AddLines: orderLines(input.AddLines),
+			Payments: orderPayments(input.Payments), ClearPayments: input.ClearPayments, PaymentType: input.PaymentType, BankAccountID: input.BankAccountID, CashBoxID: input.CashBoxID,
+			Repost: input.Repost, ExpectedDataVersion: input.ExpectedDataVersion, Apply: input.Apply,
+		})
+		return nil, write, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.PostSupplierOrder.Tool, Description: "Preview or run posting (action post) or unposting (action unpost) of a supplier order in 1C; posting plans payments but never pays or approves them.",
+		Annotations: &mcp.ToolAnnotations{IdempotentHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input receiptPostingInput) (*mcp.CallToolResult, service.ReceiptPosting, error) {
+		posting, err := svc.SetSupplierOrderPosting(ctx, input.ID, input.Action, input.ExpectedDataVersion, input.Apply)
+		return nil, posting, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.CreateReceiptFromOrder.Tool, Description: operations.CreateReceiptFromOrder.Description,
+		Annotations: &mcp.ToolAnnotations{DestructiveHint: &additive},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input createReceiptFromOrderInput) (*mcp.CallToolResult, service.ReceiptWrite, error) {
+		lines := make([]service.OrderReceiptLine, len(input.Lines))
+		for i, line := range input.Lines {
+			lines[i] = service.OrderReceiptLine(line)
+		}
+		write, err := svc.CreateReceiptFromOrder(ctx, service.SupplierOrderReceiptDraft{
+			OrderID: input.OrderID, Date: input.Date, WarehouseID: input.WarehouseID, IncomingNumber: input.IncomingNumber, IncomingDate: input.IncomingDate,
+			Comment: input.Comment, Lines: lines, AllRemaining: input.AllRemaining, AllowDuplicate: input.AllowDuplicate, Apply: input.Apply,
+		})
+		return nil, write, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.LinkReceiptToOrder.Tool, Description: operations.LinkReceiptToOrder.Description,
+		Annotations: &mcp.ToolAnnotations{IdempotentHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input linkReceiptToOrderInput) (*mcp.CallToolResult, service.ReceiptOrderLink, error) {
+		link, err := svc.LinkReceiptToOrder(ctx, input.ReceiptID, input.OrderID, service.ReceiptOrderLinkChange{Repost: input.Repost, ExpectedDataVersion: input.ExpectedDataVersion, Apply: input.Apply})
+		return nil, link, err
+	})
 	return server
+}
+
+func orderLines(lines []supplierOrderLineInput) []service.SupplierOrderLineInput {
+	out := make([]service.SupplierOrderLineInput, len(lines))
+	for i, line := range lines {
+		out[i] = service.SupplierOrderLineInput(line)
+	}
+	return out
+}
+
+func orderPayments(payments []supplierOrderPaymentInput) []service.SupplierOrderPaymentInput {
+	out := make([]service.SupplierOrderPaymentInput, len(payments))
+	for i, payment := range payments {
+		out[i] = service.SupplierOrderPaymentInput(payment)
+	}
+	return out
 }
