@@ -850,3 +850,46 @@ var ProductUnits = CatalogListResource{
 		{Output: "deleted", Source: "DeletionMark"},
 	},
 }
+
+// CustomerSettlements is the customer-settlement register; its Заказ dimension is how 1C allocates a payment to a customer order.
+var CustomerSettlements = struct {
+	Name   string
+	Fields []FieldBinding
+}{
+	Name: "AccumulationRegister_РасчетыСПокупателями_RecordType",
+	Fields: []FieldBinding{
+		{Output: "recorder_id", Source: "Recorder"},
+		{Output: "recorder_type", Source: "Recorder_Type"},
+		{Output: "line_number", Source: "LineNumber"},
+		{Output: "period", Source: "Period"},
+		{Output: "active", Source: "Active"},
+		{Output: "record_type", Source: "RecordType"},
+		{Output: "settlement_type", Source: "ТипРасчетов"},
+		{Output: "organization_id", Source: "Организация_Key"},
+		{Output: "customer_id", Source: "Контрагент_Key"},
+		{Output: "contract_id", Source: "Договор_Key"},
+		{Output: "document_id", Source: "Документ"},
+		{Output: "document_type", Source: "Документ_Type"},
+		{Output: "order_id", Source: "Заказ"},
+		{Output: "order_type", Source: "Заказ_Type"},
+		{Output: "amount", Source: "Сумма"},
+		{Output: "currency_amount", Source: "СуммаВал"},
+	},
+}
+
+// CustomerOrderHeader is the customer-order header read for payment tracing.
+var CustomerOrderHeader = DocumentResource{
+	Name: "Document_ЗаказПокупателя", DateField: "Date", DeletedField: "DeletionMark",
+	Fields: []FieldBinding{
+		{Output: "id", Source: "Ref_Key"},
+		{Output: "number", Source: "Number"},
+		{Output: "date", Source: "Date"},
+		{Output: "posted", Source: "Posted"},
+		{Output: "deleted", Source: "DeletionMark"},
+		{Output: "amount", Source: "СуммаДокумента"},
+		{Output: "currency_id", Source: "ВалютаДокумента_Key"},
+		{Output: "organization_id", Source: "Организация_Key"},
+		{Output: "customer_id", Source: "Контрагент_Key"},
+		{Output: "contract_id", Source: "Договор_Key"},
+	},
+}
