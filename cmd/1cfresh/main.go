@@ -215,6 +215,20 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		return runReceiptPosting(ctx, svc, commandArgs, out, "post")
 	case operations.UnpostReceipt.Command:
 		return runReceiptPosting(ctx, svc, commandArgs, out, "unpost")
+	case operations.GetSupplierOrder.Command:
+		return runSupplierOrderGet(ctx, svc, commandArgs, out)
+	case operations.CreateSupplierOrder.Command:
+		return runSupplierOrderCreate(ctx, svc, commandArgs, out)
+	case operations.UpdateSupplierOrder.Command:
+		return runSupplierOrderUpdate(ctx, svc, commandArgs, out)
+	case operations.PostSupplierOrder.Command:
+		return runSupplierOrderPosting(ctx, svc, commandArgs, out, "post")
+	case operations.UnpostSupplierOrder.Command:
+		return runSupplierOrderPosting(ctx, svc, commandArgs, out, "unpost")
+	case operations.CreateReceiptFromOrder.Command:
+		return runReceiptFromOrder(ctx, svc, commandArgs, out)
+	case operations.LinkReceiptToOrder.Command:
+		return runReceiptOrderLink(ctx, svc, commandArgs, out)
 	case operations.ListLinkProperties.Command:
 		return runLinkPropertyList(ctx, svc, commandArgs, out)
 	case operations.GetReceiptLink.Command:
