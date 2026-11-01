@@ -119,6 +119,7 @@ type ReceiptWrite struct {
 	CurrencyID     string               `json:"currency_id"`
 	WarehouseID    string               `json:"warehouse_id"`
 	DepartmentID   string               `json:"department_id"`
+	OrderID        string               `json:"supplier_order_id,omitempty"`
 	Date           string               `json:"date"`
 	IncomingNumber string               `json:"incoming_number"`
 	IncomingDate   string               `json:"incoming_date"`
@@ -168,15 +169,21 @@ func (s Service) CreateReceiptDraft(ctx context.Context, input ReceiptDraft) (Re
 		result.Lines = append(result.Lines, preview)
 	}
 	finishReceiptTotals(&result)
+	return s.saveReceiptDraft(ctx, result, input.AllowDuplicate, input.Apply)
+}
+
+// saveReceiptDraft checks duplicates and, with apply, POSTs the previewed receipt unposted and reads it back.
+// A receipt with an OrderID is linked to that supplier order in its header and on every line.
+func (s Service) saveReceiptDraft(ctx context.Context, result ReceiptWrite, allowDuplicate, apply bool) (ReceiptWrite, error) {
 	duplicates, err := s.receiptDuplicates(ctx, result, "")
 	if err != nil {
 		return ReceiptWrite{}, err
 	}
 	result.Duplicates = duplicates
-	if !input.Apply {
+	if !apply {
 		return result, nil
 	}
-	if len(duplicates) > 0 && !input.AllowDuplicate {
+	if len(duplicates) > 0 && !allowDuplicate {
 		return ReceiptWrite{}, errors.New("a receipt with the same organization, supplier, incoming number and incoming date exists; review the duplicates or allow them explicitly")
 	}
 	writer, ok := s.OData.(odataWriter)
@@ -197,9 +204,16 @@ func (s Service) CreateReceiptDraft(ctx context.Context, input ReceiptDraft) (Re
 	fields["ХозяйственнаяОперация_Key"] = operation
 	rows := make([]map[string]any, 0, len(result.Lines))
 	for _, line := range result.Lines {
-		rows = append(rows, receiptLineFields(line, result.WarehouseID, map[string]any{"КлючСвязи": line.LineNumber}))
+		row := receiptLineFields(line, result.WarehouseID, map[string]any{"КлючСвязи": line.LineNumber})
+		if result.OrderID != "" {
+			row["Заказ"], row["Заказ_Type"] = result.OrderID, supplierOrderType
+		}
+		rows = append(rows, row)
 	}
 	fields["Запасы"] = rows
+	if result.OrderID != "" {
+		fields["Заказ"], fields["Заказ_Type"] = result.OrderID, supplierOrderType
+	}
 	body, err := json.Marshal(fields)
 	if err != nil {
 		return ReceiptWrite{}, errors.New("could not encode receipt")
@@ -574,33 +588,42 @@ func (s Service) validateReceiptHeader(ctx context.Context, input ReceiptDraft) 
 }
 
 func (s Service) receiptLine(ctx context.Context, input ReceiptLineInput, number int, vatMode string, rates map[string]vatRate) (ReceiptPreviewLine, error) {
-	product, err := s.activeRecord(ctx, config.Products.Name, input.ProductID, "Ref_Key,DeletionMark,IsFolder,ТипНоменклатуры,ЕдиницаИзмерения_Key")
+	unit, err := s.stockLineUnit(ctx, input.ProductID, input.CharacteristicID, input.UnitID)
 	if err != nil {
-		return ReceiptPreviewLine{}, fmt.Errorf("product: %w", err)
-	}
-	if string(product["IsFolder"]) != "false" || rawString(product["ТипНоменклатуры"]) != receiptStockProducts {
-		return ReceiptPreviewLine{}, unsupported("product must be an active stock item; services belong to the receipt's expenses")
-	}
-	unitID := rawString(product["ЕдиницаИзмерения_Key"])
-	if !linkedGUID(unitID) {
-		return ReceiptPreviewLine{}, unsupported("product has no base unit; unit conversion is not supported")
-	}
-	unit := lineUnit{ID: strings.ToLower(unitID), Type: unitClassifierType}
-	if input.UnitID != "" && !strings.EqualFold(input.UnitID, unitID) {
-		if unit, err = s.productPackagingUnit(ctx, input.ProductID, input.UnitID); err != nil {
-			return ReceiptPreviewLine{}, err
-		}
-	}
-	if input.CharacteristicID != "" {
-		characteristic, err := s.activeRecord(ctx, config.ProductCharacteristics.Name, input.CharacteristicID, "Ref_Key,DeletionMark,Owner,Недействителен")
-		if err != nil {
-			return ReceiptPreviewLine{}, fmt.Errorf("characteristic: %w", err)
-		}
-		if !strings.EqualFold(rawString(characteristic["Owner"]), input.ProductID) || string(characteristic["Недействителен"]) == "true" {
-			return ReceiptPreviewLine{}, errors.New("characteristic must be active and belong to the product")
-		}
+		return ReceiptPreviewLine{}, err
 	}
 	return computeReceiptLine(input, number, unit, vatMode, rates)
+}
+
+// stockLineUnit checks that a goods line names an active stock product, its own characteristic and a unit it can be counted in.
+func (s Service) stockLineUnit(ctx context.Context, productID, characteristicID, unitID string) (lineUnit, error) {
+	product, err := s.activeRecord(ctx, config.Products.Name, productID, "Ref_Key,DeletionMark,IsFolder,ТипНоменклатуры,ЕдиницаИзмерения_Key")
+	if err != nil {
+		return lineUnit{}, fmt.Errorf("product: %w", err)
+	}
+	if string(product["IsFolder"]) != "false" || rawString(product["ТипНоменклатуры"]) != receiptStockProducts {
+		return lineUnit{}, unsupported("product must be an active stock item; services belong to the receipt's expenses")
+	}
+	baseID := rawString(product["ЕдиницаИзмерения_Key"])
+	if !linkedGUID(baseID) {
+		return lineUnit{}, unsupported("product has no base unit; unit conversion is not supported")
+	}
+	unit := lineUnit{ID: strings.ToLower(baseID), Type: unitClassifierType}
+	if unitID != "" && !strings.EqualFold(unitID, baseID) {
+		if unit, err = s.productPackagingUnit(ctx, productID, unitID); err != nil {
+			return lineUnit{}, err
+		}
+	}
+	if characteristicID != "" && characteristicID != emptyGUID {
+		characteristic, err := s.activeRecord(ctx, config.ProductCharacteristics.Name, characteristicID, "Ref_Key,DeletionMark,Owner,Недействителен")
+		if err != nil {
+			return lineUnit{}, fmt.Errorf("characteristic: %w", err)
+		}
+		if !strings.EqualFold(rawString(characteristic["Owner"]), productID) || string(characteristic["Недействителен"]) == "true" {
+			return lineUnit{}, errors.New("characteristic must be active and belong to the product")
+		}
+	}
+	return unit, nil
 }
 
 // productPackagingUnit accepts a product's own unit only when 1C stores a positive conversion factor for it.
@@ -833,6 +856,7 @@ type editableReceiptLine struct {
 
 type editableReceipt struct {
 	ID             string
+	Number         string
 	DataVersion    string
 	Posted         bool
 	OrganizationID string
@@ -840,6 +864,7 @@ type editableReceipt struct {
 	ContractID     string
 	WarehouseID    string
 	DepartmentID   string
+	OrderID        string
 	Date           string
 	IncomingNumber string
 	IncomingDate   string
@@ -878,7 +903,7 @@ func (s Service) readEditableReceipt(ctx context.Context, id string) (editableRe
 		return editableReceipt{}, errors.New("receipt has no data version for a safe update")
 	}
 	receipt := editableReceipt{
-		ID: strings.ToLower(id), DataVersion: rawString(row["DataVersion"]), Posted: string(row["Posted"]) == "true",
+		ID: strings.ToLower(id), Number: strings.TrimSpace(rawString(row["Number"])), DataVersion: rawString(row["DataVersion"]), Posted: string(row["Posted"]) == "true",
 		OrganizationID: rawString(row["Организация_Key"]), SupplierID: rawString(row["Контрагент_Key"]), ContractID: rawString(row["Договор_Key"]),
 		WarehouseID: rawString(row["СтруктурнаяЕдиница_Key"]), DepartmentID: rawString(row["Подразделение_Key"]),
 		Date: rawString(row["Date"]), IncomingNumber: strings.TrimSpace(rawString(row["НомерВходящегоДокумента"])), Comment: rawString(row["Комментарий"]),
@@ -886,6 +911,9 @@ func (s Service) readEditableReceipt(ctx context.Context, id string) (editableRe
 	}
 	if incoming := rawString(row["ДатаВходящегоДокумента"]); !strings.HasPrefix(incoming, "0001-01-01") && len(incoming) >= 10 {
 		receipt.IncomingDate = incoming[:10]
+	}
+	if rawString(row["Заказ_Type"]) == supplierOrderType && linkedGUID(rawString(row["Заказ"])) {
+		receipt.OrderID = strings.ToLower(rawString(row["Заказ"]))
 	}
 	var lines []map[string]any
 	if raw, ok := row["Запасы"]; ok {
@@ -929,6 +957,9 @@ func verifyReceiptSaved(saved editableReceipt, want ReceiptWrite) error {
 	}
 	if !strings.EqualFold(saved.SupplierID, want.SupplierID) || !strings.EqualFold(saved.ContractID, want.ContractID) || !strings.EqualFold(saved.WarehouseID, want.WarehouseID) || !strings.EqualFold(saved.DepartmentID, want.DepartmentID) || saved.IncomingNumber != want.IncomingNumber {
 		return errors.New("header fields do not match")
+	}
+	if want.OrderID != "" && !strings.EqualFold(saved.OrderID, want.OrderID) {
+		return errors.New("supplier order link does not match")
 	}
 	if len(saved.Lines) != len(want.Lines) {
 		return errors.New("line count does not match")

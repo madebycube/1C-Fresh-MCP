@@ -214,6 +214,14 @@ var GetOrder = Spec{
 	Example:     "1c get order --json ORDER_GUID",
 }
 
+var GetOrderPayments = Spec{
+	Command:     "get order-payments",
+	Tool:        "get_order_payments",
+	Description: "Read-only: every payment, refund and offset 1C allocated to one customer order in the customer-settlement register, as of a date, with the remaining amount or overpayment, supporting documents, unallocated customer advances, unposted documents and anything that needs review.",
+	Usage:       "1c get order-payments [--as-of YYYY-MM-DD] [--json] (GUID | --number N [--organization GUID] [--customer GUID] [--date YYYY-MM-DD])",
+	Example:     "1c get order-payments ORDER_GUID --as-of 2026-10-31",
+}
+
 var ListCustomers = Spec{
 	Command:     "list customers",
 	Tool:        "list_customers",
@@ -486,6 +494,14 @@ var UnpostPaymentPlan = Spec{
 	Example:     "1c unpost payment-plan INVOICE_GUID --apply",
 }
 
+var CreatePrepaymentPlan = Spec{
+	Command:     "create prepayment-plan",
+	Tool:        "create_supplier_prepayment_plan",
+	Description: "Preview or plan a prepayment on an existing unposted supplier invoice, without a goods receipt, from a bank account or cash desk; checks payments already linked and never posts, approves, or pays.",
+	Usage:       "1c create prepayment-plan --invoice GUID --source bank|cash [--account ORG_BANK_ACCOUNT_GUID] [--supplier-account GUID] [--cash CASH_DESK_GUID] --payment-date YYYY-MM-DD [--amount AMOUNT] [--department GUID] [--purpose TEXT] [--comment TEXT] [--expect-version DATA_VERSION] [--apply] [--json]",
+	Example:     "1c create prepayment-plan --invoice INVOICE_GUID --source bank --account ACCOUNT_GUID --payment-date 2026-11-10 --amount 5000 --purpose \"Предоплата по счёту 12\"",
+}
+
 var ListReceipts = Spec{
 	Command:     "list receipts",
 	Tool:        "list_cash_receipts",
@@ -582,6 +598,22 @@ var ListProductUnits = Spec{
 	Example:     "1c list product-units PRODUCT_GUID",
 }
 
+var CreateProductUnit = Spec{
+	Command:     "create product-unit",
+	Tool:        "create_product_unit",
+	Description: "Add a packaging unit to a product card with its factor to the base unit.",
+	Usage:       "1c create product-unit PRODUCT_GUID --unit-type GUID --factor NUMBER [--name TEXT] [--json]",
+	Example:     "1c create product-unit PRODUCT_GUID --unit-type UNIT_TYPE_GUID --factor 12 --name кор",
+}
+
+var UpdateProductUnit = Spec{
+	Command:     "update product-unit",
+	Tool:        "update_product_unit",
+	Description: "Rename a product's own unit or change its factor to the base unit.",
+	Usage:       "1c update product-unit UNIT_GUID [--name TEXT] [--factor NUMBER] [--json]",
+	Example:     "1c update product-unit UNIT_GUID --factor 10",
+}
+
 var PreviewReceipts = Spec{
 	Command:     "preview receipts",
 	Tool:        "preview_supplier_receipts",
@@ -606,15 +638,71 @@ var SetPrice = Spec{
 	Example:     "1c set price PRODUCT_GUID --price-type \"Example price\" --price 149.90 --date 2026-11-01",
 }
 
+var GetSupplierOrder = Spec{
+	Command:     "get supplier-order",
+	Tool:        "get_supplier_order",
+	Description: "Read a supplier order with ordered, received and still expected quantities per line, linked receipts, and what was paid against it.",
+	Usage:       "1c get supplier-order [--json] GUID",
+	Example:     "1c get supplier-order ORDER_GUID",
+}
+
+var CreateSupplierOrder = Spec{
+	Command:     "create supplier-order",
+	Tool:        "create_supplier_order",
+	Description: "Preview or save an unposted supplier order with discounts, delivery dates and a payment schedule; it never pays or approves anything.",
+	Usage:       "1c create supplier-order --organization GUID --supplier GUID --contract GUID --warehouse GUID --department GUID --date YYYY-MM-DD --vat inclusive|exclusive --line PRODUCT_GUID:QUANTITY:PRICE:VAT_CODE[:CHARACTERISTIC_GUID][:unit=GUID][:discount=PERCENT][:amount=A][:vat=V][:delivery=YYYY-MM-DD]... [--invoice-number TEXT] [--invoice-date YYYY-MM-DD] [--delivery-date YYYY-MM-DD] [--state GUID] [--payment YYYY-MM-DD:percent=P|amount=A]... [--payment-type bank|cash] [--bank-account GUID] [--cash-box GUID] [--comment TEXT] [--allow-duplicate] [--apply] [--json]",
+	Example:     "1c create supplier-order --organization ORG_GUID --supplier SUPPLIER_GUID --contract CONTRACT_GUID --warehouse WAREHOUSE_GUID --department DEPARTMENT_GUID --date 2026-11-01 --vat inclusive --line PRODUCT_GUID:10:12.50:НДС22 --invoice-number СЧ-15 --payment 2026-11-02:percent=30 --payment 2026-11-15:percent=70",
+}
+
+var UpdateSupplierOrder = Spec{
+	Command:     "update supplier-order",
+	Tool:        "update_supplier_order",
+	Description: "Preview or save changes to a supplier order, keeping other fields and lines; a posted order needs repost.",
+	Usage:       "1c update supplier-order GUID [--date YYYY-MM-DD] [--warehouse GUID] [--department GUID] [--invoice-number TEXT] [--invoice-date YYYY-MM-DD] [--delivery-date YYYY-MM-DD] [--state GUID] [--comment TEXT] [--set-line N:quantity=Q,price=P,vat=CODE,discount=PERCENT,amount=A,vat-amount=V,delivery=YYYY-MM-DD]... [--add-line PRODUCT_GUID:QUANTITY:PRICE:VAT_CODE[:...]]... [--payment YYYY-MM-DD:percent=P|amount=A]... [--clear-payments] [--payment-type bank|cash] [--bank-account GUID] [--cash-box GUID] [--repost] [--expect-version DATA_VERSION] [--apply] [--json]",
+	Example:     "1c update supplier-order ORDER_GUID --set-line 2:quantity=8 --payment 2026-11-02:percent=50 --payment 2026-11-15:percent=50 --apply",
+}
+
+var PostSupplierOrder = Spec{
+	Command:     "post supplier-order",
+	Tool:        "set_supplier_order_posting",
+	Description: "Preview or run posting or unposting of a supplier order in 1C.",
+	Usage:       "1c post supplier-order GUID [--expect-version DATA_VERSION] [--apply] [--json]",
+	Example:     "1c post supplier-order ORDER_GUID --apply",
+}
+
+var UnpostSupplierOrder = Spec{
+	Command:     "unpost supplier-order",
+	Tool:        "set_supplier_order_posting",
+	Description: "Preview or run unposting of a supplier order so it can be amended.",
+	Usage:       "1c unpost supplier-order GUID [--expect-version DATA_VERSION] [--apply] [--json]",
+	Example:     "1c unpost supplier-order ORDER_GUID --apply",
+}
+
+var CreateReceiptFromOrder = Spec{
+	Command:     "create order-receipt",
+	Tool:        "create_receipt_from_supplier_order",
+	Description: "Preview or save an unposted goods receipt for what arrived against a posted supplier order; unreceived quantities stay expected and nothing can be received twice.",
+	Usage:       "1c create order-receipt ORDER_GUID --date YYYY-MM-DD (--line ORDER_LINE:QUANTITY... | --all-remaining) [--warehouse GUID] [--incoming-number TEXT] [--incoming-date YYYY-MM-DD] [--comment TEXT] [--allow-duplicate] [--apply] [--json]",
+	Example:     "1c create order-receipt ORDER_GUID --date 2026-11-05 --line 1:10 --line 2:4 --incoming-number УПД-1",
+}
+
+var LinkReceiptToOrder = Spec{
+	Command:     "link order-receipt",
+	Tool:        "link_receipt_to_supplier_order",
+	Description: "Preview or link an existing supplier receipt to a supplier order after checking that its lines match what the order still expects; creates no document.",
+	Usage:       "1c link order-receipt RECEIPT_GUID ORDER_GUID [--repost] [--expect-version DATA_VERSION] [--apply] [--json]",
+	Example:     "1c link order-receipt RECEIPT_GUID ORDER_GUID",
+}
+
 var Topics = []Topic{
 	{Name: "setup", Description: "Connection and local MCP server", Commands: []Spec{Check}},
 	{Name: "company", Description: "Organizations, departments, and contracts", Commands: []Spec{ListOrganizations, ListDepartments, ListContracts}},
-	{Name: "products", Description: "Products, groups, categories, and characteristics", Commands: []Spec{ListProducts, GetProduct, SearchProducts, CreateProduct, UpdateProduct, ListGroups, CreateGroup, UpdateGroup, ListProductCategories, ListProductCharacteristics, ListUnitTypes, ListProductUnits}},
+	{Name: "products", Description: "Products, groups, categories, and characteristics", Commands: []Spec{ListProducts, GetProduct, SearchProducts, CreateProduct, UpdateProduct, ListGroups, CreateGroup, UpdateGroup, ListProductCategories, ListProductCharacteristics, ListUnitTypes, ListProductUnits, CreateProductUnit, UpdateProductUnit}},
 	{Name: "prices", Description: "Price types, currencies, quotes, and source documents", Commands: []Spec{ListPriceTypes, ListCurrencies, GetPrice, ListPrices, ListPriceDocuments, GetPriceDocument, SetPrice}},
 	{Name: "inventory", Description: "Warehouses, stock, and warehouse documents", Commands: []Spec{ListWarehouses, GetStock, ListWarehouseDocuments, GetWarehouseDocument, CreateTransfer}},
 	{Name: "partners", Description: "Customer and supplier records and folders", Commands: []Spec{ListCounterpartyGroups, CreateCounterpartyGroup, UpdateCounterpartyGroup, ListCustomers, SearchCustomers, GetCustomer, CreateCustomer, UpdateCustomer, ListSuppliers, SearchSuppliers, GetSupplier, CreateSupplier, UpdateSupplier}},
-	{Name: "sales", Description: "Customer orders and sales documents", Commands: []Spec{ListOrders, GetOrder, ListSales, GetSale, ReportSales}},
-	{Name: "purchases", Description: "Supplier orders, goods receipts, and payment plans", Commands: []Spec{ListPurchases, GetPurchase, PreviewReceipts, CreateReceipt, UpdateReceipt, PostReceipt, UnpostReceipt, ListLinkProperties, GetReceiptLink, SetReceiptLink, ListPaymentPlans, GetPaymentPlan, CreatePaymentPlan, UpdatePaymentPlan, PostPaymentPlan, UnpostPaymentPlan, TraceReceiptPayments, ReconcileSupplier}},
+	{Name: "sales", Description: "Customer orders and sales documents", Commands: []Spec{ListOrders, GetOrder, GetOrderPayments, ListSales, GetSale, ReportSales}},
+	{Name: "purchases", Description: "Supplier orders, goods receipts, and payment plans", Commands: []Spec{ListPurchases, GetPurchase, GetSupplierOrder, CreateSupplierOrder, UpdateSupplierOrder, PostSupplierOrder, UnpostSupplierOrder, CreateReceiptFromOrder, LinkReceiptToOrder, PreviewReceipts, CreateReceipt, UpdateReceipt, PostReceipt, UnpostReceipt, ListLinkProperties, GetReceiptLink, SetReceiptLink, ListPaymentPlans, GetPaymentPlan, CreatePaymentPlan, CreatePrepaymentPlan, UpdatePaymentPlan, PostPaymentPlan, UnpostPaymentPlan, TraceReceiptPayments, ReconcileSupplier}},
 	{Name: "money", Description: "Accounts, cash, bank, and card movements", Commands: []Spec{ListMoneyAccounts, ListMoney, GetMoney, ListCashBalances, ListDebts}},
 	{Name: "advances", Description: "Advance reports and accountable funds", Commands: []Spec{ListAdvanceReports, GetAdvanceReport, GetAccountableBalance, CreateAdvanceReport, UpdateAdvanceReport, PostAdvanceReport, UnpostAdvanceReport}},
 	{Name: "receipts", Description: "Fiscal receipts and posting audit", Commands: []Spec{ListReceipts, GetReceipt, AuditUnpostedReceipts}},

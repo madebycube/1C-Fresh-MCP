@@ -169,10 +169,16 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		return writer.Flush()
 	case operations.UpdateProduct.Command:
 		return runProductUpdate(ctx, svc, commandArgs, out)
+	case operations.CreateProductUnit.Command:
+		return runProductUnitCreate(ctx, svc, commandArgs, out)
+	case operations.UpdateProductUnit.Command:
+		return runProductUnitUpdate(ctx, svc, commandArgs, out)
 	case operations.ListOrders.Command:
 		return runOrderList(ctx, svc, commandArgs, out)
 	case operations.GetOrder.Command:
 		return runOrderGet(ctx, svc, commandArgs, out)
+	case operations.GetOrderPayments.Command:
+		return runOrderPayments(ctx, svc, commandArgs, out)
 	case operations.ListCustomers.Command:
 		return runCustomerList(ctx, svc, commandArgs, out, false, "customer")
 	case operations.SearchCustomers.Command:
@@ -209,6 +215,20 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		return runReceiptPosting(ctx, svc, commandArgs, out, "post")
 	case operations.UnpostReceipt.Command:
 		return runReceiptPosting(ctx, svc, commandArgs, out, "unpost")
+	case operations.GetSupplierOrder.Command:
+		return runSupplierOrderGet(ctx, svc, commandArgs, out)
+	case operations.CreateSupplierOrder.Command:
+		return runSupplierOrderCreate(ctx, svc, commandArgs, out)
+	case operations.UpdateSupplierOrder.Command:
+		return runSupplierOrderUpdate(ctx, svc, commandArgs, out)
+	case operations.PostSupplierOrder.Command:
+		return runSupplierOrderPosting(ctx, svc, commandArgs, out, "post")
+	case operations.UnpostSupplierOrder.Command:
+		return runSupplierOrderPosting(ctx, svc, commandArgs, out, "unpost")
+	case operations.CreateReceiptFromOrder.Command:
+		return runReceiptFromOrder(ctx, svc, commandArgs, out)
+	case operations.LinkReceiptToOrder.Command:
+		return runReceiptOrderLink(ctx, svc, commandArgs, out)
 	case operations.ListLinkProperties.Command:
 		return runLinkPropertyList(ctx, svc, commandArgs, out)
 	case operations.GetReceiptLink.Command:
@@ -217,6 +237,8 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		return runReceiptLinkSet(ctx, svc, commandArgs, out)
 	case operations.CreatePaymentPlan.Command:
 		return runPaymentPlanCreate(ctx, svc, commandArgs, out)
+	case operations.CreatePrepaymentPlan.Command:
+		return runPrepaymentPlanCreate(ctx, svc, commandArgs, out)
 	case operations.UpdatePaymentPlan.Command:
 		return runPaymentPlanUpdate(ctx, svc, commandArgs, out)
 	case operations.PostPaymentPlan.Command:

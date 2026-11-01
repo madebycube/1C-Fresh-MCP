@@ -37,6 +37,8 @@ type SupplierPaymentPlan struct {
 	BasisID           string                   `json:"basis_id,omitempty"`
 	Schedule          []PaymentScheduleLine    `json:"schedule,omitempty"`
 	Calendar          *PaymentCalendarEvidence `json:"calendar,omitempty"`
+	Status            string                   `json:"status,omitempty"`
+	Payments          *InvoicePaymentStatus    `json:"payments,omitempty"`
 }
 
 type PaymentScheduleLine struct {
@@ -165,6 +167,17 @@ func (s Service) GetSupplierPaymentPlan(ctx context.Context, id string) (Supplie
 		item.Schedule = append(item.Schedule, line)
 	}
 	item.Calendar = s.paymentCalendar(ctx, item.ID)
+	if item.SupplierID != "" {
+		payments := s.invoicePayments(ctx, item.SupplierID, item.ID)
+		item.Payments = &payments
+	} else {
+		item.Payments = &InvoicePaymentStatus{Paid: "0", Payments: []TracedPayment{}, Incomplete: []string{"invoice has no supplier"}, Notes: []string{}}
+	}
+	total, _ := new(big.Rat).SetString(string(item.Amount))
+	item.Status = paymentRequestStatus(item.Posted, item.PlanPayment && len(item.Schedule) > 0, item.Calendar, *item.Payments, total)
+	if item.Deleted {
+		item.Status = "marked_for_deletion"
+	}
 	return item, nil
 }
 
