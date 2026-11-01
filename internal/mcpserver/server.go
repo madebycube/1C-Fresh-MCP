@@ -151,6 +151,13 @@ type reportCashFlowInput struct {
 	To   string `json:"to" jsonschema:"Inclusive end date YYYY-MM-DD, at most one year after from"`
 }
 
+type draftPostingInput struct {
+	ID                  string `json:"id" jsonschema:"Document GUID"`
+	Action              string `json:"action" jsonschema:"post or unpost"`
+	ExpectedDataVersion string `json:"expected_data_version,omitempty" jsonschema:"data_version from the preview; the action fails if the document changed since"`
+	Apply               bool   `json:"apply,omitempty" jsonschema:"Run the action; false only previews its impact"`
+}
+
 type listProductUnitsInput struct {
 	ProductID string `json:"product_id" jsonschema:"Product GUID"`
 }
@@ -1363,6 +1370,20 @@ func New(svc service.Service) *mcp.Server {
 			Repost: input.Repost, ExpectedDataVersion: input.ExpectedDataVersion, Apply: input.Apply,
 		})
 		return nil, write, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.PostTransfer.Tool, Description: "Preview or run posting (action post) or unposting (action unpost) of a warehouse-to-warehouse stock transfer in 1C.",
+		Annotations: &mcp.ToolAnnotations{IdempotentHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input draftPostingInput) (*mcp.CallToolResult, service.DraftPosting, error) {
+		posting, err := svc.SetDraftPosting(ctx, "transfer", input.ID, input.Action, input.ExpectedDataVersion, input.Apply)
+		return nil, posting, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.PostPriceDocument.Tool, Description: "Preview or run posting (action post) or unposting (action unpost) of a price-setting document in 1C; posting makes its prices current.",
+		Annotations: &mcp.ToolAnnotations{IdempotentHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input draftPostingInput) (*mcp.CallToolResult, service.DraftPosting, error) {
+		posting, err := svc.SetDraftPosting(ctx, "price", input.ID, input.Action, input.ExpectedDataVersion, input.Apply)
+		return nil, posting, err
 	})
 	mcp.AddTool(server, &mcp.Tool{
 		Name: operations.PostSupplierOrder.Tool, Description: "Preview or run posting (action post) or unposting (action unpost) of a supplier order in 1C; posting plans payments but never pays or approves them.",
