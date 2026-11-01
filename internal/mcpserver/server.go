@@ -451,6 +451,21 @@ type createPaymentPlanInput struct {
 	Apply             bool   `json:"apply,omitempty" jsonschema:"Save the plan; false only previews it"`
 }
 
+type createPrepaymentPlanInput struct {
+	InvoiceID           string  `json:"invoice_id" jsonschema:"Unposted supplier invoice GUID to plan a prepayment on; no goods receipt is needed"`
+	Source              string  `json:"source" jsonschema:"bank (organization bank account) or cash (cash desk)"`
+	AccountID           string  `json:"account_id,omitempty" jsonschema:"For bank: the organization's own paying bank account GUID"`
+	SupplierAccountID   string  `json:"supplier_account_id,omitempty" jsonschema:"For bank: the supplier's (recipient's) bank account GUID; optional when the supplier has exactly one"`
+	CashID              string  `json:"cash_id,omitempty" jsonschema:"For cash: cash desk GUID"`
+	PaymentDate         string  `json:"payment_date" jsonschema:"Planned payment date YYYY-MM-DD"`
+	Amount              string  `json:"amount,omitempty" jsonschema:"Prepayment amount, up to 2 decimals; defaults to the invoice total minus linked payments"`
+	DepartmentID        string  `json:"department_id,omitempty" jsonschema:"Department GUID; omit to keep the invoice's"`
+	Purpose             string  `json:"purpose,omitempty" jsonschema:"Payment purpose; stored as a line of the comment, because the invoice has no purpose field"`
+	Comment             *string `json:"comment,omitempty" jsonschema:"Replacement comment; omit to keep the current one"`
+	ExpectedDataVersion string  `json:"expected_data_version,omitempty" jsonschema:"data_version from the preview; the save fails if the invoice changed since"`
+	Apply               bool    `json:"apply,omitempty" jsonschema:"Save the plan; false only previews it"`
+}
+
 type updatePaymentPlanInput struct {
 	ID                  string  `json:"id" jsonschema:"Unposted supplier payment plan (invoice) GUID"`
 	ReceiptID           string  `json:"receipt_id,omitempty" jsonschema:"Receipt GUID; required when changing the amount"`
@@ -940,6 +955,17 @@ func New(svc service.Service) *mcp.Server {
 		Annotations: &mcp.ToolAnnotations{DestructiveHint: &additive},
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, input createPaymentPlanInput) (*mcp.CallToolResult, service.PaymentPlanWrite, error) {
 		write, err := svc.CreatePaymentPlanDraft(ctx, service.PaymentPlanDraft(input))
+		return nil, write, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.CreatePrepaymentPlan.Tool, Description: operations.CreatePrepaymentPlan.Description,
+		Annotations: &mcp.ToolAnnotations{IdempotentHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input createPrepaymentPlanInput) (*mcp.CallToolResult, service.PrepaymentWrite, error) {
+		write, err := svc.PlanInvoicePrepayment(ctx, service.PrepaymentRequest{
+			InvoiceID: input.InvoiceID, Source: input.Source, AccountID: input.AccountID, CashID: input.CashID, SupplierAccountID: input.SupplierAccountID,
+			PaymentDate: input.PaymentDate, Amount: input.Amount, DepartmentID: input.DepartmentID, Purpose: input.Purpose, Comment: input.Comment,
+			ExpectedDataVersion: input.ExpectedDataVersion, Apply: input.Apply,
+		})
 		return nil, write, err
 	})
 	mcp.AddTool(server, &mcp.Tool{

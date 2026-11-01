@@ -217,6 +217,8 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		return runReceiptLinkSet(ctx, svc, commandArgs, out)
 	case operations.CreatePaymentPlan.Command:
 		return runPaymentPlanCreate(ctx, svc, commandArgs, out)
+	case operations.CreatePrepaymentPlan.Command:
+		return runPrepaymentPlanCreate(ctx, svc, commandArgs, out)
 	case operations.UpdatePaymentPlan.Command:
 		return runPaymentPlanUpdate(ctx, svc, commandArgs, out)
 	case operations.PostPaymentPlan.Command:

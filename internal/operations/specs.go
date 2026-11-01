@@ -486,6 +486,14 @@ var UnpostPaymentPlan = Spec{
 	Example:     "1c unpost payment-plan INVOICE_GUID --apply",
 }
 
+var CreatePrepaymentPlan = Spec{
+	Command:     "create prepayment-plan",
+	Tool:        "create_supplier_prepayment_plan",
+	Description: "Preview or plan a prepayment on an existing unposted supplier invoice, without a goods receipt, from a bank account or cash desk; checks payments already linked and never posts, approves, or pays.",
+	Usage:       "1c create prepayment-plan --invoice GUID --source bank|cash [--account ORG_BANK_ACCOUNT_GUID] [--supplier-account GUID] [--cash CASH_DESK_GUID] --payment-date YYYY-MM-DD [--amount AMOUNT] [--department GUID] [--purpose TEXT] [--comment TEXT] [--expect-version DATA_VERSION] [--apply] [--json]",
+	Example:     "1c create prepayment-plan --invoice INVOICE_GUID --source bank --account ACCOUNT_GUID --payment-date 2026-11-10 --amount 5000 --purpose \"Предоплата по счёту 12\"",
+}
+
 var ListReceipts = Spec{
 	Command:     "list receipts",
 	Tool:        "list_cash_receipts",
@@ -614,7 +622,7 @@ var Topics = []Topic{
 	{Name: "inventory", Description: "Warehouses, stock, and warehouse documents", Commands: []Spec{ListWarehouses, GetStock, ListWarehouseDocuments, GetWarehouseDocument, CreateTransfer}},
 	{Name: "partners", Description: "Customer and supplier records and folders", Commands: []Spec{ListCounterpartyGroups, CreateCounterpartyGroup, UpdateCounterpartyGroup, ListCustomers, SearchCustomers, GetCustomer, CreateCustomer, UpdateCustomer, ListSuppliers, SearchSuppliers, GetSupplier, CreateSupplier, UpdateSupplier}},
 	{Name: "sales", Description: "Customer orders and sales documents", Commands: []Spec{ListOrders, GetOrder, ListSales, GetSale, ReportSales}},
-	{Name: "purchases", Description: "Supplier orders, goods receipts, and payment plans", Commands: []Spec{ListPurchases, GetPurchase, PreviewReceipts, CreateReceipt, UpdateReceipt, PostReceipt, UnpostReceipt, ListLinkProperties, GetReceiptLink, SetReceiptLink, ListPaymentPlans, GetPaymentPlan, CreatePaymentPlan, UpdatePaymentPlan, PostPaymentPlan, UnpostPaymentPlan, TraceReceiptPayments, ReconcileSupplier}},
+	{Name: "purchases", Description: "Supplier orders, goods receipts, and payment plans", Commands: []Spec{ListPurchases, GetPurchase, PreviewReceipts, CreateReceipt, UpdateReceipt, PostReceipt, UnpostReceipt, ListLinkProperties, GetReceiptLink, SetReceiptLink, ListPaymentPlans, GetPaymentPlan, CreatePaymentPlan, CreatePrepaymentPlan, UpdatePaymentPlan, PostPaymentPlan, UnpostPaymentPlan, TraceReceiptPayments, ReconcileSupplier}},
 	{Name: "money", Description: "Accounts, cash, bank, and card movements", Commands: []Spec{ListMoneyAccounts, ListMoney, GetMoney, ListCashBalances, ListDebts}},
 	{Name: "receipts", Description: "Fiscal receipts and posting audit", Commands: []Spec{ListReceipts, GetReceipt, AuditUnpostedReceipts}},
 	{Name: "schema", Description: "Search and inspect exposed OData resources", Commands: []Spec{SearchResources, DescribeResource}},
