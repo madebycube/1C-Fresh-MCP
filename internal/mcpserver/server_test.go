@@ -155,6 +155,13 @@ func (stubReader) GetRegisterTable(_ context.Context, query config.RegisterQuery
 	return []byte(`{"odata.count":"1","value":[{"Контрагент_Key":"00000000-0000-0000-0000-000000000007","ТипРасчетов":"Долг","СуммаBalance":120.5}]}`), nil
 }
 
+func (stubReader) GetRecordSet(_ context.Context, register, _, _ string, _ int64) ([]byte, bool, error) {
+	if register == "AccumulationRegister_ЗапасыНаСкладах" {
+		return []byte(`{"RecordSet":[{"LineNumber":"1","RecordType":"Expense","Номенклатура_Key":"00000000-0000-0000-0000-000000000004","Количество":3}]}`), true, nil
+	}
+	return nil, false, nil
+}
+
 func (stubReader) GetStockBalance(_ context.Context, productID string, _ url.Values, _ int64) ([]byte, error) {
 	return []byte(`{"odata.count":"1","value":[{"Номенклатура_Key":"` + productID + `","СтруктурнаяЕдиница_Key":"00000000-0000-0000-0000-000000000006","Характеристика_Key":"00000000-0000-0000-0000-000000000000","Организация_Key":"00000000-0000-0000-0000-000000000000","Партия_Key":"00000000-0000-0000-0000-000000000000","Ячейка_Key":"00000000-0000-0000-0000-000000000000","КоличествоBalance":3.5}]}`), nil
 }
@@ -177,8 +184,8 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(listed.Tools) != 86 {
-		t.Fatalf("got %d tools; want 86", len(listed.Tools))
+	if len(listed.Tools) != 87 {
+		t.Fatalf("got %d tools; want 87", len(listed.Tools))
 	}
 	for _, tool := range listed.Tools {
 		if tool.Annotations == nil {
@@ -224,6 +231,7 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 		{operations.ReportCashFlow.Tool, map[string]any{"from": "2026-09-01", "to": "2026-09-30"}},
 		{operations.PostTransfer.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000010", "action": "unpost"}},
 		{operations.PostPriceDocument.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000005", "action": "unpost"}},
+		{operations.GetMovements.Tool, map[string]any{"kind": "transfer", "id": "00000000-0000-0000-0000-000000000010"}},
 		{operations.SetDeletionMark.Tool, map[string]any{"kind": "transfer", "id": "00000000-0000-0000-0000-000000000010", "clear": true}},
 		{operations.ListOrganizations.Tool, map[string]any{}},
 		{operations.ListDepartments.Tool, map[string]any{}},

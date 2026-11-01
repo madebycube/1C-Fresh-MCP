@@ -718,6 +718,14 @@ var UnpostPriceDocument = Spec{
 	Example:     "1c unpost price-document PRICE_DOCUMENT_GUID --apply",
 }
 
+var GetMovements = Spec{
+	Command:     "get movements",
+	Tool:        "get_document_movements",
+	Description: "Show what a posted document recorded in the stock, sales, settlement, money, and payment-calendar registers.",
+	Usage:       "1c get movements --kind KIND [--json] GUID",
+	Example:     "1c get movements --kind goods-receipt DOCUMENT_GUID",
+}
+
 var SetDeletionMark = Spec{
 	Command:     "set deletion-mark",
 	Tool:        "set_deletion_mark",
@@ -753,7 +761,7 @@ var Topics = []Topic{
 	{Name: "purchases", Description: "Supplier orders, goods receipts, and payment plans", Commands: []Spec{ListPurchases, GetPurchase, GetSupplierOrder, CreateSupplierOrder, UpdateSupplierOrder, PostSupplierOrder, UnpostSupplierOrder, CreateReceiptFromOrder, LinkReceiptToOrder, PreviewReceipts, CreateReceipt, UpdateReceipt, PostReceipt, UnpostReceipt, ListLinkProperties, GetReceiptLink, SetReceiptLink, ListPaymentPlans, GetPaymentPlan, CreatePaymentPlan, CreatePrepaymentPlan, UpdatePaymentPlan, PostPaymentPlan, UnpostPaymentPlan, TraceReceiptPayments, ReconcileSupplier}},
 	{Name: "money", Description: "Accounts, cash, bank, and card movements", Commands: []Spec{ListMoneyAccounts, ListMoney, GetMoney, ListCashBalances, ReportCashFlow, ListDebts}},
 	{Name: "receipts", Description: "Fiscal receipts and posting audit", Commands: []Spec{ListReceipts, GetReceipt, AuditUnpostedReceipts}},
-	{Name: "records", Description: "Deletion marks on documents and catalog items", Commands: []Spec{SetDeletionMark}},
+	{Name: "records", Description: "Document register movements and deletion marks", Commands: []Spec{GetMovements, SetDeletionMark}},
 	{Name: "schema", Description: "Search and inspect exposed OData resources", Commands: []Spec{SearchResources, DescribeResource}},
 }
 

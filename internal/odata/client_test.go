@@ -177,3 +177,20 @@ func TestRegisterTableResourceValidatesArguments(t *testing.T) {
 		}
 	}
 }
+
+func TestRecordSetResourceValidatesArguments(t *testing.T) {
+	got, err := RecordSetResource("AccumulationRegister_Продажи", "Document_РасходнаяНакладная", "00000000-0000-0000-0000-00000000000A")
+	if err != nil || got != "AccumulationRegister_Продажи(Recorder='00000000-0000-0000-0000-00000000000a',Recorder_Type='StandardODATA.Document_РасходнаяНакладная')" {
+		t.Fatalf("record set: %q, %v", got, err)
+	}
+	for _, args := range [][3]string{
+		{"Catalog_Номенклатура", "Document_X", "00000000-0000-0000-0000-000000000001"},
+		{"AccumulationRegister_X", "Catalog_X", "00000000-0000-0000-0000-000000000001"},
+		{"AccumulationRegister_X", "Document_X')", "00000000-0000-0000-0000-000000000001"},
+		{"AccumulationRegister_X", "Document_X", "1'"},
+	} {
+		if _, err := RecordSetResource(args[0], args[1], args[2]); err == nil {
+			t.Fatalf("expected error for %v", args)
+		}
+	}
+}

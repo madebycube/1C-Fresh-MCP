@@ -223,6 +223,8 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		return runSupplierOrderCreate(ctx, svc, commandArgs, out)
 	case operations.UpdateSupplierOrder.Command:
 		return runSupplierOrderUpdate(ctx, svc, commandArgs, out)
+	case operations.GetMovements.Command:
+		return runMovements(ctx, svc, commandArgs, out)
 	case operations.SetDeletionMark.Command:
 		return runDeletionMark(ctx, svc, commandArgs, out)
 	case operations.PostTransfer.Command:

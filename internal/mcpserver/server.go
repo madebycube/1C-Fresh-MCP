@@ -158,6 +158,11 @@ type draftPostingInput struct {
 	Apply               bool   `json:"apply,omitempty" jsonschema:"Run the action; false only previews its impact"`
 }
 
+type movementsInput struct {
+	Kind string `json:"kind" jsonschema:"invoice, shipment, return, supplier-order, goods-receipt, transfer-order, transfer, stock-receipt, stock-writeoff, cash-in, cash-out, bank-in, bank-out, card-payment, cash-shift, or payment-plan"`
+	ID   string `json:"id" jsonschema:"Document GUID"`
+}
+
 type deletionMarkInput struct {
 	Kind                string `json:"kind" jsonschema:"receipt, payment-plan, supplier-order, transfer, price-document, product, or counterparty"`
 	ID                  string `json:"id" jsonschema:"Record GUID"`
@@ -1378,6 +1383,13 @@ func New(svc service.Service) *mcp.Server {
 			Repost: input.Repost, ExpectedDataVersion: input.ExpectedDataVersion, Apply: input.Apply,
 		})
 		return nil, write, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.GetMovements.Tool, Description: operations.GetMovements.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input movementsInput) (*mcp.CallToolResult, service.DocumentMovements, error) {
+		result, err := svc.GetDocumentMovements(ctx, input.Kind, input.ID)
+		return nil, result, err
 	})
 	mcp.AddTool(server, &mcp.Tool{
 		Name: operations.SetDeletionMark.Tool, Description: "Preview or set (or clear) the 1C deletion mark on a document or catalog item. Reversible; nothing is deleted. Posted documents must be unposted first.",
