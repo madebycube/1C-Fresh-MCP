@@ -598,6 +598,14 @@ var ListProductUnits = Spec{
 	Example:     "1c list product-units PRODUCT_GUID",
 }
 
+var UpdatePayment = Spec{
+	Command:     "update payment",
+	Tool:        "update_supplier_payment",
+	Description: "Preview or save changes to an outgoing supplier payment and its allocation to contracts and receipts; a posted payment needs repost.",
+	Usage:       "1c update payment GUID --kind bank-out|cash-out [--date YYYY-MM-DD] [--comment TEXT] [--amount A] [--set-line N:contract=GUID,document=GUID,amount=A,vat=CODE]... [--add-line CONTRACT_GUID:AMOUNT:VAT_CODE[:RECEIPT_GUID]]... [--remove-line N]... [--repost] [--expect-version DATA_VERSION] [--apply] [--json]",
+	Example:     "1c update payment PAYMENT_GUID --kind bank-out --set-line 1:document=RECEIPT_GUID,vat=НДС22 --repost",
+}
+
 var CreateProductUnit = Spec{
 	Command:     "create product-unit",
 	Tool:        "create_product_unit",
@@ -703,7 +711,7 @@ var Topics = []Topic{
 	{Name: "partners", Description: "Customer and supplier records and folders", Commands: []Spec{ListCounterpartyGroups, CreateCounterpartyGroup, UpdateCounterpartyGroup, ListCustomers, SearchCustomers, GetCustomer, CreateCustomer, UpdateCustomer, ListSuppliers, SearchSuppliers, GetSupplier, CreateSupplier, UpdateSupplier}},
 	{Name: "sales", Description: "Customer orders and sales documents", Commands: []Spec{ListOrders, GetOrder, GetOrderPayments, ListSales, GetSale, ReportSales}},
 	{Name: "purchases", Description: "Supplier orders, goods receipts, and payment plans", Commands: []Spec{ListPurchases, GetPurchase, GetSupplierOrder, CreateSupplierOrder, UpdateSupplierOrder, PostSupplierOrder, UnpostSupplierOrder, CreateReceiptFromOrder, LinkReceiptToOrder, PreviewReceipts, CreateReceipt, UpdateReceipt, PostReceipt, UnpostReceipt, ListLinkProperties, GetReceiptLink, SetReceiptLink, ListPaymentPlans, GetPaymentPlan, CreatePaymentPlan, CreatePrepaymentPlan, UpdatePaymentPlan, PostPaymentPlan, UnpostPaymentPlan, TraceReceiptPayments, ReconcileSupplier}},
-	{Name: "money", Description: "Accounts, cash, bank, and card movements", Commands: []Spec{ListMoneyAccounts, ListMoney, GetMoney, ListCashBalances, ListDebts}},
+	{Name: "money", Description: "Accounts, cash, bank, and card movements", Commands: []Spec{ListMoneyAccounts, ListMoney, GetMoney, ListCashBalances, ListDebts, UpdatePayment}},
 	{Name: "receipts", Description: "Fiscal receipts and posting audit", Commands: []Spec{ListReceipts, GetReceipt, AuditUnpostedReceipts}},
 	{Name: "schema", Description: "Search and inspect exposed OData resources", Commands: []Spec{SearchResources, DescribeResource}},
 }

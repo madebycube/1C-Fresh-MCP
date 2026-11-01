@@ -150,6 +150,35 @@ type listProductUnitsInput struct {
 	ProductID string `json:"product_id" jsonschema:"Product GUID"`
 }
 
+type paymentAllocationInput struct {
+	ContractID string `json:"contract_id" jsonschema:"Supplier contract GUID"`
+	DocumentID string `json:"document_id,omitempty" jsonschema:"Supplier goods receipt GUID this money settles; omit for an advance"`
+	Amount     string `json:"amount" jsonschema:"Amount of this line including VAT"`
+	VATRate    string `json:"vat_rate" jsonschema:"VAT rate code such as НДС22 or БезНДС"`
+}
+
+type paymentAllocationChangeInput struct {
+	LineNumber int     `json:"line_number" jsonschema:"Allocation line number from get_money_document"`
+	ContractID *string `json:"contract_id,omitempty" jsonschema:"Replacement contract GUID"`
+	DocumentID *string `json:"document_id,omitempty" jsonschema:"Replacement goods receipt GUID"`
+	Amount     *string `json:"amount,omitempty" jsonschema:"Replacement amount including VAT"`
+	VATRate    *string `json:"vat_rate,omitempty" jsonschema:"Replacement VAT rate code"`
+}
+
+type updatePaymentInput struct {
+	Kind                string                         `json:"kind" jsonschema:"bank-out or cash-out"`
+	ID                  string                         `json:"id" jsonschema:"Outgoing supplier payment GUID"`
+	Date                *string                        `json:"date,omitempty" jsonschema:"Replacement date YYYY-MM-DD"`
+	Comment             *string                        `json:"comment,omitempty" jsonschema:"Replacement comment"`
+	Amount              *string                        `json:"amount,omitempty" jsonschema:"Replacement payment total; the allocation lines must add up to it"`
+	ChangeLines         []paymentAllocationChangeInput `json:"change_lines,omitempty" jsonschema:"Changes to existing allocation lines"`
+	AddLines            []paymentAllocationInput       `json:"add_lines,omitempty" jsonschema:"Allocation lines to append"`
+	RemoveLines         []int                          `json:"remove_lines,omitempty" jsonschema:"Allocation line numbers to remove"`
+	Repost              bool                           `json:"repost,omitempty" jsonschema:"For a posted payment: unpost it, save the changes, and post it again"`
+	ExpectedDataVersion string                         `json:"expected_data_version,omitempty" jsonschema:"data_version from the preview; the save fails if the payment changed since"`
+	Apply               bool                           `json:"apply,omitempty" jsonschema:"Save the changes; false only previews them"`
+}
+
 type createProductUnitInput struct {
 	ProductID  string `json:"product_id" jsonschema:"Product GUID"`
 	UnitTypeID string `json:"unit_type_id" jsonschema:"Classifier unit GUID from list_unit_types"`
@@ -802,6 +831,23 @@ func New(svc service.Service) *mcp.Server {
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, input listProductUnitsInput) (*mcp.CallToolResult, service.ProductUnits, error) {
 		units, err := svc.ListProductUnits(ctx, input.ProductID)
 		return nil, units, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.UpdatePayment.Tool, Description: operations.UpdatePayment.Description,
+		Annotations: &mcp.ToolAnnotations{IdempotentHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input updatePaymentInput) (*mcp.CallToolResult, service.PaymentWrite, error) {
+		change := service.PaymentAmendment{
+			Date: input.Date, Comment: input.Comment, Amount: input.Amount, RemoveLines: input.RemoveLines,
+			Repost: input.Repost, ExpectedDataVersion: input.ExpectedDataVersion, Apply: input.Apply,
+		}
+		for _, line := range input.ChangeLines {
+			change.ChangeLines = append(change.ChangeLines, service.PaymentAllocationChange(line))
+		}
+		for _, line := range input.AddLines {
+			change.AddLines = append(change.AddLines, service.PaymentAllocationInput(line))
+		}
+		write, err := svc.AmendSupplierPayment(ctx, input.Kind, input.ID, change)
+		return nil, write, err
 	})
 	mcp.AddTool(server, &mcp.Tool{
 		Name: operations.CreateProductUnit.Tool, Description: operations.CreateProductUnit.Description,
