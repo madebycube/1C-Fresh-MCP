@@ -214,6 +214,14 @@ var GetOrder = Spec{
 	Example:     "1c get order --json ORDER_GUID",
 }
 
+var GetOrderPayments = Spec{
+	Command:     "get order-payments",
+	Tool:        "get_order_payments",
+	Description: "Read-only: every payment, refund and offset 1C allocated to one customer order in the customer-settlement register, as of a date, with the remaining amount or overpayment, supporting documents, unallocated customer advances, unposted documents and anything that needs review.",
+	Usage:       "1c get order-payments [--as-of YYYY-MM-DD] [--json] (GUID | --number N [--organization GUID] [--customer GUID] [--date YYYY-MM-DD])",
+	Example:     "1c get order-payments ORDER_GUID --as-of 2026-10-31",
+}
+
 var ListCustomers = Spec{
 	Command:     "list customers",
 	Tool:        "list_customers",
@@ -621,7 +629,7 @@ var Topics = []Topic{
 	{Name: "prices", Description: "Price types, currencies, quotes, and source documents", Commands: []Spec{ListPriceTypes, ListCurrencies, GetPrice, ListPrices, ListPriceDocuments, GetPriceDocument, SetPrice}},
 	{Name: "inventory", Description: "Warehouses, stock, and warehouse documents", Commands: []Spec{ListWarehouses, GetStock, ListWarehouseDocuments, GetWarehouseDocument, CreateTransfer}},
 	{Name: "partners", Description: "Customer and supplier records and folders", Commands: []Spec{ListCounterpartyGroups, CreateCounterpartyGroup, UpdateCounterpartyGroup, ListCustomers, SearchCustomers, GetCustomer, CreateCustomer, UpdateCustomer, ListSuppliers, SearchSuppliers, GetSupplier, CreateSupplier, UpdateSupplier}},
-	{Name: "sales", Description: "Customer orders and sales documents", Commands: []Spec{ListOrders, GetOrder, ListSales, GetSale, ReportSales}},
+	{Name: "sales", Description: "Customer orders and sales documents", Commands: []Spec{ListOrders, GetOrder, GetOrderPayments, ListSales, GetSale, ReportSales}},
 	{Name: "purchases", Description: "Supplier orders, goods receipts, and payment plans", Commands: []Spec{ListPurchases, GetPurchase, PreviewReceipts, CreateReceipt, UpdateReceipt, PostReceipt, UnpostReceipt, ListLinkProperties, GetReceiptLink, SetReceiptLink, ListPaymentPlans, GetPaymentPlan, CreatePaymentPlan, CreatePrepaymentPlan, UpdatePaymentPlan, PostPaymentPlan, UnpostPaymentPlan, TraceReceiptPayments, ReconcileSupplier}},
 	{Name: "money", Description: "Accounts, cash, bank, and card movements", Commands: []Spec{ListMoneyAccounts, ListMoney, GetMoney, ListCashBalances, ListDebts}},
 	{Name: "receipts", Description: "Fiscal receipts and posting audit", Commands: []Spec{ListReceipts, GetReceipt, AuditUnpostedReceipts}},

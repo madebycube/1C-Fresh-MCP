@@ -173,6 +173,8 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		return runOrderList(ctx, svc, commandArgs, out)
 	case operations.GetOrder.Command:
 		return runOrderGet(ctx, svc, commandArgs, out)
+	case operations.GetOrderPayments.Command:
+		return runOrderPayments(ctx, svc, commandArgs, out)
 	case operations.ListCustomers.Command:
 		return runCustomerList(ctx, svc, commandArgs, out, false, "customer")
 	case operations.SearchCustomers.Command:
