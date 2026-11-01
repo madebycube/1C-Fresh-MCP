@@ -235,6 +235,15 @@ type getOrderInput struct {
 	ID string `json:"id" jsonschema:"Customer order GUID"`
 }
 
+type getOrderPaymentsInput struct {
+	ID             string `json:"id,omitempty" jsonschema:"Customer order GUID; give this or number"`
+	Number         string `json:"number,omitempty" jsonschema:"Customer order number when the GUID is unknown"`
+	OrganizationID string `json:"organization_id,omitempty" jsonschema:"Optional organization GUID to pick one order by number"`
+	CustomerID     string `json:"customer_id,omitempty" jsonschema:"Optional customer GUID to pick one order by number"`
+	Date           string `json:"date,omitempty" jsonschema:"Optional order date YYYY-MM-DD to pick one order by number"`
+	AsOf           string `json:"as_of,omitempty" jsonschema:"Settlement date YYYY-MM-DD; defaults to today"`
+}
+
 type listCustomersInput struct {
 	Limit   int    `json:"limit,omitempty" jsonschema:"Maximum results, from 1 to 100; defaults to 20"`
 	Offset  int    `json:"offset,omitempty" jsonschema:"Offset within the customer list"`
@@ -893,6 +902,13 @@ func New(svc service.Service) *mcp.Server {
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, input getOrderInput) (*mcp.CallToolResult, service.Order, error) {
 		order, err := svc.GetOrder(ctx, input.ID)
 		return nil, order, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.GetOrderPayments.Tool, Description: operations.GetOrderPayments.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input getOrderPaymentsInput) (*mcp.CallToolResult, service.OrderPayments, error) {
+		result, err := svc.GetOrderPayments(ctx, service.OrderPaymentsQuery{OrderID: input.ID, Number: input.Number, OrganizationID: input.OrganizationID, CustomerID: input.CustomerID, Date: input.Date, AsOf: input.AsOf})
+		return nil, result, err
 	})
 	mcp.AddTool(server, &mcp.Tool{
 		Name: operations.ListCustomers.Tool, Description: operations.ListCustomers.Description,

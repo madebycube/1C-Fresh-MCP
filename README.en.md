@@ -103,6 +103,7 @@ Commands follow `1c VERB RESOURCE [OPTIONS]`. `1c --help` lists topics, `1c help
 1c list orders --limit 20
 1c list orders --customer CUSTOMER_GUID --from 2026-09-01 --to 2026-09-30 --offset 20
 1c get order --json ORDER_GUID
+1c get order-payments ORDER_GUID --as-of 2026-10-31
 1c report sales --from 2026-09-01 --to 2026-09-30 --by customer
 1c list sales --kind shipment --limit 20
 1c list sales --kind return --customer CUSTOMER_GUID
@@ -179,6 +180,8 @@ Commands follow `1c VERB RESOURCE [OPTIONS]`. `1c --help` lists topics, `1c help
 
 `list orders` shows customer orders newest first. Use `--customer`, paired `--from` and `--to`, `--limit`, and `--offset` to filter and page results. JSON returns `items`, `total`, and `next_offset`.
 
+`get order-payments` (MCP `get_order_payments`) is read-only: it collects every payment of one customer order as of `--as-of` (default today). Give the order GUID or `--number`; narrow an ambiguous number with `--organization`, `--customer`, or `--date`. It is based on the customer-settlement register («Расчеты с покупателями») movements for that order: payments (cash receipts, bank receipts, card operations, fiscal receipts including those from the POS workstation, retail sales reports, opening balances), refunds (cash and bank expenses, refund receipts), and debt offsets. Matching customer, amount, or date never counts as a link. 1C records each payment in the register once, so a fiscal receipt, its card operation, and the later acquirer payout are not added up, and acquirer commission does not reduce the amount paid. The result has the order number, date, amount, customer, and contract; payments, refunds, offsets, net paid, remaining or overpaid; shipped per the register; documents with dates, totals, status, the amount allocated to this order, and the amount allocated elsewhere; the customer's advance without an order; unposted and deletion-marked documents that name the order; and what needs review (`needs_review`): an advance without an order, a posted document naming the order with no allocation, a receipt and card payment of the same amount on one day, or an acquirer payout. If the register cannot be read, the command fails instead of reporting unpaid.
+
 `list suppliers` and `search suppliers` show counterparties marked as suppliers. `list purchases --kind order` reads supplier orders, while `--kind receipt` selects incoming goods documents whose operation is supplier receipt. `list warehouse-docs` reads transfer orders (`transfer-order`), stock movements whose operation is transfer (`transfer`), stock receipts (`stock-receipt`), and stock writeoffs (`stock-writeoff`). Filter by supplier or warehouse ID; a transfer matches either its source or destination warehouse. Both lists support dates, `--limit`, and `--offset`. `get purchase` and `get warehouse-doc` include product lines and available linked document IDs. `Posted` indicates posting in 1C, not fulfillment or physical receipt. There are no transfer orders in the tested tenant, so getting one by GUID has not been verified live.
 
 `create transfer` (MCP `create_stock_transfer`) previews a stock transfer between two active warehouses of one organization; `--apply` saves it unposted with the predefined «Перемещение» operation and the ruble currency, then reads it back and checks the warehouses and lines. Lines are `PRODUCT_GUID:QUANTITY[:CHARACTERISTIC_GUID][:unit=GUID]`; a unit other than the base unit must be one of the product's own units with a conversion factor (see `list product-units`). Only stock items are accepted. Nothing moves until the transfer is posted in 1C, and 1C checks the available stock then. A failed save is never retried; check `list warehouse-docs --kind transfer` first.
@@ -234,7 +237,7 @@ Configure your MCP client to launch this command from the repository directory, 
 - `create_counterparty_group` and `update_counterparty_group` (write operations)
 - `create_product` and `update_product` (write operations)
 - `search_odata_resources` and `describe_odata_resource`
-- `list_customer_orders` and `get_customer_order`
+- `list_customer_orders`, `get_customer_order`, and `get_order_payments`
 - `list_customers`, `search_customers`, and `get_customer`
 - `create_customer` and `update_customer` (write operations)
 - `list_suppliers`, `search_suppliers`, and `get_supplier`

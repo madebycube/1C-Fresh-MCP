@@ -293,7 +293,7 @@ func firstNonEmpty(values ...string) string {
 	return ""
 }
 
-var orderPaymentSources = map[string]string{
+var supplierOrderPaymentSources = map[string]string{
 	"StandardODATA.Document_РасходСоСчета":         "bank-out",
 	"StandardODATA.Document_РасходИзКассы":         "cash-out",
 	"StandardODATA.Document_ПоступлениеНаСчет":     "bank-in",
@@ -324,7 +324,7 @@ func (s Service) orderPayments(ctx context.Context, order editableOrder) Supplie
 				continue
 			}
 			movement := SupplierOrderPaymentMovement{RecorderID: strings.ToLower(rawString(row["Recorder"])), RecorderType: rawString(row["Recorder_Type"]), Period: rawString(row["Period"]), RecordType: rawString(row["RecordType"]), Amount: rawDecimal(row["СуммаВал"])}
-			movement.Source = orderPaymentSources[movement.RecorderType]
+			movement.Source = supplierOrderPaymentSources[movement.RecorderType]
 			switch movement.Source {
 			case "receipt", "receipt-correction":
 			case "":
