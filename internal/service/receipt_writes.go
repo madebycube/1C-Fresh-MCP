@@ -62,6 +62,8 @@ type ReceiptDraft struct {
 	Lines          []ReceiptLineInput `json:"lines"`
 	AllowDuplicate bool               `json:"allow_duplicate,omitempty"`
 	Apply          bool               `json:"apply,omitempty"`
+	// stored is the receipt as read when amending; header values left as stored skip the checks for new values.
+	stored *ReceiptDraft
 }
 
 type ReceiptPreviewLine struct {
@@ -277,7 +279,9 @@ func (s Service) AmendReceipt(ctx context.Context, id string, change ReceiptAmen
 	if change.ExpectedDataVersion != "" && change.ExpectedDataVersion != current.DataVersion {
 		return ReceiptWrite{}, errors.New("receipt changed since the preview; preview again")
 	}
-	draft := current.draft()
+	stored := current.draft()
+	draft := stored
+	draft.stored = &stored
 	changes := make([]string, 0)
 	setText := func(target *string, value *string, label string) {
 		if value != nil && *value != *target {
@@ -534,13 +538,21 @@ func (s Service) validateReceiptHeader(ctx context.Context, input ReceiptDraft) 
 	if err != nil {
 		return ReceiptWrite{}, errors.New("incoming date must be YYYY-MM-DD")
 	}
-	incomingNumber, err := counterpartyText(input.IncomingNumber, true, 30)
-	if err != nil {
-		return ReceiptWrite{}, errors.New("incoming number must be at most 30 characters without control characters")
+	kept := func(value func(ReceiptDraft) string) bool {
+		return input.stored != nil && value(input) == value(*input.stored)
 	}
-	comment := strings.TrimSpace(input.Comment)
-	if utf8.RuneCountInString(comment) > 1024 || strings.IndexFunc(comment, func(r rune) bool { return unicode.IsControl(r) && r != '\n' }) >= 0 {
-		return ReceiptWrite{}, errors.New("comment must be at most 1024 characters")
+	incomingNumber := input.IncomingNumber
+	if !kept(func(d ReceiptDraft) string { return d.IncomingNumber }) {
+		if incomingNumber, err = counterpartyText(input.IncomingNumber, true, 30); err != nil {
+			return ReceiptWrite{}, errors.New("incoming number must be at most 30 characters without control characters")
+		}
+	}
+	comment := input.Comment
+	if !kept(func(d ReceiptDraft) string { return d.Comment }) {
+		comment = strings.TrimSpace(comment)
+		if utf8.RuneCountInString(comment) > 1024 || strings.IndexFunc(comment, func(r rune) bool { return unicode.IsControl(r) && r != '\n' && r != '\r' && r != '\t' }) >= 0 {
+			return ReceiptWrite{}, errors.New("comment must be at most 1024 characters without control characters other than line breaks and tabs")
+		}
 	}
 	if input.VATMode != receiptVATIncluded && input.VATMode != receiptVATExcluded {
 		return ReceiptWrite{}, errors.New("VAT mode must be inclusive or exclusive")
@@ -562,7 +574,9 @@ func (s Service) validateReceiptHeader(ctx context.Context, input ReceiptDraft) 
 	if !strings.EqualFold(rawString(contract["Owner"]), input.SupplierID) || !strings.EqualFold(rawString(contract["Организация_Key"]), input.OrganizationID) {
 		return ReceiptWrite{}, errors.New("contract must belong to the supplier and the organization")
 	}
-	if string(contract["Недействителен"]) == "true" || string(contract["РасчетыВУсловныхЕдиницах"]) == "true" {
+	// A receipt being amended may keep a contract or units marked inactive since; only new references must be active.
+	inactiveContract := string(contract["Недействителен"]) == "true" && !kept(func(d ReceiptDraft) string { return strings.ToLower(d.ContractID) })
+	if inactiveContract || string(contract["РасчетыВУсловныхЕдиницах"]) == "true" {
 		return ReceiptWrite{}, errors.New("contract is inactive or settles in conventional units")
 	}
 	currencyID := rawString(contract["ВалютаРасчетов_Key"])
@@ -570,12 +584,17 @@ func (s Service) validateReceiptHeader(ctx context.Context, input ReceiptDraft) 
 	if err != nil || rawString(currency["Code"]) != receiptBaseCurrency {
 		return ReceiptWrite{}, unsupported("only contracts settled in rubles are supported; foreign-currency receipts need an exchange rate this tool does not set")
 	}
+	storedUnits := map[string]string{}
+	if input.stored != nil {
+		storedUnits["warehouse"], storedUnits["department"] = input.stored.WarehouseID, input.stored.DepartmentID
+	}
 	for label, pair := range map[string][2]string{"warehouse": {input.WarehouseID, "Склад"}, "department": {input.DepartmentID, "Подразделение"}} {
 		unit, err := s.activeRecord(ctx, config.Warehouses.Name, pair[0], "Ref_Key,DeletionMark,ТипСтруктурнойЕдиницы,Недействителен")
 		if err != nil {
 			return ReceiptWrite{}, fmt.Errorf("%s: %w", label, err)
 		}
-		if rawString(unit["ТипСтруктурнойЕдиницы"]) != pair[1] || string(unit["Недействителен"]) == "true" {
+		inactive := string(unit["Недействителен"]) == "true" && !strings.EqualFold(pair[0], storedUnits[label])
+		if rawString(unit["ТипСтруктурнойЕдиницы"]) != pair[1] || inactive {
 			return ReceiptWrite{}, fmt.Errorf("%s ID must identify an active %s", label, pair[1])
 		}
 	}

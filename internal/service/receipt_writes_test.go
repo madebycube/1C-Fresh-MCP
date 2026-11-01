@@ -344,3 +344,38 @@ func TestAmendReceiptRepostsPostedReceipt(t *testing.T) {
 		t.Fatalf("receipt changed after a refused unpost: %v writes=%v", err, fake.writes)
 	}
 }
+
+func TestAmendReceiptKeepsStoredCommentAndInactiveWarehouse(t *testing.T) {
+	fake := receiptFixture()
+	svc := Service{OData: fake}
+	input := receiptDraftInput()
+	input.Apply = true
+	created, err := svc.CreateReceiptDraft(context.Background(), input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// 1C stores comments with Windows line breaks, and warehouses can be retired after the receipt was entered.
+	saved := fake.rows[receiptResourceName][1]
+	saved["Комментарий"] = "line one\r\nline two\x01"
+	fake.rows["Catalog_СтруктурныеЕдиницы"][0]["Недействителен"] = true
+	fake.rows["Catalog_ДоговорыКонтрагентов"][0]["Недействителен"] = true
+	rate := "БезНДС"
+	amended, err := svc.AmendReceipt(context.Background(), created.ID, ReceiptAmendment{VATRate: &rate, ExpectedDataVersion: "v1", Apply: true})
+	if err != nil || !amended.Applied || saved["Комментарий"] != "line one\r\nline two\x01" || saved["СтруктурнаяЕдиница_Key"] != salesID(62) {
+		t.Fatalf("amend with stored values: %+v, %v", amended, err)
+	}
+	writes := len(fake.writes)
+	newComment := "new\r\n\tnote"
+	if _, err := svc.AmendReceipt(context.Background(), created.ID, ReceiptAmendment{Comment: &newComment}); err != nil {
+		t.Fatalf("CRLF comment refused: %v", err)
+	}
+	bad := "bell\x07"
+	if _, err := svc.AmendReceipt(context.Background(), created.ID, ReceiptAmendment{Comment: &bad, Apply: true}); err == nil || len(fake.writes) != writes {
+		t.Fatalf("control character accepted: %v", err)
+	}
+	fake.rows["Catalog_СтруктурныеЕдиницы"] = append(fake.rows["Catalog_СтруктурныеЕдиницы"], map[string]any{"Ref_Key": salesID(79), "DeletionMark": false, "ТипСтруктурнойЕдиницы": "Склад", "Недействителен": true})
+	other := salesID(79)
+	if _, err := svc.AmendReceipt(context.Background(), created.ID, ReceiptAmendment{WarehouseID: &other, Apply: true}); err == nil || len(fake.writes) != writes {
+		t.Fatalf("moved to an inactive warehouse: %v", err)
+	}
+}
