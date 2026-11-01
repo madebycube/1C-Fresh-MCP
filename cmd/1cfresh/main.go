@@ -235,6 +235,20 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		return runOperationalList(ctx, svc, commandArgs, out, "warehouse")
 	case operations.GetWarehouseDocument.Command:
 		return runOperationalGet(ctx, svc, commandArgs, out, "warehouse")
+	case operations.ListAdvanceReports.Command:
+		return runAdvanceReportList(ctx, svc, commandArgs, out)
+	case operations.GetAdvanceReport.Command:
+		return runAdvanceReportGet(ctx, svc, commandArgs, out)
+	case operations.GetAccountableBalance.Command:
+		return runAccountableBalance(ctx, svc, commandArgs, out)
+	case operations.CreateAdvanceReport.Command:
+		return runAdvanceReportCreate(ctx, svc, commandArgs, out)
+	case operations.UpdateAdvanceReport.Command:
+		return runAdvanceReportUpdate(ctx, svc, commandArgs, out)
+	case operations.PostAdvanceReport.Command:
+		return runAdvanceReportPosting(ctx, svc, commandArgs, out, "post")
+	case operations.UnpostAdvanceReport.Command:
+		return runAdvanceReportPosting(ctx, svc, commandArgs, out, "unpost")
 	case operations.SetPrice.Command:
 		return runPriceSet(ctx, svc, commandArgs, out)
 	case operations.CreateTransfer.Command:

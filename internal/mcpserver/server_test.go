@@ -177,21 +177,21 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(listed.Tools) != 72 {
-		t.Fatalf("got %d tools; want 72", len(listed.Tools))
+	if len(listed.Tools) != 78 {
+		t.Fatalf("got %d tools; want 78", len(listed.Tools))
 	}
 	for _, tool := range listed.Tools {
 		if tool.Annotations == nil {
 			t.Fatalf("tool %s has no annotations", tool.Name)
 		}
-		write := tool.Name == operations.CreateGroup.Tool || tool.Name == operations.UpdateGroup.Tool || tool.Name == operations.CreateCounterpartyGroup.Tool || tool.Name == operations.UpdateCounterpartyGroup.Tool || tool.Name == operations.CreateProduct.Tool || tool.Name == operations.UpdateProduct.Tool || tool.Name == operations.CreateCustomer.Tool || tool.Name == operations.UpdateCustomer.Tool || tool.Name == operations.CreateSupplier.Tool || tool.Name == operations.UpdateSupplier.Tool || tool.Name == operations.CreateReceipt.Tool || tool.Name == operations.UpdateReceipt.Tool || tool.Name == operations.PostReceipt.Tool || tool.Name == operations.SetReceiptLink.Tool || tool.Name == operations.CreatePaymentPlan.Tool || tool.Name == operations.UpdatePaymentPlan.Tool || tool.Name == operations.PostPaymentPlan.Tool || tool.Name == operations.CreateTransfer.Tool || tool.Name == operations.SetPrice.Tool
+		write := tool.Name == operations.CreateGroup.Tool || tool.Name == operations.UpdateGroup.Tool || tool.Name == operations.CreateCounterpartyGroup.Tool || tool.Name == operations.UpdateCounterpartyGroup.Tool || tool.Name == operations.CreateProduct.Tool || tool.Name == operations.UpdateProduct.Tool || tool.Name == operations.CreateCustomer.Tool || tool.Name == operations.UpdateCustomer.Tool || tool.Name == operations.CreateSupplier.Tool || tool.Name == operations.UpdateSupplier.Tool || tool.Name == operations.CreateReceipt.Tool || tool.Name == operations.UpdateReceipt.Tool || tool.Name == operations.PostReceipt.Tool || tool.Name == operations.SetReceiptLink.Tool || tool.Name == operations.CreatePaymentPlan.Tool || tool.Name == operations.UpdatePaymentPlan.Tool || tool.Name == operations.PostPaymentPlan.Tool || tool.Name == operations.CreateTransfer.Tool || tool.Name == operations.SetPrice.Tool || tool.Name == operations.CreateAdvanceReport.Tool || tool.Name == operations.UpdateAdvanceReport.Tool || tool.Name == operations.PostAdvanceReport.Tool
 		if tool.Annotations.ReadOnlyHint == write {
 			t.Fatalf("tool %s has incorrect read-only annotation", tool.Name)
 		}
-		if (tool.Name == operations.CreateGroup.Tool || tool.Name == operations.CreateCounterpartyGroup.Tool || tool.Name == operations.CreateProduct.Tool || tool.Name == operations.CreateCustomer.Tool || tool.Name == operations.CreateSupplier.Tool || tool.Name == operations.CreateReceipt.Tool || tool.Name == operations.CreatePaymentPlan.Tool || tool.Name == operations.CreateTransfer.Tool || tool.Name == operations.SetPrice.Tool) && (tool.Annotations.DestructiveHint == nil || *tool.Annotations.DestructiveHint) {
+		if (tool.Name == operations.CreateGroup.Tool || tool.Name == operations.CreateCounterpartyGroup.Tool || tool.Name == operations.CreateProduct.Tool || tool.Name == operations.CreateCustomer.Tool || tool.Name == operations.CreateSupplier.Tool || tool.Name == operations.CreateReceipt.Tool || tool.Name == operations.CreatePaymentPlan.Tool || tool.Name == operations.CreateTransfer.Tool || tool.Name == operations.SetPrice.Tool || tool.Name == operations.CreateAdvanceReport.Tool) && (tool.Annotations.DestructiveHint == nil || *tool.Annotations.DestructiveHint) {
 			t.Fatalf("%s must be marked additive", tool.Name)
 		}
-		if (tool.Name == operations.UpdateGroup.Tool || tool.Name == operations.UpdateCounterpartyGroup.Tool || tool.Name == operations.UpdateCustomer.Tool || tool.Name == operations.UpdateSupplier.Tool || tool.Name == operations.UpdateReceipt.Tool || tool.Name == operations.PostReceipt.Tool || tool.Name == operations.SetReceiptLink.Tool || tool.Name == operations.UpdatePaymentPlan.Tool || tool.Name == operations.PostPaymentPlan.Tool) && !tool.Annotations.IdempotentHint {
+		if (tool.Name == operations.UpdateGroup.Tool || tool.Name == operations.UpdateCounterpartyGroup.Tool || tool.Name == operations.UpdateCustomer.Tool || tool.Name == operations.UpdateSupplier.Tool || tool.Name == operations.UpdateReceipt.Tool || tool.Name == operations.PostReceipt.Tool || tool.Name == operations.SetReceiptLink.Tool || tool.Name == operations.UpdatePaymentPlan.Tool || tool.Name == operations.PostPaymentPlan.Tool || tool.Name == operations.UpdateAdvanceReport.Tool || tool.Name == operations.PostAdvanceReport.Tool) && !tool.Annotations.IdempotentHint {
 			t.Fatalf("%s must be marked idempotent", tool.Name)
 		}
 	}
@@ -324,6 +324,12 @@ func TestReceiptToolsReachServiceValidation(t *testing.T) {
 		{operations.CreatePaymentPlan.Tool, map[string]any{"receipt_id": "bad", "account_id": "bad", "date": "2026-10-01", "payment_date": "2026-10-10"}, "GUID"},
 		{operations.UpdatePaymentPlan.Tool, map[string]any{"id": "bad", "amount": "5"}, "GUID"},
 		{operations.PostPaymentPlan.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000018", "action": "approve"}, "post or unpost"},
+		{operations.ListAdvanceReports.Tool, map[string]any{"from": "2026-01-01", "to": "2026-09-30"}, "31"},
+		{operations.GetAdvanceReport.Tool, map[string]any{"id": "bad"}, "GUID"},
+		{operations.GetAccountableBalance.Tool, map[string]any{"employee_id": "bad"}, "GUID"},
+		{operations.CreateAdvanceReport.Tool, map[string]any{"organization_id": "bad", "employee_id": "bad", "date": "2026-10-01", "vat_mode": "inclusive", "lines": []map[string]any{{"section": "goods", "product_id": "bad", "quantity": "1", "price": "1", "vat_rate": "НДС22"}}}, "GUID"},
+		{operations.UpdateAdvanceReport.Tool, map[string]any{"id": "bad"}, "GUID"},
+		{operations.PostAdvanceReport.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000018", "action": "approve"}, "post or unpost"},
 	} {
 		result, err := clientSession.CallTool(ctx, &mcp.CallToolParams{Name: call.name, Arguments: call.args})
 		if err != nil || !result.IsError {
