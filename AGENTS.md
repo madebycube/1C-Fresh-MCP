@@ -54,7 +54,7 @@ A new read or write usually touches the same set of files. Commit #80 (price doc
 3. **Service**: implement it in `internal/service/<domain>.go` as a method on `Service`. All validation lives here, not in the CLI or MCP layer. Add `<domain>_test.go` with a stub `Reader` (see `group_writes_test.go`).
 4. **CLI**: add a `run...` function in `cmd/1cfresh/<domain>.go` using `flag.NewFlagSet(..., flag.ContinueOnError)`, `SetOutput(io.Discard)`, `parseFlags`, and a `--json` flag. On bad input return `errors.New("usage: " + ...)` matching the spec's `Usage`. Wire it into the `switch` in `main.go` using `operations.X.Command`. Pass free text through `flat()` before printing it in tables.
 5. **MCP**: add an input struct with `json` and `jsonschema` tags and an `mcp.AddTool` call in `internal/mcpserver/server.go` using `operations.X.Tool` and `.Description`. Default `limit` to 20 when it is zero, as the other list tools do.
-6. **MCP test**: in `internal/mcpserver/server_test.go`, bump the tool count (currently 80), add a call case, extend `stubReader` if needed, and add write tools to the annotation checks.
+6. **MCP test**: in `internal/mcpserver/server_test.go`, bump the tool count (currently 82), add a call case, extend `stubReader` if needed, and add write tools to the annotation checks.
 7. **Docs**: add the command to both `README.md` and `README.en.md`.
 
 ### Conventions
