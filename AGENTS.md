@@ -54,7 +54,7 @@ A new read or write usually touches the same set of files. Commit #80 (price doc
 3. **Service**: implement it in `internal/service/<domain>.go` as a method on `Service`. All validation lives here, not in the CLI or MCP layer. Add `<domain>_test.go` with a stub `Reader` (see `group_writes_test.go`).
 4. **CLI**: add a `run...` function in `cmd/1cfresh/<domain>.go` using `flag.NewFlagSet(..., flag.ContinueOnError)`, `SetOutput(io.Discard)`, `parseFlags`, and a `--json` flag. On bad input return `errors.New("usage: " + ...)` matching the spec's `Usage`. Wire it into the `switch` in `main.go` using `operations.X.Command`. Pass free text through `flat()` before printing it in tables.
 5. **MCP**: add an input struct with `json` and `jsonschema` tags and an `mcp.AddTool` call in `internal/mcpserver/server.go` using `operations.X.Tool` and `.Description`. Default `limit` to 20 when it is zero, as the other list tools do.
-6. **MCP test**: in `internal/mcpserver/server_test.go`, bump the tool count (currently 85), add a call case, extend `stubReader` if needed, and add write tools to the annotation checks.
+6. **MCP test**: in `internal/mcpserver/server_test.go`, bump the tool count (currently 86), add a call case, extend `stubReader` if needed, and add write tools to the annotation checks.
 7. **Docs**: add the command to both `README.md` and `README.en.md`.
 
 ### Conventions
@@ -75,7 +75,7 @@ Writes go to a real accounting database. A bad write can corrupt someone's books
 - Every write goes through `Service` and the `odataWriter` interface. Never call `odata.Client.Write` from the CLI or MCP layer, and never add an MCP tool or CLI command that takes a raw OData resource, filter, or body.
 - Before writing, read the target and the records it links to, and check they are what the caller claims: the right kind (`IsFolder`), not deleted (`DeletionMark`), and still active. See `CreateGroup` and `CreateProduct`.
 - Updates must PATCH only the changed fields and pass the record's `DataVersion` as `If-Match`. If the data version is empty, refuse. If nothing changed, return `Applied: false` without writing.
-- Allowed methods are POST (create) and PATCH (update). Do not add DELETE, deletion marks, posting or unposting of documents, or creation of financial documents without an explicit request from the maintainer and a design review.
+- Allowed methods are POST (create) and PATCH (update). Do not add DELETE, new deletion-mark kinds (see `set deletion-mark`), posting or unposting of new document kinds, or creation of financial documents without an explicit request from the maintainer and a design review.
 - MCP annotations must be honest. Reads set `ReadOnlyHint: true`. Creates set `DestructiveHint: &additive` (false). Updates set `IdempotentHint: true`. Keep the test in `server_test.go` that enforces this up to date.
 - Respect `docs/access-policy.md`. Payroll, HR, tax, regulated reports, and arbitrary record queries are out of scope. Money operations use allowlists that hide unknown operation types. A new sensitive area needs its boundary enforced in the service layer, with tests showing excluded records stay excluded.
 - Test every write with a stub that records the method, resource, body, and `If-Match`, and assert that invalid input causes zero writes (`writeHits`).

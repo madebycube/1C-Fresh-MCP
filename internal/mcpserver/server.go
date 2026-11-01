@@ -158,6 +158,14 @@ type draftPostingInput struct {
 	Apply               bool   `json:"apply,omitempty" jsonschema:"Run the action; false only previews its impact"`
 }
 
+type deletionMarkInput struct {
+	Kind                string `json:"kind" jsonschema:"receipt, payment-plan, supplier-order, transfer, price-document, product, or counterparty"`
+	ID                  string `json:"id" jsonschema:"Record GUID"`
+	Clear               bool   `json:"clear,omitempty" jsonschema:"Clear the deletion mark instead of setting it"`
+	ExpectedDataVersion string `json:"expected_data_version,omitempty" jsonschema:"data_version from the preview; the change fails if the record changed since"`
+	Apply               bool   `json:"apply,omitempty" jsonschema:"Make the change; false only previews it"`
+}
+
 type listProductUnitsInput struct {
 	ProductID string `json:"product_id" jsonschema:"Product GUID"`
 }
@@ -1370,6 +1378,13 @@ func New(svc service.Service) *mcp.Server {
 			Repost: input.Repost, ExpectedDataVersion: input.ExpectedDataVersion, Apply: input.Apply,
 		})
 		return nil, write, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.SetDeletionMark.Tool, Description: "Preview or set (or clear) the 1C deletion mark on a document or catalog item. Reversible; nothing is deleted. Posted documents must be unposted first.",
+		Annotations: &mcp.ToolAnnotations{IdempotentHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input deletionMarkInput) (*mcp.CallToolResult, service.DeletionMark, error) {
+		result, err := svc.SetDeletionMark(ctx, input.Kind, input.ID, !input.Clear, input.ExpectedDataVersion, input.Apply)
+		return nil, result, err
 	})
 	mcp.AddTool(server, &mcp.Tool{
 		Name: operations.PostTransfer.Tool, Description: "Preview or run posting (action post) or unposting (action unpost) of a warehouse-to-warehouse stock transfer in 1C.",
