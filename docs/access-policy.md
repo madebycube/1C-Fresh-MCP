@@ -26,3 +26,7 @@ Employee, salary, payment-statement, tax, and regulated-report records are outsi
 The money commands expose only named cash, bank, card, and shift document kinds. Their operation allowlists exclude payroll, tax, employee-payment, and unknown operations from both list and direct get. New operation values stay hidden until reviewed. Bank account discovery returns organization-owned accounts. `Posted` denotes 1C posting; it does not prove payment or reconciliation.
 
 `search resources` and `describe resource` expose schema metadata only. The default CLI and MCP server do not provide arbitrary OData record queries, report execution, filing, payroll editing, or tax editing. Any future sensitive-domain tool must enforce its boundary in the shared service layer so CLI and MCP behave the same way.
+
+## Advance reports and accountable funds
+
+Advance reports (`Document_АвансовыйОтчет`) and the `AccumulationRegister_РасчетыСПодотчетниками` register reference employees from `Catalog_Сотрудники`. The advance-report tools take an employee only as a GUID, check that the employee record exists and is not deleted by reading `Ref_Key` and `DeletionMark` alone, and never return names or other personnel fields. `get accountable-balance` requires one employee and returns only that employee's balance; there is no command that lists employees or every employee's balance. Linked cash and bank documents must be posted and name the same employee and organization. These tools do not issue, return, or transfer money, and they do not create supplier receipts.
