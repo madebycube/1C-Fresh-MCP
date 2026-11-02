@@ -169,6 +169,8 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		return writer.Flush()
 	case operations.UpdateProduct.Command:
 		return runProductUpdate(ctx, svc, commandArgs, out)
+	case operations.UpdatePayment.Command:
+		return runPaymentUpdate(ctx, svc, commandArgs, out)
 	case operations.CreateProductUnit.Command:
 		return runProductUnitCreate(ctx, svc, commandArgs, out)
 	case operations.UpdateProductUnit.Command:

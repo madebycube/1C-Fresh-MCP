@@ -7,7 +7,7 @@ This policy defines the default CLI and MCP surface. The menu in 1C is a navigat
 | 1C menu area | OData evidence in the tested application | Default surface |
 | --- | --- | --- |
 | Products, prices, customers, suppliers, orders, sales, purchases, and warehouse documents | Catalogs, documents, and the stock balance register used by existing commands | Available through named read commands |
-| Cash, bank, acquiring, and retail shifts | Cash/bank/card/shift documents and cash desk, bank account, and register catalogs | Available through `list accounts`, `list money`, and `get money`, with operation and scope restrictions |
+| Cash, bank, acquiring, and retail shifts | Cash/bank/card/shift documents and cash desk, bank account, and register catalogs | Available through `list accounts`, `list money`, and `get money`, with operation and scope restrictions; `update payment` edits only outgoing supplier payments (operation «Поставщику») in rubles |
 | Fiscal cash receipts | `Document_ЧекККМ` and `Document_ЧекККМВозврат` | Available through separate receipt commands; do not merge with card transactions or bank settlement |
 | Sales funnel, business analysis, company state, and the menu item “Reports” | UI reports and calculations; no report definition or equivalent output was established from OData metadata | No default report command |
 | Payroll and personnel | `Catalog_Сотрудники`, `Document_НачислениеЗарплатыУНФ`, `Document_ПлатежнаяВедомость`, and `Document_Табель` exist | No default record read |

@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"strings"
 	"text/tabwriter"
 
 	"github.com/madebycube/1C-Fresh-MCP/internal/operations"
@@ -94,5 +95,33 @@ func runMoneyGet(ctx context.Context, svc service.Service, args []string, out io
 		return json.NewEncoder(out).Encode(doc)
 	}
 	_, err = fmt.Fprintf(out, "%s %s\nDate: %s\nOperation: %s\nPosted: %t\nDeleted: %t\nAmount: %s\nAccount ID: %s\nRegister ID: %s\nTerminal ID: %s\nCounterparty ID: %s\nCurrency ID: %s\nBasis ID: %s\nBasis type: %s\nID: %s\n", doc.Kind, flat(doc.Number), flat(doc.Date), flat(doc.Operation), doc.Posted, doc.Deleted, doc.Amount, doc.AccountID, doc.RegisterID, doc.TerminalID, doc.CounterpartyID, doc.CurrencyID, doc.BasisID, doc.BasisType, doc.ID)
-	return err
+	if err != nil || len(doc.Allocations) == 0 {
+		return err
+	}
+	if doc.Comment != "" {
+		if _, err := fmt.Fprintf(out, "Comment: %s\n", flat(doc.Comment)); err != nil {
+			return err
+		}
+	}
+	if _, err := fmt.Fprintln(out, "\nAllocation:"); err != nil {
+		return err
+	}
+	return printMoneyAllocations(out, doc.Allocations)
+}
+
+func printMoneyAllocations(out io.Writer, allocations []service.MoneyAllocation) error {
+	writer := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
+	if _, err := fmt.Fprintln(writer, "LINE\tCONTRACT\tADVANCE\tDOCUMENT\tAMOUNT\tSETTLED\tVAT\tCONTRACT ID"); err != nil {
+		return err
+	}
+	for _, line := range allocations {
+		document := line.DocumentID
+		if line.DocumentType != "" {
+			document = strings.TrimPrefix(line.DocumentType, "StandardODATA.") + " " + document
+		}
+		if _, err := fmt.Fprintf(writer, "%s\t%s\t%t\t%s\t%s\t%s\t%s\t%s\n", line.LineNumber, flat(line.ContractName), line.Advance, document, line.PaymentAmount, line.SettlementAmount, line.VAT, line.ContractID); err != nil {
+			return err
+		}
+	}
+	return writer.Flush()
 }
