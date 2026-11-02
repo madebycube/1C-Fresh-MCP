@@ -590,6 +590,14 @@ var ListCashBalances = Spec{
 	Example:     "1c list cash-balances --as-of 2026-09-30",
 }
 
+var ReportCashFlow = Spec{
+	Command:     "report cash-flow",
+	Tool:        "report_cash_flow",
+	Description: "Show opening balance, receipts, payments, and closing balance per bank account or cash desk for a period.",
+	Usage:       "1c report cash-flow --from YYYY-MM-DD --to YYYY-MM-DD [--json]",
+	Example:     "1c report cash-flow --from 2026-09-01 --to 2026-09-30",
+}
+
 var ListProductUnits = Spec{
 	Command:     "list product-units",
 	Tool:        "list_product_units",
@@ -686,6 +694,54 @@ var UnpostSupplierOrder = Spec{
 	Example:     "1c unpost supplier-order ORDER_GUID --apply",
 }
 
+var PostTransfer = Spec{
+	Command:     "post transfer",
+	Tool:        "set_transfer_posting",
+	Description: "Preview or run posting or unposting of a stock transfer between warehouses.",
+	Usage:       "1c post transfer GUID [--expect-version DATA_VERSION] [--apply] [--json]",
+	Example:     "1c post transfer TRANSFER_GUID --apply",
+}
+
+var UnpostTransfer = Spec{
+	Command:     "unpost transfer",
+	Tool:        "set_transfer_posting",
+	Description: "Preview or run unposting of a stock transfer.",
+	Usage:       "1c unpost transfer GUID [--expect-version DATA_VERSION] [--apply] [--json]",
+	Example:     "1c unpost transfer TRANSFER_GUID --apply",
+}
+
+var PostPriceDocument = Spec{
+	Command:     "post price-document",
+	Tool:        "set_price_document_posting",
+	Description: "Preview or run posting or unposting of a price-setting document so its prices take effect.",
+	Usage:       "1c post price-document GUID [--expect-version DATA_VERSION] [--apply] [--json]",
+	Example:     "1c post price-document PRICE_DOCUMENT_GUID --apply",
+}
+
+var UnpostPriceDocument = Spec{
+	Command:     "unpost price-document",
+	Tool:        "set_price_document_posting",
+	Description: "Preview or run unposting of a price-setting document.",
+	Usage:       "1c unpost price-document GUID [--expect-version DATA_VERSION] [--apply] [--json]",
+	Example:     "1c unpost price-document PRICE_DOCUMENT_GUID --apply",
+}
+
+var GetMovements = Spec{
+	Command:     "get movements",
+	Tool:        "get_document_movements",
+	Description: "Show what a posted document recorded in the stock, sales, settlement, money, and payment-calendar registers.",
+	Usage:       "1c get movements --kind KIND [--json] GUID",
+	Example:     "1c get movements --kind goods-receipt DOCUMENT_GUID",
+}
+
+var SetDeletionMark = Spec{
+	Command:     "set deletion-mark",
+	Tool:        "set_deletion_mark",
+	Description: "Preview or set or clear the 1C deletion mark on a document or catalog item; nothing is deleted.",
+	Usage:       "1c set deletion-mark receipt|payment-plan|supplier-order|transfer|price-document|product|counterparty GUID [--clear] [--expect-version DATA_VERSION] [--apply] [--json]",
+	Example:     "1c set deletion-mark transfer TRANSFER_GUID --apply",
+}
+
 var CreateReceiptFromOrder = Spec{
 	Command:     "create order-receipt",
 	Tool:        "create_receipt_from_supplier_order",
@@ -706,14 +762,15 @@ var Topics = []Topic{
 	{Name: "setup", Description: "Connection and local MCP server", Commands: []Spec{Check}},
 	{Name: "company", Description: "Organizations, departments, and contracts", Commands: []Spec{ListOrganizations, ListDepartments, ListContracts}},
 	{Name: "products", Description: "Products, groups, categories, and characteristics", Commands: []Spec{ListProducts, GetProduct, SearchProducts, CreateProduct, UpdateProduct, ListGroups, CreateGroup, UpdateGroup, ListProductCategories, ListProductCharacteristics, ListUnitTypes, ListProductUnits, CreateProductUnit, UpdateProductUnit}},
-	{Name: "prices", Description: "Price types, currencies, quotes, and source documents", Commands: []Spec{ListPriceTypes, ListCurrencies, GetPrice, ListPrices, ListPriceDocuments, GetPriceDocument, SetPrice}},
-	{Name: "inventory", Description: "Warehouses, stock, and warehouse documents", Commands: []Spec{ListWarehouses, GetStock, ListWarehouseDocuments, GetWarehouseDocument, CreateTransfer}},
+	{Name: "prices", Description: "Price types, currencies, quotes, and source documents", Commands: []Spec{ListPriceTypes, ListCurrencies, GetPrice, ListPrices, ListPriceDocuments, GetPriceDocument, SetPrice, PostPriceDocument, UnpostPriceDocument}},
+	{Name: "inventory", Description: "Warehouses, stock, and warehouse documents", Commands: []Spec{ListWarehouses, GetStock, ListWarehouseDocuments, GetWarehouseDocument, CreateTransfer, PostTransfer, UnpostTransfer}},
 	{Name: "partners", Description: "Customer and supplier records and folders", Commands: []Spec{ListCounterpartyGroups, CreateCounterpartyGroup, UpdateCounterpartyGroup, ListCustomers, SearchCustomers, GetCustomer, CreateCustomer, UpdateCustomer, ListSuppliers, SearchSuppliers, GetSupplier, CreateSupplier, UpdateSupplier}},
 	{Name: "sales", Description: "Customer orders and sales documents", Commands: []Spec{ListOrders, GetOrder, GetOrderPayments, ListSales, GetSale, ReportSales}},
 	{Name: "purchases", Description: "Supplier orders, goods receipts, and payment plans", Commands: []Spec{ListPurchases, GetPurchase, GetSupplierOrder, CreateSupplierOrder, UpdateSupplierOrder, PostSupplierOrder, UnpostSupplierOrder, CreateReceiptFromOrder, LinkReceiptToOrder, PreviewReceipts, CreateReceipt, UpdateReceipt, PostReceipt, UnpostReceipt, ListLinkProperties, GetReceiptLink, SetReceiptLink, ListPaymentPlans, GetPaymentPlan, CreatePaymentPlan, CreatePrepaymentPlan, UpdatePaymentPlan, PostPaymentPlan, UnpostPaymentPlan, TraceReceiptPayments, ReconcileSupplier}},
-	{Name: "money", Description: "Accounts, cash, bank, and card movements", Commands: []Spec{ListMoneyAccounts, ListMoney, GetMoney, ListCashBalances, ListDebts, UpdatePayment}},
+	{Name: "money", Description: "Accounts, cash, bank, and card movements", Commands: []Spec{ListMoneyAccounts, ListMoney, GetMoney, ListCashBalances, ReportCashFlow, ListDebts, UpdatePayment}},
 	{Name: "advances", Description: "Advance reports and accountable funds", Commands: []Spec{ListAdvanceReports, GetAdvanceReport, GetAccountableBalance, CreateAdvanceReport, UpdateAdvanceReport, PostAdvanceReport, UnpostAdvanceReport}},
 	{Name: "receipts", Description: "Fiscal receipts and posting audit", Commands: []Spec{ListReceipts, GetReceipt, AuditUnpostedReceipts}},
+	{Name: "records", Description: "Document register movements and deletion marks", Commands: []Spec{GetMovements, SetDeletionMark}},
 	{Name: "schema", Description: "Search and inspect exposed OData resources", Commands: []Spec{SearchResources, DescribeResource}},
 }
 

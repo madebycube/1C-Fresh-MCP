@@ -128,6 +128,8 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		return runSalesReport(ctx, svc, commandArgs, out)
 	case operations.ListCashBalances.Command:
 		return runCashBalanceList(ctx, svc, commandArgs, out)
+	case operations.ReportCashFlow.Command:
+		return runCashFlowReport(ctx, svc, commandArgs, out)
 	case operations.ListProductUnits.Command:
 		return runProductUnitList(ctx, svc, commandArgs, out)
 	case operations.PreviewReceipts.Command:
@@ -223,6 +225,18 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		return runSupplierOrderCreate(ctx, svc, commandArgs, out)
 	case operations.UpdateSupplierOrder.Command:
 		return runSupplierOrderUpdate(ctx, svc, commandArgs, out)
+	case operations.GetMovements.Command:
+		return runMovements(ctx, svc, commandArgs, out)
+	case operations.SetDeletionMark.Command:
+		return runDeletionMark(ctx, svc, commandArgs, out)
+	case operations.PostTransfer.Command:
+		return runDraftPosting(ctx, svc, commandArgs, out, "transfer", operations.PostTransfer, "post")
+	case operations.UnpostTransfer.Command:
+		return runDraftPosting(ctx, svc, commandArgs, out, "transfer", operations.UnpostTransfer, "unpost")
+	case operations.PostPriceDocument.Command:
+		return runDraftPosting(ctx, svc, commandArgs, out, "price", operations.PostPriceDocument, "post")
+	case operations.UnpostPriceDocument.Command:
+		return runDraftPosting(ctx, svc, commandArgs, out, "price", operations.UnpostPriceDocument, "unpost")
 	case operations.PostSupplierOrder.Command:
 		return runSupplierOrderPosting(ctx, svc, commandArgs, out, "post")
 	case operations.UnpostSupplierOrder.Command:

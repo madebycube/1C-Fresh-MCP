@@ -152,6 +152,13 @@ func TestRegisterTableResourceValidatesArguments(t *testing.T) {
 	if err != nil || got != "AccumulationRegister_Продажи/Turnovers(StartPeriod=datetime'2026-09-01T00:00:00',EndPeriod=datetime'2026-09-30T23:59:59',Dimensions='Номенклатура,Контрагент')" {
 		t.Fatalf("turnovers: %q, %v", got, err)
 	}
+	got, err = RegisterTableResource(config.RegisterQuery{Register: "AccumulationRegister_ДенежныеСредства", Table: "BalanceAndTurnovers", StartPeriod: "2026-09-01T00:00:00", EndPeriod: "2026-09-30T23:59:59", Dimensions: "БанковскийСчетКасса,Валюта"})
+	if err != nil || got != "AccumulationRegister_ДенежныеСредства/BalanceAndTurnovers(StartPeriod=datetime'2026-09-01T00:00:00',EndPeriod=datetime'2026-09-30T23:59:59',Dimensions='БанковскийСчетКасса,Валюта')" {
+		t.Fatalf("balance and turnovers: %q, %v", got, err)
+	}
+	if _, err := RegisterTableResource(config.RegisterQuery{Register: "AccumulationRegister_ДенежныеСредства", Table: "BalanceAndTurnovers", Period: "2026-09-01T00:00:00"}); err == nil {
+		t.Fatal("balance and turnovers must reject a single period")
+	}
 	got, err = RegisterTableResource(config.RegisterQuery{Register: "AccumulationRegister_ДенежныеСредства", Table: "Balance"})
 	if err != nil || got != "AccumulationRegister_ДенежныеСредства/Balance()" {
 		t.Fatalf("balance: %q, %v", got, err)
@@ -167,6 +174,23 @@ func TestRegisterTableResourceValidatesArguments(t *testing.T) {
 	} {
 		if _, err := RegisterTableResource(query); err == nil {
 			t.Fatalf("expected error for %+v", query)
+		}
+	}
+}
+
+func TestRecordSetResourceValidatesArguments(t *testing.T) {
+	got, err := RecordSetResource("AccumulationRegister_Продажи", "Document_РасходнаяНакладная", "00000000-0000-0000-0000-00000000000A")
+	if err != nil || got != "AccumulationRegister_Продажи(Recorder='00000000-0000-0000-0000-00000000000a',Recorder_Type='StandardODATA.Document_РасходнаяНакладная')" {
+		t.Fatalf("record set: %q, %v", got, err)
+	}
+	for _, args := range [][3]string{
+		{"Catalog_Номенклатура", "Document_X", "00000000-0000-0000-0000-000000000001"},
+		{"AccumulationRegister_X", "Catalog_X", "00000000-0000-0000-0000-000000000001"},
+		{"AccumulationRegister_X", "Document_X')", "00000000-0000-0000-0000-000000000001"},
+		{"AccumulationRegister_X", "Document_X", "1'"},
+	} {
+		if _, err := RecordSetResource(args[0], args[1], args[2]); err == nil {
+			t.Fatalf("expected error for %v", args)
 		}
 	}
 }

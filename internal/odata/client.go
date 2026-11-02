@@ -64,7 +64,7 @@ var (
 	registerTimePattern = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$`)
 )
 
-// GetRegisterTable reads a Balance or Turnovers virtual table. Every argument is validated so callers cannot inject OData syntax.
+// GetRegisterTable reads a Balance, Turnovers, or BalanceAndTurnovers virtual table. Every argument is validated so callers cannot inject OData syntax.
 func (c *Client) GetRegisterTable(ctx context.Context, query config.RegisterQuery, params url.Values, maxBytes int64) ([]byte, error) {
 	resource, err := RegisterTableResource(query)
 	if err != nil {
@@ -85,7 +85,7 @@ func RegisterTableResource(query config.RegisterQuery) (string, error) {
 			return "", errors.New("balance takes only a period")
 		}
 		periods = append(periods, [2]string{"Period", query.Period})
-	case "Turnovers":
+	case "Turnovers", "BalanceAndTurnovers":
 		if query.Period != "" {
 			return "", errors.New("turnovers take a start and end period")
 		}
@@ -109,6 +109,29 @@ func RegisterTableResource(query config.RegisterQuery) (string, error) {
 		args = append(args, "Dimensions='"+query.Dimensions+"'")
 	}
 	return query.Register + "/" + query.Table + "(" + strings.Join(args, ",") + ")", nil
+}
+
+var recordSetDocumentPattern = regexp.MustCompile(`^Document_[\p{L}\p{N}_]+$`)
+
+// GetRecordSet reads the movements one document wrote to an accumulation register. found is false when 1C has no record set.
+func (c *Client) GetRecordSet(ctx context.Context, register, document, id string, maxBytes int64) ([]byte, bool, error) {
+	resource, err := RecordSetResource(register, document, id)
+	if err != nil {
+		return nil, false, err
+	}
+	data, err := c.get(ctx, resource, url.Values{"$format": {"json"}}, maxBytes)
+	if err != nil && err.Error() == "OData returned HTTP 404" {
+		return nil, false, nil
+	}
+	return data, err == nil, err
+}
+
+// RecordSetResource builds the record-set key from the register metadata: Recorder (string) and Recorder_Type.
+func RecordSetResource(register, document, id string) (string, error) {
+	if !registerNamePattern.MatchString(register) || !recordSetDocumentPattern.MatchString(document) || !guidPattern.MatchString(id) {
+		return "", errors.New("invalid OData record set")
+	}
+	return register + "(Recorder='" + strings.ToLower(id) + "',Recorder_Type='StandardODATA." + document + "')", nil
 }
 
 func (c *Client) get(ctx context.Context, resource string, params url.Values, maxBytes int64) ([]byte, error) {

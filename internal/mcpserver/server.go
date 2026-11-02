@@ -146,6 +146,31 @@ type listCashBalancesInput struct {
 	AsOf string `json:"as_of,omitempty" jsonschema:"Inclusive date YYYY-MM-DD; default today"`
 }
 
+type reportCashFlowInput struct {
+	From string `json:"from" jsonschema:"Start date YYYY-MM-DD"`
+	To   string `json:"to" jsonschema:"Inclusive end date YYYY-MM-DD, at most one year after from"`
+}
+
+type draftPostingInput struct {
+	ID                  string `json:"id" jsonschema:"Document GUID"`
+	Action              string `json:"action" jsonschema:"post or unpost"`
+	ExpectedDataVersion string `json:"expected_data_version,omitempty" jsonschema:"data_version from the preview; the action fails if the document changed since"`
+	Apply               bool   `json:"apply,omitempty" jsonschema:"Run the action; false only previews its impact"`
+}
+
+type movementsInput struct {
+	Kind string `json:"kind" jsonschema:"invoice, shipment, return, supplier-order, goods-receipt, transfer-order, transfer, stock-receipt, stock-writeoff, cash-in, cash-out, bank-in, bank-out, card-payment, cash-shift, or payment-plan"`
+	ID   string `json:"id" jsonschema:"Document GUID"`
+}
+
+type deletionMarkInput struct {
+	Kind                string `json:"kind" jsonschema:"receipt, payment-plan, supplier-order, transfer, price-document, product, or counterparty"`
+	ID                  string `json:"id" jsonschema:"Record GUID"`
+	Clear               bool   `json:"clear,omitempty" jsonschema:"Clear the deletion mark instead of setting it"`
+	ExpectedDataVersion string `json:"expected_data_version,omitempty" jsonschema:"data_version from the preview; the change fails if the record changed since"`
+	Apply               bool   `json:"apply,omitempty" jsonschema:"Make the change; false only previews it"`
+}
+
 type listProductUnitsInput struct {
 	ProductID string `json:"product_id" jsonschema:"Product GUID"`
 }
@@ -931,6 +956,13 @@ func New(svc service.Service) *mcp.Server {
 		return nil, balances, err
 	})
 	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.ReportCashFlow.Tool, Description: operations.ReportCashFlow.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input reportCashFlowInput) (*mcp.CallToolResult, service.CashFlowReport, error) {
+		report, err := svc.ReportCashFlow(ctx, input.From, input.To)
+		return nil, report, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
 		Name: operations.ListProductUnits.Tool, Description: operations.ListProductUnits.Description,
 		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, input listProductUnitsInput) (*mcp.CallToolResult, service.ProductUnits, error) {
@@ -1559,6 +1591,34 @@ func New(svc service.Service) *mcp.Server {
 			Repost: input.Repost, ExpectedDataVersion: input.ExpectedDataVersion, Apply: input.Apply,
 		})
 		return nil, write, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.GetMovements.Tool, Description: operations.GetMovements.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input movementsInput) (*mcp.CallToolResult, service.DocumentMovements, error) {
+		result, err := svc.GetDocumentMovements(ctx, input.Kind, input.ID)
+		return nil, result, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.SetDeletionMark.Tool, Description: "Preview or set (or clear) the 1C deletion mark on a document or catalog item. Reversible; nothing is deleted. Posted documents must be unposted first.",
+		Annotations: &mcp.ToolAnnotations{IdempotentHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input deletionMarkInput) (*mcp.CallToolResult, service.DeletionMark, error) {
+		result, err := svc.SetDeletionMark(ctx, input.Kind, input.ID, !input.Clear, input.ExpectedDataVersion, input.Apply)
+		return nil, result, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.PostTransfer.Tool, Description: "Preview or run posting (action post) or unposting (action unpost) of a warehouse-to-warehouse stock transfer in 1C.",
+		Annotations: &mcp.ToolAnnotations{IdempotentHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input draftPostingInput) (*mcp.CallToolResult, service.DraftPosting, error) {
+		posting, err := svc.SetDraftPosting(ctx, "transfer", input.ID, input.Action, input.ExpectedDataVersion, input.Apply)
+		return nil, posting, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.PostPriceDocument.Tool, Description: "Preview or run posting (action post) or unposting (action unpost) of a price-setting document in 1C; posting makes its prices current.",
+		Annotations: &mcp.ToolAnnotations{IdempotentHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input draftPostingInput) (*mcp.CallToolResult, service.DraftPosting, error) {
+		posting, err := svc.SetDraftPosting(ctx, "price", input.ID, input.Action, input.ExpectedDataVersion, input.Apply)
+		return nil, posting, err
 	})
 	mcp.AddTool(server, &mcp.Tool{
 		Name: operations.PostSupplierOrder.Tool, Description: "Preview or run posting (action post) or unposting (action unpost) of a supplier order in 1C; posting plans payments but never pays or approves them.",

@@ -126,3 +126,30 @@ func TestListCashBalancesNamesAccounts(t *testing.T) {
 		t.Fatal("expected unknown account type error")
 	}
 }
+
+func TestReportCashFlowSumsMovementsPerAccount(t *testing.T) {
+	queries := []config.RegisterQuery{}
+	reader := registerReader{queries: &queries, rows: []map[string]any{
+		{"БанковскийСчетКасса": registerTestBank, "БанковскийСчетКасса_Type": "StandardODATA.Catalog_БанковскиеСчета", "Валюта_Key": registerTestRuble, "СуммаOpeningBalance": 100, "СуммаReceipt": 50, "СуммаExpense": json.Number("30.25"), "СуммаClosingBalance": json.Number("119.75")},
+		{"БанковскийСчетКасса": registerTestCash, "БанковскийСчетКасса_Type": "StandardODATA.Catalog_Кассы", "Валюта_Key": registerTestRuble, "СуммаReceipt": 10, "СуммаClosingBalance": 10},
+	}}
+	report, err := Service{OData: reader}.ReportCashFlow(context.Background(), "2026-09-01", "2026-09-30")
+	if err != nil || report.Count != 2 || report.TotalOpening != "100" || report.TotalReceipts != "60" || report.TotalPayments != "30.25" || report.TotalClosing != "129.75" {
+		t.Fatalf("report: %+v, %v", report, err)
+	}
+	if report.Items[0].AccountName != "Расчётный" || report.Items[1].Opening != "0" || report.Items[1].CurrencyCode != "643" {
+		t.Fatalf("items: %+v", report.Items)
+	}
+	if q := queries[0]; q.Table != "BalanceAndTurnovers" || q.StartPeriod != "2026-09-01T00:00:00" || q.EndPeriod != "2026-09-30T23:59:59" || q.Dimensions != "БанковскийСчетКасса,Валюта" {
+		t.Fatalf("query: %+v", q)
+	}
+	for _, call := range [][2]string{{"2026-09-30", "2026-09-01"}, {"2025-01-01", "2026-09-30"}, {"2026-9-1", "2026-09-30"}} {
+		if _, err := (Service{OData: reader}).ReportCashFlow(context.Background(), call[0], call[1]); err == nil {
+			t.Fatalf("expected error for %v", call)
+		}
+	}
+	reader.rows = []map[string]any{{"БанковскийСчетКасса": registerTestBank, "БанковскийСчетКасса_Type": "StandardODATA.Catalog_Сотрудники", "Валюта_Key": registerTestRuble}}
+	if _, err := (Service{OData: reader}).ReportCashFlow(context.Background(), "2026-09-01", "2026-09-30"); err == nil {
+		t.Fatal("expected unknown account type error")
+	}
+}
