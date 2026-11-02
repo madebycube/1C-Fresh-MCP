@@ -142,6 +142,13 @@ ln -s /path/to/1C-Fresh-MCP/bin/1c "$HOME/.local/bin/1c"
 1c list warehouse-docs --kind stock-writeoff --limit 20
 1c get warehouse-doc --kind transfer DOCUMENT_GUID
 1c create transfer --organization ORG_GUID --from WAREHOUSE_GUID --to OTHER_WAREHOUSE_GUID --date 2026-10-05 --line PRODUCT_GUID:3
+1c list advance-reports --from 2026-10-01 --to 2026-10-31 --employee EMPLOYEE_GUID
+1c get advance-report REPORT_GUID
+1c get accountable-balance --employee EMPLOYEE_GUID --as-of 2026-10-31
+1c create advance-report --organization ORG_GUID --employee EMPLOYEE_GUID --date 2026-10-05 --vat inclusive --warehouse WAREHOUSE_GUID --department DEPARTMENT_GUID --goods PRODUCT_GUID:2:122:НДС22:supplier=SUPPLIER_GUID:doc=CHK-8:doc-date=2026-10-04 --expense SERVICE_GUID:1:250.50:БезНДС --advance cash-out:CASH_OUT_GUID
+1c update advance-report REPORT_GUID --set-line goods:1:quantity=3 --expect-version DATA_VERSION --apply
+1c post advance-report REPORT_GUID --apply
+1c unpost advance-report REPORT_GUID --apply
 1c post transfer TRANSFER_GUID --apply
 1c get movements --kind transfer TRANSFER_GUID
 1c set deletion-mark transfer TRANSFER_GUID --apply
@@ -154,6 +161,7 @@ ln -s /path/to/1C-Fresh-MCP/bin/1c "$HOME/.local/bin/1c"
 1c list money --kind bank-in --account BANK_ACCOUNT_GUID --from 2026-09-01 --to 2026-09-07
 1c list money --kind card-payment --register REGISTER_GUID --from 2026-09-01 --to 2026-09-07
 1c get money --kind bank-in DOCUMENT_GUID
+1c update payment PAYMENT_GUID --kind bank-out --set-line 1:document=RECEIPT_GUID,vat=НДС22 --repost
 1c list receipts --kind sale --from 2026-09-01 --to 2026-09-07
 1c get receipt --kind refund --json RECEIPT_GUID
 1c audit receipts --from 2026-09-01 --before 2026-09-24 --json
@@ -219,7 +227,17 @@ ln -s /path/to/1C-Fresh-MCP/bin/1c "$HOME/.local/bin/1c"
 
 `list cash-balances` показывает остатки денег по банковским счетам и кассам с валютой на конец дня `--as-of` (по умолчанию сегодня) из `AccumulationRegister_ДенежныеСредства/Balance`. `list debts --kind customer|supplier` суммирует остатки регистра расчётов с покупателями или поставщиками по контрагентам: долг (`Долг`), аванс (`Аванс`, в регистре хранится со знаком минус) и итог. Контрагенты с нулевым итогом, у которых долг и аванс взаимно погашены, не показываются. `--counterparty` оставляет одного контрагента. `report sales` суммирует количество, сумму, НДС и себестоимость из `AccumulationRegister_Продажи/Turnovers` за период до одного года, по товарам (`--by product`), покупателям (`customer`) или парам (`product-customer`), по убыванию суммы; продажи без контрагента показываются как `(no counterparty)`. Это расчёт по данным OData, а не официальный отчёт 1С; сверяйте его с отчётом перед важными решениями. `report cash-flow --from --to` показывает по каждому банковскому счёту и кассе остаток на начало, поступления, расходы и остаток на конец периода (до одного года) из `AccumulationRegister_ДенежныеСредства/BalanceAndTurnovers`, в валюте учёта. Команды только читают данные.
 
-`list accounts` показывает кассы (`cash`), банковские счета организации (`bank`) и кассы ККМ (`register`). `list money` читает поступления и расходы кассы (`cash-in`, `cash-out`), банка (`bank-in`, `bank-out`), операции по платёжным картам (`card-payment`) и кассовые смены (`cash-shift`). Укажите даты включительно, не более 31 дня, и ID кассы, счёта, кассы ККМ или терминала через `--account`, `--register`, `--terminal`. `--limit` и `--offset` делят результат на страницы; `get money` показывает документ по GUID. Операции зарплаты, налогов, выплат работникам и неизвестные виды операций исключены. Кассовый чек, операция по карте и зачисление на банковский счёт — отдельные документы; `Posted` означает проведение, а не подтверждение оплаты или сверки. Команды только читают данные и могут просматривать историю ресурса несколько секунд.
+`list accounts` показывает кассы (`cash`), банковские счета организации (`bank`) и кассы ККМ (`register`). `list money` читает поступления и расходы кассы (`cash-in`, `cash-out`), банка (`bank-in`, `bank-out`), операции по платёжным картам (`card-payment`) и кассовые смены (`cash-shift`). Укажите даты включительно, не более 31 дня, и ID кассы, счёта, кассы ККМ или терминала через `--account`, `--register`, `--terminal`. `--limit` и `--offset` делят результат на страницы; `get money` показывает документ по GUID; для кассы и банка он также возвращает комментарий и полную расшифровку платежа: договор (ID и название), документ расчётов, заказ, счёт, признак аванса, суммы, ставку и сумму НДС, курс и статью движения денег. Операции зарплаты, налогов, выплат работникам и неизвестные виды операций исключены. Кассовый чек, операция по карте и зачисление на банковский счёт — отдельные документы; `Posted` означает проведение, а не подтверждение оплаты или сверки. Команды только читают данные и могут просматривать историю ресурса несколько секунд.
+
+`update payment` (в MCP `update_supplier_payment`) меняет исходящую оплату поставщику (`--kind bank-out` или `cash-out`, вид операции «Поставщику»): дату, комментарий, сумму и расшифровку. `--set-line N:contract=GUID,document=GUID,amount=A,vat=КОД` меняет строку, `--add-line ДОГОВОР:СУММА:КОД[:НАКЛАДНАЯ]` добавляет строку (без накладной — аванс), `--remove-line N` удаляет. Договор должен принадлежать поставщику и организации платежа, накладная — тому же поставщику и договору; НДС считается из суммы строки по ставке. Сумма строк должна равняться сумме платежа; новая сумма платежа (`--amount`) принимается только вместе со строками и должна совпадать с выпиской или кассовой книгой. Без `--apply` показывается предпросмотр. Проведённую оплату можно изменить только с `--repost`: она распроводится, меняется и проводится снова; если шаг не удался, оплата остаётся непроведённой. Только рубли. Запись в действующую базу не проверялась.
+
+### Авансовые отчёты
+
+`create advance-report` (в MCP `create_advance_report`) показывает предпросмотр авансового отчёта сотрудника; с `--apply` сохраняет его непроведённым, затем перечитывает и сверяет строки и суммы. Товары (`--goods`, только запасы) приходуются на склад строки или `--warehouse`, расходы (`--expense`, услуги и работы) относятся на подразделение строки или `--department` и, при желании, направление деятельности. Строка — `PRODUCT_GUID:QUANTITY:PRICE:VAT_CODE` и необязательные `key=value`: `unit`, `amount`, `vat` (точные суммы из чека), `characteristic`, `warehouse`, `department`, `business-line`, `supplier`, `doc` и `doc-date` (номер и дата чека или УПД), `content`. Ставки НДС берутся из справочника базы, суммы считаются точно. `--advance cash-out|bank-out:DOC_GUID[:AMOUNT]` связывает отчёт с проведённой выдачей из кассы или перечислением этому сотруднику; без суммы берётся то, что ещё не учтено другими отчётами, а превышение выданного запрещено. Предпросмотр показывает выдано, потрачено, остаток или перерасход и сальдо сотрудника по регистру «Расчеты с подотчетниками».
+
+Перед записью команда ищет отчёт того же сотрудника за тот же день с той же суммой и строки, уже учтённые другим документом: строку другого авансового отчёта или приходную накладную того же поставщика с тем же номером чека или УПД. Найденное блокирует запись, пока не указан `--allow-duplicate`; строки без номера документа проверить нельзя, и об этом выводится предупреждение. Команда никогда не создаёт поступление товаров и не выдаёт и не возвращает деньги из кассы. Неудачное сохранение не повторяется; сначала проверьте `list advance-reports`.
+
+`update advance-report` меняет только непроведённый отчёт: дату, назначение, комментарий, строки (`--set-line goods|expense:N:quantity=…`), новые строки и авансы; остальные поля и строки сохраняются, запись идёт с `If-Match`. Проведённый отчёт сначала отменяется явно командой `unpost advance-report`. `post advance-report` проводит отчёт; оба действия без `--apply` только показывают последствия. `get accountable-balance` показывает сальдо одного сотрудника и не выводит список сотрудников. Сотрудник указывается только GUID; имена и другие кадровые данные не читаются. Вложения файлов и строки оплаты поставщикам (вкладка «Оплаты») не записываются, существующие строки оплат сохраняются. Схема документа проверена по метаданным базы; записи на живой базе ещё не выполнялись, а предопределённая хозяйственная операция «АвансовыйОтчет» предполагается (если её нет, берётся операция, общая для существующих отчётов).
 
 ### Проверка непроведённых чеков
 
@@ -265,12 +283,13 @@ bin/1c mcp
 | `list_receipt_link_properties`, `get_receipt_document_link` | `set_receipt_document_link` |
 | | `create_supplier_payment_plan`, `update_supplier_payment_plan`, `set_supplier_payment_plan_posting` |
 | `list_warehouse_documents`, `get_warehouse_document` | `create_stock_transfer` |
+| `list_advance_reports`, `get_advance_report`, `get_accountable_balance` | `create_advance_report`, `update_advance_report`, `set_advance_report_posting` |
 | `list_money_accounts`, `list_money_documents`, `get_money_document` | |
 | `list_cash_receipts`, `get_cash_receipt` | |
 | `audit_unposted_receipts` | |
 | `search_odata_resources`, `describe_odata_resource` | |
 
-Инструменты создания и изменения групп, контрагентов, приходных накладных и планов оплаты записывают данные в 1С. Проведение доступно только для приходных накладных и счетов на оплату поставщика; инструментов для удаления и произвольных запросов OData нет.
+Инструменты создания и изменения групп, контрагентов, приходных накладных и планов оплаты записывают данные в 1С. Проведение доступно только для приходных накладных, счетов на оплату поставщика и авансовых отчётов; инструментов для удаления и произвольных запросов OData нет.
 
 Границы доступа к отчётам, кадровым и налоговым данным описаны в [политике доступа](docs/access-policy.md).
 

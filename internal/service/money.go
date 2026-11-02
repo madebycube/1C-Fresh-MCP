@@ -40,6 +40,33 @@ type MoneyDocument struct {
 	CurrencyID     string  `json:"currency_id,omitempty"`
 	BasisID        string  `json:"basis_id,omitempty"`
 	BasisType      string  `json:"basis_type,omitempty"`
+	// Comment and Allocations are filled only by GetMoneyDocument.
+	Comment     string            `json:"comment,omitempty"`
+	Allocations []MoneyAllocation `json:"allocations,omitempty"`
+}
+
+// MoneyAllocation is one line of a payment breakdown: which contract and document the money settles.
+type MoneyAllocation struct {
+	LineNumber       string  `json:"line_number"`
+	ContractID       string  `json:"contract_id,omitempty"`
+	ContractName     string  `json:"contract_name,omitempty"`
+	Advance          bool    `json:"advance"`
+	DocumentID       string  `json:"document_id,omitempty"`
+	DocumentType     string  `json:"document_type,omitempty"`
+	OrderID          string  `json:"order_id,omitempty"`
+	OrderType        string  `json:"order_type,omitempty"`
+	InvoiceID        string  `json:"invoice_id,omitempty"`
+	InvoiceType      string  `json:"invoice_type,omitempty"`
+	PlanID           string  `json:"plan_id,omitempty"`
+	PlanType         string  `json:"plan_type,omitempty"`
+	SettlementAmount Decimal `json:"settlement_amount"`
+	PaymentAmount    Decimal `json:"payment_amount"`
+	VATRateID        string  `json:"vat_rate_id,omitempty"`
+	VAT              Decimal `json:"vat,omitempty"`
+	Rate             Decimal `json:"rate,omitempty"`
+	Multiplicity     Decimal `json:"multiplicity,omitempty"`
+	CashFlowItemID   string  `json:"cash_flow_item_id,omitempty"`
+	SettlementKind   string  `json:"settlement_kind,omitempty"`
 }
 
 type MoneyPage struct {
@@ -148,8 +175,12 @@ func (s Service) GetMoneyDocument(ctx context.Context, kind, id string) (MoneyDo
 		return MoneyDocument{}, errors.New("document ID must be a GUID")
 	}
 	resource := plan.Name + "(guid'" + strings.ToLower(id) + "')"
-	params := url.Values{"$format": {"json"}, "$select": {sourceFields(plan.Fields)}}
-	data, err := s.OData.Get(ctx, resource, params, 1<<20)
+	fields := sourceFields(plan.Fields)
+	if plan.LinesField != "" {
+		fields += ",Комментарий," + plan.LinesField
+	}
+	params := url.Values{"$format": {"json"}, "$select": {fields}}
+	data, err := s.OData.Get(ctx, resource, params, 8<<20)
 	if err != nil {
 		return MoneyDocument{}, err
 	}
@@ -164,7 +195,58 @@ func (s Service) GetMoneyDocument(ctx context.Context, kind, id string) (MoneyDo
 	if !moneyOperationAllowed(doc) {
 		return MoneyDocument{}, errors.New("document operation is outside the money read scope")
 	}
+	if plan.LinesField == "" {
+		return doc, nil
+	}
+	doc.Comment = rawString(row["Комментарий"])
+	if doc.Allocations, err = s.moneyAllocations(ctx, row[plan.LinesField], plan.LineFields); err != nil {
+		return MoneyDocument{}, err
+	}
 	return doc, nil
+}
+
+func (s Service) moneyAllocations(ctx context.Context, raw json.RawMessage, bindings []config.FieldBinding) ([]MoneyAllocation, error) {
+	var lines []map[string]json.RawMessage
+	if len(raw) > 0 {
+		if err := json.Unmarshal(raw, &lines); err != nil {
+			return nil, errors.New("invalid OData payment breakdown")
+		}
+	}
+	allocations := make([]MoneyAllocation, 0, len(lines))
+	names := map[string]string{}
+	for _, line := range lines {
+		allocation, err := bindFields[MoneyAllocation](line, bindings)
+		if err != nil {
+			return nil, errors.New("invalid OData payment breakdown line")
+		}
+		clearUnlinked(&allocation.ContractID, &allocation.CashFlowItemID, &allocation.VATRateID)
+		for _, link := range [][2]*string{{&allocation.DocumentID, &allocation.DocumentType}, {&allocation.OrderID, &allocation.OrderType}, {&allocation.InvoiceID, &allocation.InvoiceType}, {&allocation.PlanID, &allocation.PlanType}} {
+			if !linkedGUID(*link[0]) || *link[1] == "StandardODATA.Undefined" {
+				*link[0], *link[1] = "", ""
+			}
+		}
+		if id := strings.ToLower(allocation.ContractID); id != "" {
+			if _, ok := names[id]; !ok {
+				names[id] = s.contractName(ctx, id)
+			}
+			allocation.ContractName = names[id]
+		}
+		allocations = append(allocations, allocation)
+	}
+	return allocations, nil
+}
+
+// contractName is best effort: a breakdown is still returned when a contract cannot be read.
+func (s Service) contractName(ctx context.Context, id string) string {
+	data, err := s.OData.Get(ctx, "Catalog_ДоговорыКонтрагентов(guid'"+id+"')", url.Values{"$format": {"json"}, "$select": {"Ref_Key,Description"}}, 1<<20)
+	if err != nil {
+		return ""
+	}
+	var row map[string]json.RawMessage
+	if json.Unmarshal(data, &row) != nil {
+		return ""
+	}
+	return rawString(row["Description"])
 }
 
 func validateMoneyScope(kind, accountID, registerID, terminalID string) error {

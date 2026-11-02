@@ -175,6 +175,35 @@ type listProductUnitsInput struct {
 	ProductID string `json:"product_id" jsonschema:"Product GUID"`
 }
 
+type paymentAllocationInput struct {
+	ContractID string `json:"contract_id" jsonschema:"Supplier contract GUID"`
+	DocumentID string `json:"document_id,omitempty" jsonschema:"Supplier goods receipt GUID this money settles; omit for an advance"`
+	Amount     string `json:"amount" jsonschema:"Amount of this line including VAT"`
+	VATRate    string `json:"vat_rate" jsonschema:"VAT rate code such as НДС22 or БезНДС"`
+}
+
+type paymentAllocationChangeInput struct {
+	LineNumber int     `json:"line_number" jsonschema:"Allocation line number from get_money_document"`
+	ContractID *string `json:"contract_id,omitempty" jsonschema:"Replacement contract GUID"`
+	DocumentID *string `json:"document_id,omitempty" jsonschema:"Replacement goods receipt GUID"`
+	Amount     *string `json:"amount,omitempty" jsonschema:"Replacement amount including VAT"`
+	VATRate    *string `json:"vat_rate,omitempty" jsonschema:"Replacement VAT rate code"`
+}
+
+type updatePaymentInput struct {
+	Kind                string                         `json:"kind" jsonschema:"bank-out or cash-out"`
+	ID                  string                         `json:"id" jsonschema:"Outgoing supplier payment GUID"`
+	Date                *string                        `json:"date,omitempty" jsonschema:"Replacement date YYYY-MM-DD"`
+	Comment             *string                        `json:"comment,omitempty" jsonschema:"Replacement comment"`
+	Amount              *string                        `json:"amount,omitempty" jsonschema:"Replacement payment total; the allocation lines must add up to it"`
+	ChangeLines         []paymentAllocationChangeInput `json:"change_lines,omitempty" jsonschema:"Changes to existing allocation lines"`
+	AddLines            []paymentAllocationInput       `json:"add_lines,omitempty" jsonschema:"Allocation lines to append"`
+	RemoveLines         []int                          `json:"remove_lines,omitempty" jsonschema:"Allocation line numbers to remove"`
+	Repost              bool                           `json:"repost,omitempty" jsonschema:"For a posted payment: unpost it, save the changes, and post it again"`
+	ExpectedDataVersion string                         `json:"expected_data_version,omitempty" jsonschema:"data_version from the preview; the save fails if the payment changed since"`
+	Apply               bool                           `json:"apply,omitempty" jsonschema:"Save the changes; false only previews them"`
+}
+
 type createProductUnitInput struct {
 	ProductID  string `json:"product_id" jsonschema:"Product GUID"`
 	UnitTypeID string `json:"unit_type_id" jsonschema:"Classifier unit GUID from list_unit_types"`
@@ -437,6 +466,111 @@ type updateReceiptInput struct {
 	Repost              bool                     `json:"repost,omitempty" jsonschema:"For a posted receipt: unpost it, save the changes, and post it again"`
 	ExpectedDataVersion string                   `json:"expected_data_version,omitempty" jsonschema:"data_version from the preview; the save fails if the receipt changed since"`
 	Apply               bool                     `json:"apply,omitempty" jsonschema:"Save the changes; false only previews them"`
+}
+
+type advanceLineInput struct {
+	Section          string `json:"section" jsonschema:"goods for stock items bought by the employee, expense for services and other costs"`
+	ProductID        string `json:"product_id" jsonschema:"Product GUID: a stock product for goods, a service or work product for expense"`
+	CharacteristicID string `json:"characteristic_id,omitempty" jsonschema:"Optional characteristic GUID; goods lines only"`
+	Quantity         string `json:"quantity" jsonschema:"Quantity in the line's unit, up to 3 decimals"`
+	Price            string `json:"price" jsonschema:"Unit price, up to 2 decimals"`
+	VATRate          string `json:"vat_rate" jsonschema:"VAT rate code such as НДС22, НДС5, or БезНДС"`
+	UnitID           string `json:"unit_id,omitempty" jsonschema:"Optional unit GUID from list_product_units; default is the product's base unit"`
+	Amount           string `json:"amount,omitempty" jsonschema:"Optional exact line amount from the receipt; must match quantity × price within price rounding"`
+	VAT              string `json:"vat,omitempty" jsonschema:"Optional exact line VAT from the receipt; must be within one kopeck of the rate's VAT"`
+	WarehouseID      string `json:"warehouse_id,omitempty" jsonschema:"Warehouse GUID for a goods line; defaults to the report's warehouse_id"`
+	DepartmentID     string `json:"department_id,omitempty" jsonschema:"Department GUID for an expense line; defaults to the report's department_id"`
+	BusinessLineID   string `json:"business_line_id,omitempty" jsonschema:"Optional business line (направление деятельности) GUID for an expense line"`
+	SupplierID       string `json:"supplier_id,omitempty" jsonschema:"Optional seller counterparty GUID"`
+	IncomingNumber   string `json:"incoming_number,omitempty" jsonschema:"Cash receipt or UPD number; used to find purchases already accounted by another document"`
+	IncomingDate     string `json:"incoming_date,omitempty" jsonschema:"Cash receipt or UPD date YYYY-MM-DD"`
+	Content          string `json:"content,omitempty" jsonschema:"Optional short description of the purchase"`
+}
+
+type advanceIssueInput struct {
+	Kind       string `json:"kind" jsonschema:"cash-out for a cash issue (РасходИзКассы) or bank-out for a bank transfer (РасходСоСчета) to the employee"`
+	DocumentID string `json:"document_id" jsonschema:"Posted cash or bank document GUID that paid this employee"`
+	Amount     string `json:"amount,omitempty" jsonschema:"Part of that advance this report accounts for; defaults to what other reports have not used"`
+}
+
+type listAdvanceReportsInput struct {
+	EmployeeID string `json:"employee_id,omitempty" jsonschema:"Optional employee GUID"`
+	From       string `json:"from" jsonschema:"First date YYYY-MM-DD"`
+	To         string `json:"to" jsonschema:"Last date YYYY-MM-DD, at most 31 days after from"`
+	Limit      int    `json:"limit,omitempty" jsonschema:"Maximum results, 1 to 100; defaults to 20"`
+	Offset     int    `json:"offset,omitempty" jsonschema:"Offset within matching documents"`
+}
+
+type getAdvanceReportInput struct {
+	ID string `json:"id" jsonschema:"Advance report GUID"`
+}
+
+type accountableBalanceInput struct {
+	EmployeeID     string `json:"employee_id" jsonschema:"Employee GUID"`
+	OrganizationID string `json:"organization_id,omitempty" jsonschema:"Optional organization GUID"`
+	AsOf           string `json:"as_of,omitempty" jsonschema:"Inclusive date YYYY-MM-DD; today by default"`
+}
+
+type createAdvanceReportInput struct {
+	OrganizationID string              `json:"organization_id" jsonschema:"Organization GUID"`
+	EmployeeID     string              `json:"employee_id" jsonschema:"Accountable employee GUID"`
+	Date           string              `json:"date" jsonschema:"Report date YYYY-MM-DD"`
+	VATMode        string              `json:"vat_mode" jsonschema:"inclusive when prices include VAT, otherwise exclusive"`
+	WarehouseID    string              `json:"warehouse_id,omitempty" jsonschema:"Default warehouse GUID for goods lines"`
+	DepartmentID   string              `json:"department_id,omitempty" jsonschema:"Default department GUID for expense lines"`
+	BusinessLineID string              `json:"business_line_id,omitempty" jsonschema:"Default business line GUID for expense lines"`
+	Purpose        string              `json:"purpose,omitempty" jsonschema:"Advance purpose (назначение аванса)"`
+	Comment        string              `json:"comment,omitempty" jsonschema:"Optional comment"`
+	Advances       []advanceIssueInput `json:"advances,omitempty" jsonschema:"Cash or bank documents that gave the employee the money being reported"`
+	Lines          []advanceLineInput  `json:"lines" jsonschema:"Goods and expense lines"`
+	AllowDuplicate bool                `json:"allow_duplicate,omitempty" jsonschema:"Save even when a matching report or a document with the same receipt number exists"`
+	Apply          bool                `json:"apply,omitempty" jsonschema:"Save the report unposted; false only previews it"`
+}
+
+type advanceLineChangeInput struct {
+	Section    string  `json:"section" jsonschema:"goods or expense"`
+	LineNumber int     `json:"line_number" jsonschema:"Existing line number within that section"`
+	Quantity   *string `json:"quantity,omitempty" jsonschema:"Replacement quantity"`
+	Price      *string `json:"price,omitempty" jsonschema:"Replacement unit price"`
+	VATRate    *string `json:"vat_rate,omitempty" jsonschema:"Replacement VAT rate code"`
+	Amount     *string `json:"amount,omitempty" jsonschema:"Explicit line amount from the receipt"`
+	VAT        *string `json:"vat,omitempty" jsonschema:"Explicit line VAT from the receipt"`
+}
+
+type updateAdvanceReportInput struct {
+	ID                  string                   `json:"id" jsonschema:"Unposted advance report GUID"`
+	Date                *string                  `json:"date,omitempty" jsonschema:"Replacement date YYYY-MM-DD"`
+	Purpose             *string                  `json:"purpose,omitempty" jsonschema:"Replacement advance purpose"`
+	Comment             *string                  `json:"comment,omitempty" jsonschema:"Replacement comment; empty string clears it"`
+	ChangeLines         []advanceLineChangeInput `json:"change_lines,omitempty" jsonschema:"Changes to existing goods or expense lines"`
+	AddLines            []advanceLineInput       `json:"add_lines,omitempty" jsonschema:"Lines to append"`
+	AddAdvances         []advanceIssueInput      `json:"add_advances,omitempty" jsonschema:"Issued advances to link"`
+	ExpectedDataVersion string                   `json:"expected_data_version,omitempty" jsonschema:"data_version from the preview; the save fails if the report changed since"`
+	AllowDuplicate      bool                     `json:"allow_duplicate,omitempty" jsonschema:"Save even when a new line's receipt number is used by another document"`
+	Apply               bool                     `json:"apply,omitempty" jsonschema:"Save the changes; false only previews them"`
+}
+
+type advanceReportPostingInput struct {
+	ID                  string `json:"id" jsonschema:"Advance report GUID"`
+	Action              string `json:"action" jsonschema:"post or unpost"`
+	ExpectedDataVersion string `json:"expected_data_version,omitempty" jsonschema:"data_version from the preview; the action fails if the report changed since"`
+	Apply               bool   `json:"apply,omitempty" jsonschema:"Run the action; false only previews its impact"`
+}
+
+func advanceLines(lines []advanceLineInput) []service.AdvanceLineInput {
+	out := make([]service.AdvanceLineInput, len(lines))
+	for i, line := range lines {
+		out[i] = service.AdvanceLineInput(line)
+	}
+	return out
+}
+
+func advanceIssues(issues []advanceIssueInput) []service.AdvanceIssueInput {
+	out := make([]service.AdvanceIssueInput, len(issues))
+	for i, issue := range issues {
+		out[i] = service.AdvanceIssueInput(issue)
+	}
+	return out
 }
 
 type supplierOrderLineInput struct {
@@ -834,6 +968,23 @@ func New(svc service.Service) *mcp.Server {
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, input listProductUnitsInput) (*mcp.CallToolResult, service.ProductUnits, error) {
 		units, err := svc.ListProductUnits(ctx, input.ProductID)
 		return nil, units, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.UpdatePayment.Tool, Description: operations.UpdatePayment.Description,
+		Annotations: &mcp.ToolAnnotations{IdempotentHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input updatePaymentInput) (*mcp.CallToolResult, service.PaymentWrite, error) {
+		change := service.PaymentAmendment{
+			Date: input.Date, Comment: input.Comment, Amount: input.Amount, RemoveLines: input.RemoveLines,
+			Repost: input.Repost, ExpectedDataVersion: input.ExpectedDataVersion, Apply: input.Apply,
+		}
+		for _, line := range input.ChangeLines {
+			change.ChangeLines = append(change.ChangeLines, service.PaymentAllocationChange(line))
+		}
+		for _, line := range input.AddLines {
+			change.AddLines = append(change.AddLines, service.PaymentAllocationInput(line))
+		}
+		write, err := svc.AmendSupplierPayment(ctx, input.Kind, input.ID, change)
+		return nil, write, err
 	})
 	mcp.AddTool(server, &mcp.Tool{
 		Name: operations.CreateProductUnit.Tool, Description: operations.CreateProductUnit.Description,
@@ -1252,6 +1403,63 @@ func New(svc service.Service) *mcp.Server {
 			ChangeLines: changes, AddLines: receiptLines(input.AddLines), Repost: input.Repost, ExpectedDataVersion: input.ExpectedDataVersion, Apply: input.Apply,
 		})
 		return nil, write, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.ListAdvanceReports.Tool, Description: operations.ListAdvanceReports.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input listAdvanceReportsInput) (*mcp.CallToolResult, service.AdvanceReportPage, error) {
+		limit := input.Limit
+		if limit == 0 {
+			limit = 20
+		}
+		page, err := svc.ListAdvanceReports(ctx, input.EmployeeID, input.From, input.To, limit, input.Offset)
+		return nil, page, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.GetAdvanceReport.Tool, Description: operations.GetAdvanceReport.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input getAdvanceReportInput) (*mcp.CallToolResult, service.AdvanceReport, error) {
+		report, err := svc.GetAdvanceReport(ctx, input.ID)
+		return nil, report, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.GetAccountableBalance.Tool, Description: operations.GetAccountableBalance.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input accountableBalanceInput) (*mcp.CallToolResult, service.AccountableBalance, error) {
+		balance, err := svc.GetAccountableBalance(ctx, input.OrganizationID, input.EmployeeID, input.AsOf)
+		return nil, balance, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.CreateAdvanceReport.Tool, Description: operations.CreateAdvanceReport.Description,
+		Annotations: &mcp.ToolAnnotations{DestructiveHint: &additive},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input createAdvanceReportInput) (*mcp.CallToolResult, service.AdvanceReportWrite, error) {
+		write, err := svc.CreateAdvanceReportDraft(ctx, service.AdvanceReportDraft{
+			OrganizationID: input.OrganizationID, EmployeeID: input.EmployeeID, Date: input.Date, VATMode: input.VATMode,
+			WarehouseID: input.WarehouseID, DepartmentID: input.DepartmentID, BusinessLineID: input.BusinessLineID, Purpose: input.Purpose, Comment: input.Comment,
+			Advances: advanceIssues(input.Advances), Lines: advanceLines(input.Lines), AllowDuplicate: input.AllowDuplicate, Apply: input.Apply,
+		})
+		return nil, write, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.UpdateAdvanceReport.Tool, Description: operations.UpdateAdvanceReport.Description,
+		Annotations: &mcp.ToolAnnotations{IdempotentHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input updateAdvanceReportInput) (*mcp.CallToolResult, service.AdvanceReportWrite, error) {
+		changes := make([]service.AdvanceLineChange, len(input.ChangeLines))
+		for i, change := range input.ChangeLines {
+			changes[i] = service.AdvanceLineChange(change)
+		}
+		write, err := svc.AmendAdvanceReport(ctx, input.ID, service.AdvanceReportAmendment{
+			Date: input.Date, Purpose: input.Purpose, Comment: input.Comment, ChangeLines: changes, AddLines: advanceLines(input.AddLines),
+			AddAdvances: advanceIssues(input.AddAdvances), ExpectedDataVersion: input.ExpectedDataVersion, AllowDuplicate: input.AllowDuplicate, Apply: input.Apply,
+		})
+		return nil, write, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.PostAdvanceReport.Tool, Description: "Preview or run posting (action post) or unposting (action unpost) of an advance report in 1C.",
+		Annotations: &mcp.ToolAnnotations{IdempotentHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input advanceReportPostingInput) (*mcp.CallToolResult, service.AdvanceReportPosting, error) {
+		posting, err := svc.SetAdvanceReportPosting(ctx, input.ID, input.Action, input.ExpectedDataVersion, input.Apply)
+		return nil, posting, err
 	})
 	mcp.AddTool(server, &mcp.Tool{
 		Name: operations.PostReceipt.Tool, Description: "Preview or run posting (action post) or unposting (action unpost) of a supplier goods receipt in 1C.",

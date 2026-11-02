@@ -143,6 +143,13 @@ Commands follow `1c VERB RESOURCE [OPTIONS]`. `1c --help` lists topics, `1c help
 1c list warehouse-docs --kind stock-writeoff --limit 20
 1c get warehouse-doc --kind transfer DOCUMENT_GUID
 1c create transfer --organization ORG_GUID --from WAREHOUSE_GUID --to OTHER_WAREHOUSE_GUID --date 2026-10-05 --line PRODUCT_GUID:3
+1c list advance-reports --from 2026-10-01 --to 2026-10-31 --employee EMPLOYEE_GUID
+1c get advance-report REPORT_GUID
+1c get accountable-balance --employee EMPLOYEE_GUID --as-of 2026-10-31
+1c create advance-report --organization ORG_GUID --employee EMPLOYEE_GUID --date 2026-10-05 --vat inclusive --warehouse WAREHOUSE_GUID --department DEPARTMENT_GUID --goods PRODUCT_GUID:2:122:НДС22:supplier=SUPPLIER_GUID:doc=CHK-8:doc-date=2026-10-04 --expense SERVICE_GUID:1:250.50:БезНДС --advance cash-out:CASH_OUT_GUID
+1c update advance-report REPORT_GUID --set-line goods:1:quantity=3 --expect-version DATA_VERSION --apply
+1c post advance-report REPORT_GUID --apply
+1c unpost advance-report REPORT_GUID --apply
 1c post transfer TRANSFER_GUID --apply
 1c get movements --kind transfer TRANSFER_GUID
 1c set deletion-mark transfer TRANSFER_GUID --apply
@@ -155,6 +162,7 @@ Commands follow `1c VERB RESOURCE [OPTIONS]`. `1c --help` lists topics, `1c help
 1c list money --kind bank-in --account BANK_ACCOUNT_GUID --from 2026-09-01 --to 2026-09-07
 1c list money --kind card-payment --register REGISTER_GUID --from 2026-09-01 --to 2026-09-07
 1c get money --kind bank-in DOCUMENT_GUID
+1c update payment PAYMENT_GUID --kind bank-out --set-line 1:document=RECEIPT_GUID,vat=НДС22 --repost
 1c list receipts --kind sale --from 2026-09-01 --to 2026-09-07
 1c get receipt --kind refund --json RECEIPT_GUID
 1c audit receipts --from 2026-09-01 --before 2026-09-24 --json
@@ -222,7 +230,17 @@ The primary-document link is an additional property that 1C shows as a hyperlink
 
 `list cash-balances` shows money balances by bank account and cash desk with currency at the end of `--as-of` (today by default) from `AccumulationRegister_ДенежныеСредства/Balance`. `list debts --kind customer|supplier` sums customer or supplier settlement-register balances by counterparty: debt (`Долг`), advance (`Аванс`, stored as a negative amount), and net. Counterparties whose debt and advance cancel out to a zero net are left out. `--counterparty` keeps one counterparty. `report sales` sums quantity, amount, VAT, and cost from `AccumulationRegister_Продажи/Turnovers` over a period of up to one year, by product (`--by product`), customer (`customer`), or both (`product-customer`), largest amount first; sales without a counterparty appear as `(no counterparty)`. It is computed from OData, not the official 1C report; compare it with the report before relying on it. `report cash-flow --from --to` shows opening balance, receipts, payments, and closing balance per bank account and cash desk for a period of up to one year from `AccumulationRegister_ДенежныеСредства/BalanceAndTurnovers`, in the accounting currency. These commands are read-only.
 
-`list accounts` discovers cash desks (`cash`), organization-owned bank accounts (`bank`), and retail registers (`register`). `list money` reads cash receipts and disbursements (`cash-in`, `cash-out`), bank receipts and disbursements (`bank-in`, `bank-out`), card transactions (`card-payment`), and cash shifts (`cash-shift`). Supply an inclusive date range of at most 31 days and a cash desk, bank account, register, or terminal ID with `--account`, `--register`, or `--terminal`. `--limit` and `--offset` page results; `get money` reads a document by GUID. Payroll, tax, employee-payment, and unknown operation types are excluded. Fiscal receipts, card transactions, and bank settlements are distinct documents; `Posted` indicates 1C posting, not payment or reconciliation. These are read-only commands and may scan resource history for several seconds.
+`list accounts` discovers cash desks (`cash`), organization-owned bank accounts (`bank`), and retail registers (`register`). `list money` reads cash receipts and disbursements (`cash-in`, `cash-out`), bank receipts and disbursements (`bank-in`, `bank-out`), card transactions (`card-payment`), and cash shifts (`cash-shift`). Supply an inclusive date range of at most 31 days and a cash desk, bank account, register, or terminal ID with `--account`, `--register`, or `--terminal`. `--limit` and `--offset` page results; `get money` reads a document by GUID; for cash and bank documents it also returns the comment and the full payment breakdown: contract (ID and name), settled document, order, invoice, advance flag, amounts, VAT rate and amount, rate, and cash-flow item. Payroll, tax, employee-payment, and unknown operation types are excluded. Fiscal receipts, card transactions, and bank settlements are distinct documents; `Posted` indicates 1C posting, not payment or reconciliation. These are read-only commands and may scan resource history for several seconds.
+
+`update payment` (`update_supplier_payment` in MCP) changes an outgoing supplier payment (`--kind bank-out` or `cash-out`, operation «Поставщику»): date, comment, amount, and allocation. `--set-line N:contract=GUID,document=GUID,amount=A,vat=CODE` changes a line, `--add-line CONTRACT:AMOUNT:CODE[:RECEIPT]` adds one (an advance without a receipt), and `--remove-line N` removes one. The contract must belong to the payment's supplier and organization and the receipt to the same supplier and contract; VAT is computed from the line amount and rate. Lines must add up to the payment amount; a new payment amount (`--amount`) is accepted only with matching lines and must agree with the bank statement or cash book. Without `--apply` it previews. A posted payment can be changed only with `--repost`: it is unposted, changed, and posted again, and is left unposted if a step fails. Rubles only. A live write has not been verified.
+
+### Advance reports
+
+`create advance-report` (MCP `create_advance_report`) previews an employee's advance report (авансовый отчёт); `--apply` saves it unposted, then reads it back and checks lines and totals. Goods (`--goods`, stock items only) go to the line's warehouse or `--warehouse`; expenses (`--expense`, services and work) go to the line's department or `--department`, optionally with a business line. A line is `PRODUCT_GUID:QUANTITY:PRICE:VAT_CODE` plus optional `key=value` parts: `unit`, `amount`, `vat` (exact amounts from the receipt), `characteristic`, `warehouse`, `department`, `business-line`, `supplier`, `doc` and `doc-date` (cash receipt or UPD number and date), `content`. VAT rates come from the tenant's catalog and amounts are exact. `--advance cash-out|bank-out:DOC_GUID[:AMOUNT]` links a posted cash issue or bank transfer to this employee; without an amount it takes what other reports have not used, and more than was issued is refused. The preview shows issued, spent, remainder or overspend, and the employee's balance from the «Расчеты с подотчетниками» register.
+
+Before saving, the command looks for a report of the same employee on the same day with the same total, and for lines already accounted by another document: a line of another advance report, or a supplier receipt from the same supplier, with the same receipt or UPD number. Matches block the save until `--allow-duplicate` is given; lines without a document number cannot be checked and get a warning. The command never creates a goods receipt and never issues or returns cash. A failed save is never retried; check `list advance-reports` first.
+
+`update advance-report` changes only an unposted report: date, purpose, comment, lines (`--set-line goods|expense:N:quantity=…`), new lines, and new advances; other fields and lines are kept and the save uses `If-Match`. A posted report must first be unposted explicitly with `unpost advance-report`. `post advance-report` posts it; without `--apply` both actions only preview their impact. `get accountable-balance` shows one employee's balance and never lists employees. Employees are given by GUID only; names and other personnel data are not read. File attachments and supplier-payment lines (the «Оплаты» tab) are not written; existing payment lines are kept. The document layout was checked against the tenant metadata; no write has run on a live tenant yet, and the predefined business operation «АвансовыйОтчет» is assumed (if missing, the operation shared by existing reports is used).
 
 ### Audit unposted receipts
 
@@ -265,12 +283,14 @@ Configure your MCP client to launch this command from the repository directory, 
 - `create_supplier_payment_plan`, `update_supplier_payment_plan`, and `set_supplier_payment_plan_posting` (write operations)
 - `list_warehouse_documents` and `get_warehouse_document`
 - `create_stock_transfer` (write operation)
+- `list_advance_reports`, `get_advance_report`, and `get_accountable_balance`
+- `create_advance_report`, `update_advance_report`, and `set_advance_report_posting` (write operations)
 - `list_money_accounts`, `list_money_documents`, and `get_money_document`
 - `list_cash_receipts` and `get_cash_receipt`
 - `audit_unposted_receipts`
 - `create_product_group` and `update_product_group` (write operations)
 
-No generic OData query or tool for deleting data is exposed; posting is limited to supplier goods receipts and supplier payment plans.
+No generic OData query or tool for deleting data is exposed; posting is limited to supplier goods receipts, supplier payment plans, and advance reports.
 
 See the [access policy](docs/access-policy.md) for reporting, personnel, payroll, and tax boundaries.
 

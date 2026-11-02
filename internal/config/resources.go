@@ -450,6 +450,7 @@ var MoneyDocuments = map[string]DocumentResource{
 			{Output: "basis_id", Source: "ДокументОснование"},
 			{Output: "basis_type", Source: "ДокументОснование_Type"},
 		},
+		LinesField: "РасшифровкаПлатежа", LineFields: moneyAllocationFields,
 	},
 	"cash-out": {
 		Name: "Document_РасходИзКассы", DateField: "Date", DeletedField: "DeletionMark",
@@ -468,6 +469,7 @@ var MoneyDocuments = map[string]DocumentResource{
 			{Output: "basis_id", Source: "ДокументОснование"},
 			{Output: "basis_type", Source: "ДокументОснование_Type"},
 		},
+		LinesField: "РасшифровкаПлатежа", LineFields: moneyAllocationFields,
 	},
 	"bank-in": {
 		Name: "Document_ПоступлениеНаСчет", DateField: "Date", DeletedField: "DeletionMark",
@@ -487,6 +489,7 @@ var MoneyDocuments = map[string]DocumentResource{
 			{Output: "basis_id", Source: "ДокументОснование"},
 			{Output: "basis_type", Source: "ДокументОснование_Type"},
 		},
+		LinesField: "РасшифровкаПлатежа", LineFields: moneyAllocationFields,
 	},
 	"bank-out": {
 		Name: "Document_РасходСоСчета", DateField: "Date", DeletedField: "DeletionMark",
@@ -506,6 +509,7 @@ var MoneyDocuments = map[string]DocumentResource{
 			{Output: "basis_id", Source: "ДокументОснование"},
 			{Output: "basis_type", Source: "ДокументОснование_Type"},
 		},
+		LinesField: "РасшифровкаПлатежа", LineFields: moneyAllocationFields,
 	},
 	"card-payment": {
 		Name: "Document_ОперацияПоПлатежнымКартам", DateField: "Date", DeletedField: "DeletionMark",
@@ -710,6 +714,16 @@ var supplierPaymentLineFields = []FieldBinding{
 	{Output: "settlement_amount", Source: "СуммаРасчетов"},
 	{Output: "payment_amount", Source: "СуммаПлатежа"},
 }
+
+// moneyAllocationFields is the full payment breakdown returned by get money.
+var moneyAllocationFields = append(append([]FieldBinding{}, supplierPaymentLineFields...),
+	FieldBinding{Output: "vat_rate_id", Source: "СтавкаНДС_Key"},
+	FieldBinding{Output: "vat", Source: "СуммаНДС"},
+	FieldBinding{Output: "rate", Source: "Курс"},
+	FieldBinding{Output: "multiplicity", Source: "Кратность"},
+	FieldBinding{Output: "cash_flow_item_id", Source: "СтатьяДвиженияДенежныхСредств_Key"},
+	FieldBinding{Output: "settlement_kind", Source: "ВидРасчетов"},
+)
 
 // SupplierPaymentDocuments are the outgoing documents whose payment breakdown can reference a goods receipt or invoice.
 var SupplierPaymentDocuments = map[string]DocumentResource{

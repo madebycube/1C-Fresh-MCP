@@ -7,7 +7,7 @@ This policy defines the default CLI and MCP surface. The menu in 1C is a navigat
 | 1C menu area | OData evidence in the tested application | Default surface |
 | --- | --- | --- |
 | Products, prices, customers, suppliers, orders, sales, purchases, and warehouse documents | Catalogs, documents, and the stock balance register used by existing commands | Available through named read commands |
-| Cash, bank, acquiring, and retail shifts | Cash/bank/card/shift documents and cash desk, bank account, and register catalogs | Available through `list accounts`, `list money`, and `get money`, with operation and scope restrictions |
+| Cash, bank, acquiring, and retail shifts | Cash/bank/card/shift documents and cash desk, bank account, and register catalogs | Available through `list accounts`, `list money`, and `get money`, with operation and scope restrictions; `update payment` edits only outgoing supplier payments (operation «Поставщику») in rubles |
 | Fiscal cash receipts | `Document_ЧекККМ` and `Document_ЧекККМВозврат` | Available through separate receipt commands; do not merge with card transactions or bank settlement |
 | Sales funnel, business analysis, company state, and the menu item “Reports” | UI reports and calculations; no report definition or equivalent output was established from OData metadata | No default report command |
 | Payroll and personnel | `Catalog_Сотрудники`, `Document_НачислениеЗарплатыУНФ`, `Document_ПлатежнаяВедомость`, and `Document_Табель` exist | No default record read |
@@ -26,3 +26,7 @@ Employee, salary, payment-statement, tax, and regulated-report records are outsi
 The money commands expose only named cash, bank, card, and shift document kinds. Their operation allowlists exclude payroll, tax, employee-payment, and unknown operations from both list and direct get. New operation values stay hidden until reviewed. Bank account discovery returns organization-owned accounts. `Posted` denotes 1C posting; it does not prove payment or reconciliation.
 
 `search resources` and `describe resource` expose schema metadata only. The default CLI and MCP server do not provide arbitrary OData record queries, report execution, filing, payroll editing, or tax editing. Any future sensitive-domain tool must enforce its boundary in the shared service layer so CLI and MCP behave the same way.
+
+## Advance reports and accountable funds
+
+Advance reports (`Document_АвансовыйОтчет`) and the `AccumulationRegister_РасчетыСПодотчетниками` register reference employees from `Catalog_Сотрудники`. The advance-report tools take an employee only as a GUID, check that the employee record exists and is not deleted by reading `Ref_Key` and `DeletionMark` alone, and never return names or other personnel fields. `get accountable-balance` requires one employee and returns only that employee's balance; there is no command that lists employees or every employee's balance. Linked cash and bank documents must be posted and name the same employee and organization. These tools do not issue, return, or transfer money, and they do not create supplier receipts.
