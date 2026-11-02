@@ -704,6 +704,7 @@ var Topics = []Topic{
 	{Name: "sales", Description: "Customer orders and sales documents", Commands: []Spec{ListOrders, GetOrder, GetOrderPayments, ListSales, GetSale, ReportSales}},
 	{Name: "purchases", Description: "Supplier orders, goods receipts, and payment plans", Commands: []Spec{ListPurchases, GetPurchase, GetSupplierOrder, CreateSupplierOrder, UpdateSupplierOrder, PostSupplierOrder, UnpostSupplierOrder, CreateReceiptFromOrder, LinkReceiptToOrder, PreviewReceipts, CreateReceipt, UpdateReceipt, PostReceipt, UnpostReceipt, ListLinkProperties, GetReceiptLink, SetReceiptLink, ListPaymentPlans, GetPaymentPlan, CreatePaymentPlan, CreatePrepaymentPlan, UpdatePaymentPlan, PostPaymentPlan, UnpostPaymentPlan, TraceReceiptPayments, ReconcileSupplier}},
 	{Name: "money", Description: "Accounts, cash, bank, and card movements", Commands: []Spec{ListMoneyAccounts, ListMoney, GetMoney, ListCashBalances, ListDebts}},
+	{Name: "advances", Description: "Advance reports and accountable funds", Commands: []Spec{ListAdvanceReports, GetAdvanceReport, GetAccountableBalance, CreateAdvanceReport, UpdateAdvanceReport, PostAdvanceReport, UnpostAdvanceReport}},
 	{Name: "receipts", Description: "Fiscal receipts and posting audit", Commands: []Spec{ListReceipts, GetReceipt, AuditUnpostedReceipts}},
 	{Name: "schema", Description: "Search and inspect exposed OData resources", Commands: []Spec{SearchResources, DescribeResource}},
 }
@@ -715,3 +716,59 @@ var All = func() []Spec {
 	}
 	return commands
 }()
+
+var ListAdvanceReports = Spec{
+	Command:     "list advance-reports",
+	Tool:        "list_advance_reports",
+	Description: "List advance reports (авансовые отчёты) in a date range of at most 31 days, optionally for one employee.",
+	Usage:       "1c list advance-reports --from YYYY-MM-DD --to YYYY-MM-DD [--employee GUID] [--limit N] [--offset N] [--json]",
+	Example:     "1c list advance-reports --from 2026-10-01 --to 2026-10-31 --employee EMPLOYEE_GUID",
+}
+
+var GetAdvanceReport = Spec{
+	Command:     "get advance-report",
+	Tool:        "get_advance_report",
+	Description: "Show an advance report with its goods and expense lines, linked cash advances, and the remainder or overspend.",
+	Usage:       "1c get advance-report [--json] GUID",
+	Example:     "1c get advance-report REPORT_GUID",
+}
+
+var GetAccountableBalance = Spec{
+	Command:     "get accountable-balance",
+	Tool:        "get_accountable_balance",
+	Description: "Show one employee's accountable-funds balance (подотчётные средства) from the settlement register; other employees are never listed.",
+	Usage:       "1c get accountable-balance --employee GUID [--organization GUID] [--as-of YYYY-MM-DD] [--json]",
+	Example:     "1c get accountable-balance --employee EMPLOYEE_GUID --as-of 2026-10-31",
+}
+
+var CreateAdvanceReport = Spec{
+	Command:     "create advance-report",
+	Tool:        "create_advance_report",
+	Description: "Preview or save an unposted advance report with goods and expense lines, linked cash or bank advances, duplicate checks, and the remainder or overspend; never issues cash or creates receipts.",
+	Usage:       "1c create advance-report --organization GUID --employee GUID --date YYYY-MM-DD --vat inclusive|exclusive [--warehouse GUID] [--department GUID] [--business-line GUID] [--goods LINE]... [--expense LINE]... [--advance cash-out|bank-out:DOC_GUID[:AMOUNT]]... [--purpose TEXT] [--comment TEXT] [--allow-duplicate] [--apply] [--json]; LINE is PRODUCT_GUID:QUANTITY:PRICE:VAT_CODE[:unit=GUID][:amount=A][:vat=V][:characteristic=GUID][:warehouse=GUID][:department=GUID][:business-line=GUID][:supplier=GUID][:doc=NUMBER][:doc-date=YYYY-MM-DD][:content=TEXT]",
+	Example:     "1c create advance-report --organization ORG_GUID --employee EMPLOYEE_GUID --date 2026-10-05 --vat inclusive --warehouse WAREHOUSE_GUID --goods PRODUCT_GUID:2:122:НДС22:supplier=SUPPLIER_GUID:doc=CHK-8 --advance cash-out:CASH_OUT_GUID",
+}
+
+var UpdateAdvanceReport = Spec{
+	Command:     "update advance-report",
+	Tool:        "update_advance_report",
+	Description: "Preview or save changes to an unposted advance report, keeping other fields and lines; a posted report must be unposted first.",
+	Usage:       "1c update advance-report GUID [--date YYYY-MM-DD] [--purpose TEXT] [--comment TEXT] [--set-line goods|expense:N:quantity=Q,price=P,vat=CODE,amount=A,vat-amount=V]... [--add-goods LINE]... [--add-expense LINE]... [--add-advance cash-out|bank-out:DOC_GUID[:AMOUNT]]... [--expect-version DATA_VERSION] [--allow-duplicate] [--apply] [--json]",
+	Example:     "1c update advance-report REPORT_GUID --set-line goods:1:quantity=3 --expect-version DATA_VERSION --apply",
+}
+
+var PostAdvanceReport = Spec{
+	Command:     "post advance-report",
+	Tool:        "set_advance_report_posting",
+	Description: "Preview or run posting or unposting of an advance report in 1C.",
+	Usage:       "1c post advance-report GUID [--expect-version DATA_VERSION] [--apply] [--json]",
+	Example:     "1c post advance-report REPORT_GUID --apply",
+}
+
+var UnpostAdvanceReport = Spec{
+	Command:     "unpost advance-report",
+	Tool:        "set_advance_report_posting",
+	Description: "Preview or run unposting of an advance report so it can be amended.",
+	Usage:       "1c unpost advance-report GUID [--expect-version DATA_VERSION] [--apply] [--json]",
+	Example:     "1c unpost advance-report REPORT_GUID --apply",
+}

@@ -142,6 +142,13 @@ Commands follow `1c VERB RESOURCE [OPTIONS]`. `1c --help` lists topics, `1c help
 1c list warehouse-docs --kind stock-writeoff --limit 20
 1c get warehouse-doc --kind transfer DOCUMENT_GUID
 1c create transfer --organization ORG_GUID --from WAREHOUSE_GUID --to OTHER_WAREHOUSE_GUID --date 2026-10-05 --line PRODUCT_GUID:3
+1c list advance-reports --from 2026-10-01 --to 2026-10-31 --employee EMPLOYEE_GUID
+1c get advance-report REPORT_GUID
+1c get accountable-balance --employee EMPLOYEE_GUID --as-of 2026-10-31
+1c create advance-report --organization ORG_GUID --employee EMPLOYEE_GUID --date 2026-10-05 --vat inclusive --warehouse WAREHOUSE_GUID --department DEPARTMENT_GUID --goods PRODUCT_GUID:2:122:НДС22:supplier=SUPPLIER_GUID:doc=CHK-8:doc-date=2026-10-04 --expense SERVICE_GUID:1:250.50:БезНДС --advance cash-out:CASH_OUT_GUID
+1c update advance-report REPORT_GUID --set-line goods:1:quantity=3 --expect-version DATA_VERSION --apply
+1c post advance-report REPORT_GUID --apply
+1c unpost advance-report REPORT_GUID --apply
 1c list cash-balances --as-of 2026-09-30
 1c list debts --kind customer --as-of 2026-09-30
 1c list accounts --kind bank
@@ -215,6 +222,14 @@ The primary-document link is an additional property that 1C shows as a hyperlink
 
 `list accounts` discovers cash desks (`cash`), organization-owned bank accounts (`bank`), and retail registers (`register`). `list money` reads cash receipts and disbursements (`cash-in`, `cash-out`), bank receipts and disbursements (`bank-in`, `bank-out`), card transactions (`card-payment`), and cash shifts (`cash-shift`). Supply an inclusive date range of at most 31 days and a cash desk, bank account, register, or terminal ID with `--account`, `--register`, or `--terminal`. `--limit` and `--offset` page results; `get money` reads a document by GUID. Payroll, tax, employee-payment, and unknown operation types are excluded. Fiscal receipts, card transactions, and bank settlements are distinct documents; `Posted` indicates 1C posting, not payment or reconciliation. These are read-only commands and may scan resource history for several seconds.
 
+### Advance reports
+
+`create advance-report` (MCP `create_advance_report`) previews an employee's advance report (авансовый отчёт); `--apply` saves it unposted, then reads it back and checks lines and totals. Goods (`--goods`, stock items only) go to the line's warehouse or `--warehouse`; expenses (`--expense`, services and work) go to the line's department or `--department`, optionally with a business line. A line is `PRODUCT_GUID:QUANTITY:PRICE:VAT_CODE` plus optional `key=value` parts: `unit`, `amount`, `vat` (exact amounts from the receipt), `characteristic`, `warehouse`, `department`, `business-line`, `supplier`, `doc` and `doc-date` (cash receipt or UPD number and date), `content`. VAT rates come from the tenant's catalog and amounts are exact. `--advance cash-out|bank-out:DOC_GUID[:AMOUNT]` links a posted cash issue or bank transfer to this employee; without an amount it takes what other reports have not used, and more than was issued is refused. The preview shows issued, spent, remainder or overspend, and the employee's balance from the «Расчеты с подотчетниками» register.
+
+Before saving, the command looks for a report of the same employee on the same day with the same total, and for lines already accounted by another document: a line of another advance report, or a supplier receipt from the same supplier, with the same receipt or UPD number. Matches block the save until `--allow-duplicate` is given; lines without a document number cannot be checked and get a warning. The command never creates a goods receipt and never issues or returns cash. A failed save is never retried; check `list advance-reports` first.
+
+`update advance-report` changes only an unposted report: date, purpose, comment, lines (`--set-line goods|expense:N:quantity=…`), new lines, and new advances; other fields and lines are kept and the save uses `If-Match`. A posted report must first be unposted explicitly with `unpost advance-report`. `post advance-report` posts it; without `--apply` both actions only preview their impact. `get accountable-balance` shows one employee's balance and never lists employees. Employees are given by GUID only; names and other personnel data are not read. File attachments and supplier-payment lines (the «Оплаты» tab) are not written; existing payment lines are kept. The document layout was checked against the tenant metadata; no write has run on a live tenant yet, and the predefined business operation «АвансовыйОтчет» is assumed (if missing, the operation shared by existing reports is used).
+
 ### Audit unposted receipts
 
 `audit receipts` checks sale and refund receipts in the half-open application date interval `[--from, --before)`. It reports non-deleted receipts with `Posted=false`, including their kind, ID, number, date, amount, and available related IDs. The audit covers at most 31 calendar days and 1,000 receipts across both kinds; a larger scan fails without returning a partial report.
@@ -256,12 +271,14 @@ Configure your MCP client to launch this command from the repository directory, 
 - `create_supplier_payment_plan`, `update_supplier_payment_plan`, and `set_supplier_payment_plan_posting` (write operations)
 - `list_warehouse_documents` and `get_warehouse_document`
 - `create_stock_transfer` (write operation)
+- `list_advance_reports`, `get_advance_report`, and `get_accountable_balance`
+- `create_advance_report`, `update_advance_report`, and `set_advance_report_posting` (write operations)
 - `list_money_accounts`, `list_money_documents`, and `get_money_document`
 - `list_cash_receipts` and `get_cash_receipt`
 - `audit_unposted_receipts`
 - `create_product_group` and `update_product_group` (write operations)
 
-No generic OData query or tool for deleting data is exposed; posting is limited to supplier goods receipts and supplier payment plans.
+No generic OData query or tool for deleting data is exposed; posting is limited to supplier goods receipts, supplier payment plans, and advance reports.
 
 See the [access policy](docs/access-policy.md) for reporting, personnel, payroll, and tax boundaries.
 
