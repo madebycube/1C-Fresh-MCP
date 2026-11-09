@@ -68,6 +68,10 @@ Commands follow `1c VERB RESOURCE [OPTIONS]`. `1c --help` lists topics, `1c help
 1c update product PRODUCT_GUID --group GROUP_GUID
 1c update product PRODUCT_GUID --vat-rate НДС22
 1c list price-types
+1c list price-groups
+1c create price-group --name "Example group"
+1c update price-group PRICE_GROUP_GUID --name "New name"
+1c update product PRODUCT_GUID --price-group PRICE_GROUP_GUID
 1c list currencies
 1c list prices --price-type "Example price" --group GROUP_GUID --limit 20
 1c list unit-types
@@ -173,6 +177,8 @@ Commands follow `1c VERB RESOURCE [OPTIONS]`. `1c --help` lists topics, `1c help
 `list characteristics` shows active product characteristics, their IDs, and owning product IDs. Use `--product` or `--name` to find a GUID for `get price --characteristic` and `get stock --characteristic`. A call is limited to catalogs of 5,000 records.
 
 `list groups` returns product folders and their IDs; `list price-types` returns price type names and IDs. `list currencies` returns active currency codes, symbols, and IDs. `list unit-types` returns measurement-unit classifier entries. Product base-unit IDs from `get product` refer to this classifier in the tested tenant. Product groups and price types are separate entities. These commands do not retrieve prices from price documents.
+
+`list price-groups` returns price groups (`Catalog_ЦеновыеГруппы`) with codes and IDs; deletion-marked groups are hidden unless you pass `--include-deleted`. `create price-group` creates a price group (the name must not match an active group), and `update price-group` renames one. `update product --price-group GUID` assigns a product's price group (`ЦеноваяГруппа_Key`), and `--price-group none` clears it. The group must exist and not be deletion-marked. Per-group markup rules inside price types are not changed. These commands **change live 1C data**; a live write has not been verified.
 
 `list prices` shows products in the selected group and their effective prices for a named price type as of `--as-of`. Use `--group GROUP_GUID` or `--group root`; without a group, it browses the catalog. Its pages use raw catalog offsets like `list products` and include products without a price as `found: false`. Each item includes product code, article, currency, and the source price document when found. It scans price document history once per page instead of once per product.
 

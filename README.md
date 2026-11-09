@@ -69,6 +69,10 @@ ln -s /path/to/1C-Fresh-MCP/bin/1c "$HOME/.local/bin/1c"
 1c update product PRODUCT_GUID --group GROUP_GUID
 1c update product PRODUCT_GUID --vat-rate НДС22
 1c list price-types
+1c list price-groups
+1c create price-group --name "Пример группы"
+1c update price-group PRICE_GROUP_GUID --name "Новое название"
+1c update product PRODUCT_GUID --price-group PRICE_GROUP_GUID
 1c list currencies
 1c list prices --price-type "Пример цены" --group GROUP_GUID --limit 20
 1c list unit-types
@@ -172,6 +176,8 @@ ln -s /path/to/1C-Fresh-MCP/bin/1c "$HOME/.local/bin/1c"
 `list characteristics` показывает действующие характеристики номенклатуры, их идентификаторы и ID товара-владельца. Фильтры `--product` и `--name` помогают найти GUID для `get price --characteristic` и `get stock --characteristic`. Справочник ограничен 5000 записями на вызов.
 
 `list groups` показывает папки номенклатуры и их идентификаторы; `list price-types` — виды цен и их идентификаторы. `list currencies` показывает действующие валюты, их коды, символы и ID. `list unit-types` показывает элементы классификатора единиц измерения. ID базовой единицы товара из `get product` ссылается на этот классификатор в проверенной базе. Группы товаров и виды цен — разные сущности. Эти команды не получают цены товаров из документов установки цен.
+
+`list price-groups` показывает ценовые группы (`Catalog_ЦеновыеГруппы`) с кодами и ID; помеченные на удаление скрыты, `--include-deleted` показывает и их. `create price-group` создаёт ценовую группу (название не должно совпадать с действующей группой), `update price-group` переименовывает её. `update product --price-group GUID` назначает товару ценовую группу (`ЦеноваяГруппа_Key`), `--price-group none` очищает её. Группа должна существовать и не быть помечена на удаление. Правила наценок по группам внутри вида цен не меняются. Эти команды **изменяют данные в действующей 1С**; запись в действующую базу не проверялась.
 
 `list prices` показывает товары группы и действующие цены указанного вида на дату `--as-of`. Группу задают через `--group GROUP_GUID` или `--group root`; без группы просматривается весь каталог. Страницы используют смещение по исходным строкам каталога, как `list products`, и включают товары без цены с `found: false`. Каждая запись содержит код, артикул товара, валюту и документ-источник найденной цены. История документов установки цен читается один раз на страницу, а не отдельно для каждого товара.
 

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/madebycube/1C-Fresh-MCP/internal/operations"
 	"github.com/madebycube/1C-Fresh-MCP/internal/service"
 )
 
@@ -19,9 +20,10 @@ func runProductUpdate(ctx context.Context, svc service.Service, args []string, o
 	article := flags.String("article", "", "replacement article")
 	group := flags.String("group", "", "destination product group GUID")
 	vatRate := flags.String("vat-rate", "", "VAT rate code such as НДС22")
+	priceGroup := flags.String("price-group", "", "price group GUID or none")
 	asJSON := flags.Bool("json", false, "print JSON")
 	if err := parseFlags(flags, args); err != nil || flags.NArg() != 1 {
-		return errors.New("usage: 1c update product GUID [--name TEXT] [--full-name TEXT] [--article TEXT] [--group GUID] [--vat-rate CODE] [--json]")
+		return errors.New("usage: " + operations.UpdateProduct.Usage)
 	}
 	var patch service.ProductPatch
 	flags.Visit(func(option *flag.Flag) {
@@ -36,6 +38,8 @@ func runProductUpdate(ctx context.Context, svc service.Service, args []string, o
 			patch.GroupID = group
 		case "vat-rate":
 			patch.VATRate = vatRate
+		case "price-group":
+			patch.PriceGroupID = priceGroup
 		}
 	})
 	change, err := svc.UpdateProduct(ctx, flags.Arg(0), patch)

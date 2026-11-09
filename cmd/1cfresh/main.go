@@ -96,6 +96,12 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		return runGroupCreate(ctx, svc, commandArgs, out)
 	case operations.UpdateGroup.Command:
 		return runGroupUpdate(ctx, svc, commandArgs, out)
+	case operations.ListPriceGroups.Command:
+		return runPriceGroupList(ctx, svc, commandArgs, out)
+	case operations.CreatePriceGroup.Command:
+		return runPriceGroupCreate(ctx, svc, commandArgs, out)
+	case operations.UpdatePriceGroup.Command:
+		return runPriceGroupUpdate(ctx, svc, commandArgs, out)
 	case operations.ListCounterpartyGroups.Command:
 		return runCounterpartyGroupList(ctx, svc, commandArgs, out)
 	case operations.CreateCounterpartyGroup.Command:
