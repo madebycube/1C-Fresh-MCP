@@ -46,12 +46,13 @@ type searchOutput struct {
 }
 
 type updateProductInput struct {
-	ID       string  `json:"id" jsonschema:"Existing product GUID"`
-	Name     *string `json:"name,omitempty" jsonschema:"Replacement product name"`
-	FullName *string `json:"full_name,omitempty" jsonschema:"Replacement full name; empty string clears it"`
-	Article  *string `json:"article,omitempty" jsonschema:"Replacement article; empty string clears it"`
-	GroupID  *string `json:"group_id,omitempty" jsonschema:"Destination active product group GUID"`
-	VATRate  *string `json:"vat_rate,omitempty" jsonschema:"Default VAT rate code such as НДС22, НДС5, or БезНДС"`
+	ID           string  `json:"id" jsonschema:"Existing product GUID"`
+	Name         *string `json:"name,omitempty" jsonschema:"Replacement product name"`
+	FullName     *string `json:"full_name,omitempty" jsonschema:"Replacement full name; empty string clears it"`
+	Article      *string `json:"article,omitempty" jsonschema:"Replacement article; empty string clears it"`
+	GroupID      *string `json:"group_id,omitempty" jsonschema:"Destination active product group GUID"`
+	VATRate      *string `json:"vat_rate,omitempty" jsonschema:"Default VAT rate code such as НДС22, НДС5, or БезНДС"`
+	PriceGroupID *string `json:"price_group_id,omitempty" jsonschema:"Price group GUID from list_price_groups, or none to clear it"`
 }
 
 type listGroupsInput struct {
@@ -103,6 +104,25 @@ type updateCounterpartyGroupInput struct {
 	ID       string  `json:"id" jsonschema:"Existing counterparty folder GUID"`
 	Name     *string `json:"name,omitempty" jsonschema:"Replacement folder name"`
 	ParentID *string `json:"parent_id,omitempty" jsonschema:"Destination folder GUID or root"`
+}
+
+type listPriceGroupsInput struct {
+	Name           string `json:"name,omitempty" jsonschema:"Optional substring of a price group name"`
+	IncludeDeleted bool   `json:"include_deleted,omitempty" jsonschema:"Also return deletion-marked price groups"`
+}
+
+type listPriceGroupsOutput struct {
+	Groups []service.PriceGroup `json:"groups"`
+	Count  int                  `json:"count"`
+}
+
+type createPriceGroupInput struct {
+	Name string `json:"name" jsonschema:"Name for the new price group"`
+}
+
+type updatePriceGroupInput struct {
+	ID   string `json:"id" jsonschema:"Existing price group GUID from list_price_groups"`
+	Name string `json:"name" jsonschema:"Replacement price group name"`
 }
 
 type listPriceTypesInput struct{}
@@ -892,6 +912,27 @@ func New(svc service.Service) *mcp.Server {
 		return nil, change, err
 	})
 	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.ListPriceGroups.Tool, Description: operations.ListPriceGroups.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input listPriceGroupsInput) (*mcp.CallToolResult, listPriceGroupsOutput, error) {
+		groups, err := svc.ListPriceGroups(ctx, input.Name, input.IncludeDeleted)
+		return nil, listPriceGroupsOutput{Groups: groups, Count: len(groups)}, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.CreatePriceGroup.Tool, Description: operations.CreatePriceGroup.Description,
+		Annotations: &mcp.ToolAnnotations{DestructiveHint: &additive},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input createPriceGroupInput) (*mcp.CallToolResult, service.PriceGroupChange, error) {
+		change, err := svc.CreatePriceGroup(ctx, input.Name)
+		return nil, change, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.UpdatePriceGroup.Tool, Description: operations.UpdatePriceGroup.Description,
+		Annotations: &mcp.ToolAnnotations{IdempotentHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input updatePriceGroupInput) (*mcp.CallToolResult, service.PriceGroupChange, error) {
+		change, err := svc.UpdatePriceGroup(ctx, input.ID, input.Name)
+		return nil, change, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
 		Name: operations.ListPriceTypes.Tool, Description: operations.ListPriceTypes.Description,
 		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ listPriceTypesInput) (*mcp.CallToolResult, listPriceTypesOutput, error) {
@@ -1107,7 +1148,7 @@ func New(svc service.Service) *mcp.Server {
 		Name: operations.UpdateProduct.Tool, Description: operations.UpdateProduct.Description,
 		Annotations: &mcp.ToolAnnotations{IdempotentHint: true},
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, input updateProductInput) (*mcp.CallToolResult, service.ProductChange, error) {
-		change, err := svc.UpdateProduct(ctx, input.ID, service.ProductPatch{Name: input.Name, FullName: input.FullName, Article: input.Article, GroupID: input.GroupID, VATRate: input.VATRate})
+		change, err := svc.UpdateProduct(ctx, input.ID, service.ProductPatch{Name: input.Name, FullName: input.FullName, Article: input.Article, GroupID: input.GroupID, VATRate: input.VATRate, PriceGroupID: input.PriceGroupID})
 		return nil, change, err
 	})
 	mcp.AddTool(server, &mcp.Tool{

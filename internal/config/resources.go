@@ -73,6 +73,17 @@ var ProductCategories = CatalogListResource{
 	},
 }
 
+var PriceGroups = CatalogListResource{
+	Name: "Catalog_ЦеновыеГруппы",
+	Fields: []FieldBinding{
+		{Output: "id", Source: "Ref_Key"},
+		{Output: "code", Source: "Code"},
+		{Output: "name", Source: "Description"},
+		{Output: "parent_id", Source: "Parent_Key"},
+		{Output: "deleted", Source: "DeletionMark"},
+	},
+}
+
 var ProductCharacteristics = CatalogListResource{
 	Name: "Catalog_ХарактеристикиНоменклатуры",
 	Fields: []FieldBinding{

@@ -42,6 +42,12 @@ func (stubReader) Get(_ context.Context, resource string, params url.Values, _ i
 		}
 		return []byte(`{"Ref_Key":"00000000-0000-0000-0000-000000000001","Description":"Furniture","Parent_Key":"00000000-0000-0000-0000-000000000000","IsFolder":true,"DeletionMark":false,"DataVersion":"version-1"}`), nil
 	}
+	if resource == "Catalog_ЦеновыеГруппы" {
+		return []byte(`{"odata.count":"1","value":[{"Ref_Key":"00000000-0000-0000-0000-000000000017","Code":"001","Description":"Furniture prices","Parent_Key":"00000000-0000-0000-0000-000000000000","DeletionMark":false}]}`), nil
+	}
+	if strings.HasPrefix(resource, "Catalog_ЦеновыеГруппы(") {
+		return []byte(`{"Ref_Key":"00000000-0000-0000-0000-000000000017","Description":"Furniture prices","DeletionMark":false,"DataVersion":"version-1"}`), nil
+	}
 	if resource == "Catalog_ВидыЦен" {
 		return []byte(`{"odata.count":"1","value":[{"Ref_Key":"00000000-0000-0000-0000-000000000002","Description":"Retail","DeletionMark":false,"Недействителен":false}]}`), nil
 	}
@@ -184,21 +190,21 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(listed.Tools) != 94 {
-		t.Fatalf("got %d tools; want 94", len(listed.Tools))
+	if len(listed.Tools) != 97 {
+		t.Fatalf("got %d tools; want 97", len(listed.Tools))
 	}
 	for _, tool := range listed.Tools {
 		if tool.Annotations == nil {
 			t.Fatalf("tool %s has no annotations", tool.Name)
 		}
-		write := tool.Name == operations.CreateGroup.Tool || tool.Name == operations.UpdateGroup.Tool || tool.Name == operations.CreateCounterpartyGroup.Tool || tool.Name == operations.UpdateCounterpartyGroup.Tool || tool.Name == operations.CreateProduct.Tool || tool.Name == operations.UpdateProduct.Tool || tool.Name == operations.CreateCustomer.Tool || tool.Name == operations.UpdateCustomer.Tool || tool.Name == operations.CreateSupplier.Tool || tool.Name == operations.UpdateSupplier.Tool || tool.Name == operations.CreateReceipt.Tool || tool.Name == operations.UpdateReceipt.Tool || tool.Name == operations.PostReceipt.Tool || tool.Name == operations.SetReceiptLink.Tool || tool.Name == operations.CreatePaymentPlan.Tool || tool.Name == operations.UpdatePaymentPlan.Tool || tool.Name == operations.CreatePrepaymentPlan.Tool || tool.Name == operations.PostPaymentPlan.Tool || tool.Name == operations.CreateTransfer.Tool || tool.Name == operations.SetPrice.Tool || tool.Name == operations.CreateSupplierOrder.Tool || tool.Name == operations.UpdateSupplierOrder.Tool || tool.Name == operations.PostSupplierOrder.Tool || tool.Name == operations.CreateReceiptFromOrder.Tool || tool.Name == operations.LinkReceiptToOrder.Tool || tool.Name == operations.CreateProductUnit.Tool || tool.Name == operations.UpdateProductUnit.Tool || tool.Name == operations.CreateAdvanceReport.Tool || tool.Name == operations.UpdateAdvanceReport.Tool || tool.Name == operations.PostAdvanceReport.Tool || tool.Name == operations.UpdatePayment.Tool || tool.Name == operations.PostTransfer.Tool || tool.Name == operations.SetDeletionMark.Tool || tool.Name == operations.PostPriceDocument.Tool
+		write := tool.Name == operations.CreateGroup.Tool || tool.Name == operations.UpdateGroup.Tool || tool.Name == operations.CreateCounterpartyGroup.Tool || tool.Name == operations.UpdateCounterpartyGroup.Tool || tool.Name == operations.CreatePriceGroup.Tool || tool.Name == operations.UpdatePriceGroup.Tool || tool.Name == operations.CreateProduct.Tool || tool.Name == operations.UpdateProduct.Tool || tool.Name == operations.CreateCustomer.Tool || tool.Name == operations.UpdateCustomer.Tool || tool.Name == operations.CreateSupplier.Tool || tool.Name == operations.UpdateSupplier.Tool || tool.Name == operations.CreateReceipt.Tool || tool.Name == operations.UpdateReceipt.Tool || tool.Name == operations.PostReceipt.Tool || tool.Name == operations.SetReceiptLink.Tool || tool.Name == operations.CreatePaymentPlan.Tool || tool.Name == operations.UpdatePaymentPlan.Tool || tool.Name == operations.CreatePrepaymentPlan.Tool || tool.Name == operations.PostPaymentPlan.Tool || tool.Name == operations.CreateTransfer.Tool || tool.Name == operations.SetPrice.Tool || tool.Name == operations.CreateSupplierOrder.Tool || tool.Name == operations.UpdateSupplierOrder.Tool || tool.Name == operations.PostSupplierOrder.Tool || tool.Name == operations.CreateReceiptFromOrder.Tool || tool.Name == operations.LinkReceiptToOrder.Tool || tool.Name == operations.CreateProductUnit.Tool || tool.Name == operations.UpdateProductUnit.Tool || tool.Name == operations.CreateAdvanceReport.Tool || tool.Name == operations.UpdateAdvanceReport.Tool || tool.Name == operations.PostAdvanceReport.Tool || tool.Name == operations.UpdatePayment.Tool || tool.Name == operations.PostTransfer.Tool || tool.Name == operations.SetDeletionMark.Tool || tool.Name == operations.PostPriceDocument.Tool
 		if tool.Annotations.ReadOnlyHint == write {
 			t.Fatalf("tool %s has incorrect read-only annotation", tool.Name)
 		}
-		if (tool.Name == operations.CreateGroup.Tool || tool.Name == operations.CreateCounterpartyGroup.Tool || tool.Name == operations.CreateProduct.Tool || tool.Name == operations.CreateCustomer.Tool || tool.Name == operations.CreateSupplier.Tool || tool.Name == operations.CreateReceipt.Tool || tool.Name == operations.CreatePaymentPlan.Tool || tool.Name == operations.CreateTransfer.Tool || tool.Name == operations.SetPrice.Tool || tool.Name == operations.CreateSupplierOrder.Tool || tool.Name == operations.CreateReceiptFromOrder.Tool || tool.Name == operations.CreateProductUnit.Tool || tool.Name == operations.CreateAdvanceReport.Tool) && (tool.Annotations.DestructiveHint == nil || *tool.Annotations.DestructiveHint) {
+		if (tool.Name == operations.CreateGroup.Tool || tool.Name == operations.CreateCounterpartyGroup.Tool || tool.Name == operations.CreatePriceGroup.Tool || tool.Name == operations.CreateProduct.Tool || tool.Name == operations.CreateCustomer.Tool || tool.Name == operations.CreateSupplier.Tool || tool.Name == operations.CreateReceipt.Tool || tool.Name == operations.CreatePaymentPlan.Tool || tool.Name == operations.CreateTransfer.Tool || tool.Name == operations.SetPrice.Tool || tool.Name == operations.CreateSupplierOrder.Tool || tool.Name == operations.CreateReceiptFromOrder.Tool || tool.Name == operations.CreateProductUnit.Tool || tool.Name == operations.CreateAdvanceReport.Tool) && (tool.Annotations.DestructiveHint == nil || *tool.Annotations.DestructiveHint) {
 			t.Fatalf("%s must be marked additive", tool.Name)
 		}
-		if (tool.Name == operations.UpdateGroup.Tool || tool.Name == operations.UpdateCounterpartyGroup.Tool || tool.Name == operations.UpdateCustomer.Tool || tool.Name == operations.UpdateSupplier.Tool || tool.Name == operations.UpdateReceipt.Tool || tool.Name == operations.PostReceipt.Tool || tool.Name == operations.SetReceiptLink.Tool || tool.Name == operations.UpdatePaymentPlan.Tool || tool.Name == operations.CreatePrepaymentPlan.Tool || tool.Name == operations.PostPaymentPlan.Tool || tool.Name == operations.UpdateSupplierOrder.Tool || tool.Name == operations.PostSupplierOrder.Tool || tool.Name == operations.LinkReceiptToOrder.Tool || tool.Name == operations.UpdateProductUnit.Tool || tool.Name == operations.UpdateAdvanceReport.Tool || tool.Name == operations.PostAdvanceReport.Tool || tool.Name == operations.UpdatePayment.Tool || tool.Name == operations.PostTransfer.Tool || tool.Name == operations.SetDeletionMark.Tool || tool.Name == operations.PostPriceDocument.Tool) && !tool.Annotations.IdempotentHint {
+		if (tool.Name == operations.UpdateGroup.Tool || tool.Name == operations.UpdateCounterpartyGroup.Tool || tool.Name == operations.UpdatePriceGroup.Tool || tool.Name == operations.UpdateCustomer.Tool || tool.Name == operations.UpdateSupplier.Tool || tool.Name == operations.UpdateReceipt.Tool || tool.Name == operations.PostReceipt.Tool || tool.Name == operations.SetReceiptLink.Tool || tool.Name == operations.UpdatePaymentPlan.Tool || tool.Name == operations.CreatePrepaymentPlan.Tool || tool.Name == operations.PostPaymentPlan.Tool || tool.Name == operations.UpdateSupplierOrder.Tool || tool.Name == operations.PostSupplierOrder.Tool || tool.Name == operations.LinkReceiptToOrder.Tool || tool.Name == operations.UpdateProductUnit.Tool || tool.Name == operations.UpdateAdvanceReport.Tool || tool.Name == operations.PostAdvanceReport.Tool || tool.Name == operations.UpdatePayment.Tool || tool.Name == operations.PostTransfer.Tool || tool.Name == operations.SetDeletionMark.Tool || tool.Name == operations.PostPriceDocument.Tool) && !tool.Annotations.IdempotentHint {
 			t.Fatalf("%s must be marked idempotent", tool.Name)
 		}
 	}
@@ -239,6 +245,10 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 		{operations.GetStock.Tool, map[string]any{"product_id": "00000000-0000-0000-0000-000000000004"}},
 		{operations.SearchProducts.Tool, map[string]any{"query": "Chair", "limit": 2}},
 		{operations.ListProducts.Tool, map[string]any{"limit": 2, "group_id": "00000000-0000-0000-0000-000000000001"}},
+		{operations.UpdateProduct.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000004", "price_group_id": "00000000-0000-0000-0000-000000000017"}},
+		{operations.ListPriceGroups.Tool, map[string]any{"name": "furn"}},
+		{operations.CreatePriceGroup.Tool, map[string]any{"name": "Lighting prices"}},
+		{operations.UpdatePriceGroup.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000017", "name": "Renamed prices"}},
 		{operations.GetProduct.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000004"}},
 		{operations.CreateProduct.Tool, map[string]any{"name": "Example item", "type": "stock", "unit_id": "00000000-0000-0000-0000-000000000013", "category_id": "00000000-0000-0000-0000-000000000014"}},
 		{operations.UpdateProduct.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000004", "article": "B", "group_id": "00000000-0000-0000-0000-000000000001"}},

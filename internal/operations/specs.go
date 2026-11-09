@@ -86,6 +86,30 @@ var UpdateCounterpartyGroup = Spec{
 	Example:     "1c update counterparty-group FOLDER_GUID --parent root",
 }
 
+var ListPriceGroups = Spec{
+	Command:     "list price-groups",
+	Tool:        "list_price_groups",
+	Description: "List price groups (ценовые группы) with codes and 1C IDs.",
+	Usage:       "1c list price-groups [--name TEXT] [--include-deleted] [--json]",
+	Example:     "1c list price-groups",
+}
+
+var CreatePriceGroup = Spec{
+	Command:     "create price-group",
+	Tool:        "create_price_group",
+	Description: "Create a price group (ценовая группа) in 1C; names must be unique among active groups.",
+	Usage:       "1c create price-group --name NAME [--json]",
+	Example:     "1c create price-group --name \"Пример группы\"",
+}
+
+var UpdatePriceGroup = Spec{
+	Command:     "update price-group",
+	Tool:        "update_price_group",
+	Description: "Rename a price group (ценовая группа) by 1C ID.",
+	Usage:       "1c update price-group GUID --name NAME [--json]",
+	Example:     "1c update price-group PRICE_GROUP_GUID --name \"Новое название\"",
+}
+
 var ListPriceTypes = Spec{
 	Command:     "list price-types",
 	Tool:        "list_price_types",
@@ -193,8 +217,8 @@ var CreateProduct = Spec{
 var UpdateProduct = Spec{
 	Command:     "update product",
 	Tool:        "update_product",
-	Description: "Edit a product name, full name, article, group, or default VAT rate by 1C ID.",
-	Usage:       "1c update product GUID [--name TEXT] [--full-name TEXT] [--article TEXT] [--group GUID] [--vat-rate CODE] [--json]",
+	Description: "Edit a product name, full name, article, group, default VAT rate, or price group by 1C ID.",
+	Usage:       "1c update product GUID [--name TEXT] [--full-name TEXT] [--article TEXT] [--group GUID] [--vat-rate CODE] [--price-group GUID|none] [--json]",
 	Example:     "1c update product PRODUCT_GUID --group GROUP_GUID",
 }
 
@@ -762,7 +786,7 @@ var Topics = []Topic{
 	{Name: "setup", Description: "Connection and local MCP server", Commands: []Spec{Check}},
 	{Name: "company", Description: "Organizations, departments, and contracts", Commands: []Spec{ListOrganizations, ListDepartments, ListContracts}},
 	{Name: "products", Description: "Products, groups, categories, and characteristics", Commands: []Spec{ListProducts, GetProduct, SearchProducts, CreateProduct, UpdateProduct, ListGroups, CreateGroup, UpdateGroup, ListProductCategories, ListProductCharacteristics, ListUnitTypes, ListProductUnits, CreateProductUnit, UpdateProductUnit}},
-	{Name: "prices", Description: "Price types, currencies, quotes, and source documents", Commands: []Spec{ListPriceTypes, ListCurrencies, GetPrice, ListPrices, ListPriceDocuments, GetPriceDocument, SetPrice, PostPriceDocument, UnpostPriceDocument}},
+	{Name: "prices", Description: "Price types, price groups, currencies, quotes, and source documents", Commands: []Spec{ListPriceTypes, ListPriceGroups, CreatePriceGroup, UpdatePriceGroup, ListCurrencies, GetPrice, ListPrices, ListPriceDocuments, GetPriceDocument, SetPrice, PostPriceDocument, UnpostPriceDocument}},
 	{Name: "inventory", Description: "Warehouses, stock, and warehouse documents", Commands: []Spec{ListWarehouses, GetStock, ListWarehouseDocuments, GetWarehouseDocument, CreateTransfer, PostTransfer, UnpostTransfer}},
 	{Name: "partners", Description: "Customer and supplier records and folders", Commands: []Spec{ListCounterpartyGroups, CreateCounterpartyGroup, UpdateCounterpartyGroup, ListCustomers, SearchCustomers, GetCustomer, CreateCustomer, UpdateCustomer, ListSuppliers, SearchSuppliers, GetSupplier, CreateSupplier, UpdateSupplier}},
 	{Name: "sales", Description: "Customer orders and sales documents", Commands: []Spec{ListOrders, GetOrder, GetOrderPayments, ListSales, GetSale, ReportSales}},
