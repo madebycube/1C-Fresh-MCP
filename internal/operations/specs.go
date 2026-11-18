@@ -177,8 +177,8 @@ var ListWarehouses = Spec{
 var GetStock = Spec{
 	Command:     "get stock",
 	Tool:        "get_product_stock",
-	Description: "Show current product stock by warehouse.",
-	Usage:       "1c get stock PRODUCT_GUID [--warehouse GUID] [--characteristic GUID] [--json]",
+	Description: "Show current or end-of-day product stock by warehouse.",
+	Usage:       "1c get stock PRODUCT_GUID [--warehouse GUID] [--characteristic GUID] [--as-of YYYY-MM-DD] [--json]",
 	Example:     "1c get stock PRODUCT_GUID --warehouse WAREHOUSE_GUID",
 }
 

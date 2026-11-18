@@ -92,7 +92,10 @@ func TestStockBalanceUsesValidatedFunctionPath(t *testing.T) {
 	id := "11111111-1111-1111-1111-111111111111"
 	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		want := "/a/sbm/1/odata/standard.odata/AccumulationRegister_ЗапасыНаСкладах/Balance(Condition='Номенклатура_Key eq guid''" + id + "''')"
-		if r.URL.Path != want || r.URL.Query().Get("$top") != "1" {
+		if r.URL.Query().Get("$top") == "2" {
+			want = strings.Replace(want, "Balance(", "Balance(Period=datetime'2026-11-01T00:00:00',", 1)
+		}
+		if r.URL.Path != want {
 			t.Errorf("unexpected balance request: %s?%s", r.URL.Path, r.URL.RawQuery)
 		}
 		_, _ = w.Write([]byte(`{"value":[]}`))
@@ -101,10 +104,16 @@ func TestStockBalanceUsesValidatedFunctionPath(t *testing.T) {
 	base, _ := url.Parse(server.URL + "/a/sbm/1")
 	client := New(config.Config{BaseURL: base, Username: "user", Password: "password"})
 	client.http = server.Client()
-	if _, err := client.GetStockBalance(context.Background(), id, url.Values{"$top": {"1"}}, 100); err != nil {
+	if _, err := client.GetStockBalance(context.Background(), id, "", url.Values{"$top": {"1"}}, 100); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := client.GetStockBalance(context.Background(), "../other", nil, 100); err == nil {
+	if _, err := client.GetStockBalance(context.Background(), id, "2026-11-01T00:00:00", url.Values{"$top": {"2"}}, 100); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.GetStockBalance(context.Background(), id, "invalid", nil, 100); err == nil {
+		t.Fatal("accepted an invalid period")
+	}
+	if _, err := client.GetStockBalance(context.Background(), "../other", "", nil, 100); err == nil {
 		t.Fatal("accepted an invalid product ID")
 	}
 	if _, err := client.Get(context.Background(), "AccumulationRegister_ЗапасыНаСкладах/Balance", nil, 100); err == nil {
