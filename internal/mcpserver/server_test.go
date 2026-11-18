@@ -168,7 +168,7 @@ func (stubReader) GetRecordSet(_ context.Context, register, _, _ string, _ int64
 	return nil, false, nil
 }
 
-func (stubReader) GetStockBalance(_ context.Context, productID string, _ url.Values, _ int64) ([]byte, error) {
+func (stubReader) GetStockBalance(_ context.Context, productID, _ string, _ url.Values, _ int64) ([]byte, error) {
 	return []byte(`{"odata.count":"1","value":[{"Номенклатура_Key":"` + productID + `","СтруктурнаяЕдиница_Key":"00000000-0000-0000-0000-000000000006","Характеристика_Key":"00000000-0000-0000-0000-000000000000","Организация_Key":"00000000-0000-0000-0000-000000000000","Партия_Key":"00000000-0000-0000-0000-000000000000","Ячейка_Key":"00000000-0000-0000-0000-000000000000","КоличествоBalance":3.5}]}`), nil
 }
 
@@ -242,7 +242,7 @@ func TestToolsHaveWriteAnnotationsAndAreCallable(t *testing.T) {
 		{operations.ListOrganizations.Tool, map[string]any{}},
 		{operations.ListDepartments.Tool, map[string]any{}},
 		{operations.ListContracts.Tool, map[string]any{"kind": "supplier"}},
-		{operations.GetStock.Tool, map[string]any{"product_id": "00000000-0000-0000-0000-000000000004"}},
+		{operations.GetStock.Tool, map[string]any{"product_id": "00000000-0000-0000-0000-000000000004", "as_of": "2026-10-31"}},
 		{operations.SearchProducts.Tool, map[string]any{"query": "Chair", "limit": 2}},
 		{operations.ListProducts.Tool, map[string]any{"limit": 2, "group_id": "00000000-0000-0000-0000-000000000001"}},
 		{operations.UpdateProduct.Tool, map[string]any{"id": "00000000-0000-0000-0000-000000000004", "price_group_id": "00000000-0000-0000-0000-000000000017"}},

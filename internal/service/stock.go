@@ -40,6 +40,7 @@ type StockResult struct {
 	CharacteristicID string           `json:"characteristic_id,omitempty"`
 	UnitID           string           `json:"unit_id,omitempty"`
 	UnitName         string           `json:"unit_name,omitempty"`
+	AsOf             string           `json:"as_of,omitempty"`
 	SourceRegister   string           `json:"source_register"`
 	Total            Decimal          `json:"total"`
 	Warehouses       []WarehouseStock `json:"warehouses"`
@@ -60,10 +61,10 @@ type stockUnit struct {
 }
 
 type stockBalanceReader interface {
-	GetStockBalance(context.Context, string, url.Values, int64) ([]byte, error)
+	GetStockBalance(context.Context, string, string, url.Values, int64) ([]byte, error)
 }
 
-func (s Service) GetStock(ctx context.Context, productID, warehouseID, characteristicID string) (StockResult, error) {
+func (s Service) GetStock(ctx context.Context, productID, warehouseID, characteristicID, asOf string) (StockResult, error) {
 	if !guidPattern.MatchString(productID) || strings.EqualFold(productID, emptyGUID) {
 		return StockResult{}, errors.New("product ID must be a nonzero GUID")
 	}
@@ -72,6 +73,14 @@ func (s Service) GetStock(ctx context.Context, productID, warehouseID, character
 	}
 	if characteristicID != "" && !guidPattern.MatchString(characteristicID) {
 		return StockResult{}, errors.New("characteristic ID must be a GUID")
+	}
+	var period string
+	if asOf != "" {
+		var err error
+		asOf, period, err = registerAsOf(asOf)
+		if err != nil {
+			return StockResult{}, err
+		}
 	}
 	product, err := s.readStockProduct(ctx, productID)
 	if err != nil {
@@ -92,7 +101,7 @@ func (s Service) GetStock(ctx context.Context, productID, warehouseID, character
 	}
 	result := StockResult{
 		ProductID: product.ID, ProductName: product.Name, CharacteristicID: characteristicID,
-		UnitID: product.UnitID, SourceRegister: config.WarehouseStock.Name + "/Balance",
+		UnitID: product.UnitID, AsOf: asOf, SourceRegister: config.WarehouseStock.Name + "/Balance",
 		Total: "0", Warehouses: []WarehouseStock{}, Balances: []StockBalance{},
 	}
 	if product.UnitID != "" && !strings.EqualFold(product.UnitID, emptyGUID) {
@@ -101,7 +110,7 @@ func (s Service) GetStock(ctx context.Context, productID, warehouseID, character
 			result.UnitName = unit.Name
 		}
 	}
-	rows, err := s.stockRows(ctx, productID)
+	rows, err := s.stockRows(ctx, productID, period)
 	if err != nil {
 		return StockResult{}, fmt.Errorf("read stock balances: %w", err)
 	}
@@ -179,7 +188,7 @@ func (s Service) readStockUnit(ctx context.Context, id string) (stockUnit, error
 	return unit, nil
 }
 
-func (s Service) stockRows(ctx context.Context, productID string) ([]map[string]json.RawMessage, error) {
+func (s Service) stockRows(ctx context.Context, productID, period string) ([]map[string]json.RawMessage, error) {
 	reader, ok := s.OData.(stockBalanceReader)
 	if !ok {
 		return nil, errors.New("OData client does not support stock balances")
@@ -193,7 +202,7 @@ func (s Service) stockRows(ctx context.Context, productID string) ([]map[string]
 	count := -1
 	for len(rows) < maxStockRows {
 		params.Set("$skip", strconv.Itoa(len(rows)))
-		data, err := reader.GetStockBalance(ctx, productID, params, 8<<20)
+		data, err := reader.GetStockBalance(ctx, productID, period, params, 8<<20)
 		if err != nil {
 			return nil, err
 		}

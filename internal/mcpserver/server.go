@@ -298,6 +298,7 @@ type getStockInput struct {
 	ProductID        string `json:"product_id" jsonschema:"Product GUID from find_nomenclature"`
 	WarehouseID      string `json:"warehouse_id,omitempty" jsonschema:"Optional warehouse GUID from list_warehouses"`
 	CharacteristicID string `json:"characteristic_id,omitempty" jsonschema:"Optional product characteristic GUID; omit for all characteristics"`
+	AsOf             string `json:"as_of,omitempty" jsonschema:"Optional end-of-day balance date (YYYY-MM-DD); omit for current stock"`
 }
 
 type searchResourcesInput struct {
@@ -1106,7 +1107,7 @@ func New(svc service.Service) *mcp.Server {
 		Name: operations.GetStock.Tool, Description: operations.GetStock.Description,
 		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, input getStockInput) (*mcp.CallToolResult, service.StockResult, error) {
-		stock, err := svc.GetStock(ctx, input.ProductID, input.WarehouseID, input.CharacteristicID)
+		stock, err := svc.GetStock(ctx, input.ProductID, input.WarehouseID, input.CharacteristicID, input.AsOf)
 		return nil, stock, err
 	})
 	mcp.AddTool(server, &mcp.Tool{

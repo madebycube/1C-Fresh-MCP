@@ -17,7 +17,8 @@ const stockTestUnit = "00000000-0000-0000-0000-000000000004"
 const stockTestCharacteristic = "00000000-0000-0000-0000-000000000006"
 
 type stockReader struct {
-	balances []map[string]any
+	balances   []map[string]any
+	wantPeriod string
 }
 
 func (stockReader) Check(context.Context) (int, error) { return 1, nil }
@@ -34,7 +35,10 @@ func (r stockReader) Get(_ context.Context, resource string, _ url.Values, _ int
 	return nil, nil
 }
 
-func (r stockReader) GetStockBalance(_ context.Context, productID string, params url.Values, _ int64) ([]byte, error) {
+func (r stockReader) GetStockBalance(_ context.Context, productID, period string, params url.Values, _ int64) ([]byte, error) {
+	if period != r.wantPeriod {
+		return nil, fmt.Errorf("got period %q, want %q", period, r.wantPeriod)
+	}
 	if productID != stockTestProduct {
 		return nil, nil
 	}
@@ -54,15 +58,15 @@ func TestGetStockAggregatesBalanceDimensionsAndFiltersWarehouses(t *testing.T) {
 	if err != nil || len(warehouses) != 2 {
 		t.Fatalf("warehouses: %+v, %v", warehouses, err)
 	}
-	stock, err := svc.GetStock(context.Background(), stockTestProduct, "", "")
+	stock, err := svc.GetStock(context.Background(), stockTestProduct, "", "", "")
 	if err != nil || stock.Total != "3.65" || stock.UnitName != "pcs" || len(stock.Balances) != 3 || len(stock.Warehouses) != 2 {
 		t.Fatalf("stock: %+v, %v", stock, err)
 	}
-	filtered, err := svc.GetStock(context.Background(), stockTestProduct, stockTestWarehouse, "")
+	filtered, err := svc.GetStock(context.Background(), stockTestProduct, stockTestWarehouse, "", "")
 	if err != nil || filtered.Total != "1.15" || len(filtered.Warehouses) != 1 || len(filtered.Balances) != 2 {
 		t.Fatalf("filtered stock: %+v, %v", filtered, err)
 	}
-	variant, err := svc.GetStock(context.Background(), stockTestProduct, "", stockTestCharacteristic)
+	variant, err := svc.GetStock(context.Background(), stockTestProduct, "", stockTestCharacteristic, "")
 	if err != nil || variant.Total != "2.5" || len(variant.Balances) != 1 || variant.Warehouses[0].ID != stockTestStore {
 		t.Fatalf("variant stock: %+v, %v", variant, err)
 	}
@@ -81,13 +85,13 @@ func TestStockSumPreservesExponentPrecision(t *testing.T) {
 }
 
 func TestGetStockShowsZeroForWarehouseWithoutBalance(t *testing.T) {
-	stock, err := (Service{OData: stockReader{balances: []map[string]any{}}}).GetStock(context.Background(), stockTestProduct, stockTestWarehouse, "")
+	stock, err := (Service{OData: stockReader{balances: []map[string]any{}}}).GetStock(context.Background(), stockTestProduct, stockTestWarehouse, "", "")
 	if err != nil || stock.Total != "0" || len(stock.Warehouses) != 1 || stock.Warehouses[0].Quantity != "0" || len(stock.Balances) != 0 {
 		t.Fatalf("zero stock: %+v, %v", stock, err)
 	}
 }
 
-func TestGetStockPaginatesBalanceRows(t *testing.T) {
+func TestGetHistoricalStockPaginatesBalanceRows(t *testing.T) {
 	rows := make([]map[string]any, 101)
 	for index := range rows {
 		rows[index] = map[string]any{
@@ -98,8 +102,15 @@ func TestGetStockPaginatesBalanceRows(t *testing.T) {
 			"КоличествоBalance":      json.Number("1"),
 		}
 	}
-	stock, err := (Service{OData: stockReader{balances: rows}}).GetStock(context.Background(), stockTestProduct, "", "")
-	if err != nil || stock.Total != "101" || len(stock.Balances) != 101 {
+	stock, err := (Service{OData: stockReader{balances: rows, wantPeriod: "2026-11-01T00:00:00"}}).GetStock(context.Background(), stockTestProduct, "", "", "2026-10-31")
+	if err != nil || stock.AsOf != "2026-10-31" || stock.Total != "101" || len(stock.Balances) != 101 {
 		t.Fatalf("paged stock: %+v, %v", stock, err)
+	}
+}
+
+func TestGetStockRejectsInvalidDateBeforeReading(t *testing.T) {
+	_, err := (Service{}).GetStock(context.Background(), stockTestProduct, "", "", "2026-02-30")
+	if err == nil || err.Error() != "as-of date must be YYYY-MM-DD" {
+		t.Fatalf("invalid date error = %v", err)
 	}
 }

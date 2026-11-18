@@ -49,12 +49,20 @@ func (c *Client) Get(ctx context.Context, resource string, params url.Values, ma
 	return c.get(ctx, resource, params, maxBytes)
 }
 
-func (c *Client) GetStockBalance(ctx context.Context, productID string, params url.Values, maxBytes int64) ([]byte, error) {
+func (c *Client) GetStockBalance(ctx context.Context, productID, period string, params url.Values, maxBytes int64) ([]byte, error) {
 	if !guidPattern.MatchString(productID) {
 		return nil, errors.New("product ID must be a GUID")
 	}
 	plan := config.WarehouseStock
-	resource := plan.Name + "/Balance(Condition='" + plan.ProductField + " eq guid''" + strings.ToLower(productID) + "''')"
+	resource, err := RegisterTableResource(config.RegisterQuery{Register: plan.Name, Table: "Balance", Period: period})
+	if err != nil {
+		return nil, err
+	}
+	separator := ""
+	if period != "" {
+		separator = ","
+	}
+	resource = strings.TrimSuffix(resource, ")") + separator + "Condition='" + plan.ProductField + " eq guid''" + strings.ToLower(productID) + "''')"
 	return c.get(ctx, resource, params, maxBytes)
 }
 

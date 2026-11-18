@@ -9,6 +9,7 @@ import (
 	"io"
 	"text/tabwriter"
 
+	"github.com/madebycube/1C-Fresh-MCP/internal/operations"
 	"github.com/madebycube/1C-Fresh-MCP/internal/service"
 )
 
@@ -39,15 +40,16 @@ func runWarehouseList(ctx context.Context, svc service.Service, args []string, o
 }
 
 func runStockGet(ctx context.Context, svc service.Service, args []string, out io.Writer) error {
-	flags := flag.NewFlagSet("get stock", flag.ContinueOnError)
+	flags := flag.NewFlagSet(operations.GetStock.Command, flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	warehouseID := flags.String("warehouse", "", "optional warehouse GUID")
 	characteristicID := flags.String("characteristic", "", "optional product characteristic GUID")
+	asOf := flags.String("as-of", "", "end-of-day balance date (YYYY-MM-DD)")
 	asJSON := flags.Bool("json", false, "print JSON")
 	if err := parseFlags(flags, args); err != nil || flags.NArg() != 1 {
-		return errors.New("usage: 1c get stock PRODUCT_GUID [--warehouse GUID] [--characteristic GUID] [--json]")
+		return errors.New("usage: " + operations.GetStock.Usage)
 	}
-	stock, err := svc.GetStock(ctx, flags.Arg(0), *warehouseID, *characteristicID)
+	stock, err := svc.GetStock(ctx, flags.Arg(0), *warehouseID, *characteristicID, *asOf)
 	if err != nil {
 		return err
 	}
@@ -56,6 +58,11 @@ func runStockGet(ctx context.Context, svc service.Service, args []string, out io
 	}
 	if _, err := fmt.Fprintf(out, "%s (%s)\n", flat(stock.ProductName), stock.ProductID); err != nil {
 		return err
+	}
+	if stock.AsOf != "" {
+		if _, err := fmt.Fprintf(out, "As of %s (end of day)\n", stock.AsOf); err != nil {
+			return err
+		}
 	}
 	unit := stock.UnitName
 	if unit == "" {
