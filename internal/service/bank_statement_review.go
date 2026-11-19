@@ -12,20 +12,30 @@ import (
 )
 
 type BankStatementCandidate struct {
-	ID        string `json:"id"`
-	Number    string `json:"number"`
-	Operation string `json:"operation"`
-	Posted    bool   `json:"posted"`
-	PartnerID string `json:"counterparty_id,omitempty"`
-	BasisID   string `json:"basis_id,omitempty"`
-	BasisType string `json:"basis_type,omitempty"`
+	ID                string `json:"id"`
+	Number            string `json:"number"`
+	Operation         string `json:"operation"`
+	Posted            bool   `json:"posted"`
+	PartnerID         string `json:"counterparty_id,omitempty"`
+	BasisID           string `json:"basis_id,omitempty"`
+	BasisType         string `json:"basis_type,omitempty"`
+	CounterpartyMatch string `json:"counterparty_match"`
 }
 
 type BankStatementReviewRow struct {
-	EntryID        string                   `json:"entry_id"`
-	Status         string                   `json:"status"`
-	CandidateCount int                      `json:"candidate_count"`
-	Candidates     []BankStatementCandidate `json:"candidates"`
+	EntryID               string                   `json:"entry_id"`
+	Status                string                   `json:"status"`
+	CandidateCount        int                      `json:"candidate_count"`
+	SuggestedDocumentID   string                   `json:"suggested_document_id,omitempty"`
+	CounterpartyConflicts int                      `json:"counterparty_conflicts,omitempty"`
+	Candidates            []BankStatementCandidate `json:"candidates"`
+}
+
+type statementCandidateGroup struct {
+	entries      int
+	entryINNs    map[string]int
+	documents    []BankStatementCandidate
+	documentINNs map[string][]BankStatementCandidate
 }
 
 type BankStatementReview struct {
@@ -62,12 +72,17 @@ func (s Service) ReviewBankStatement(ctx context.Context, input io.Reader, scope
 		kind, date string
 		amount     Decimal
 	}
-	index := map[key][]BankStatementCandidate{}
-	expected := map[key]int{}
+	groups := map[key]*statementCandidateGroup{}
 	kinds := map[string]bool{}
 	for _, entry := range statement.Entries {
 		kinds[entry.Kind] = true
-		expected[key{entry.Kind, entry.BookedDate, entry.Amount}]++
+		match := key{entry.Kind, entry.BookedDate, entry.Amount}
+		if groups[match] == nil {
+			groups[match] = &statementCandidateGroup{entryINNs: map[string]int{}}
+		}
+		group := groups[match]
+		group.entries++
+		group.entryINNs[statementINN(entry.CounterpartyINN)]++
 	}
 	start, end, _ := documentDateRange(scope.From, scope.To) // The parser has validated the scope.
 	for _, kind := range []string{"bank-in", "bank-out"} {
@@ -104,38 +119,108 @@ func (s Service) ReviewBankStatement(ctx context.Context, input io.Reader, scope
 				return BankStatementReview{}, errors.New("invalid amount on a scoped 1C bank document")
 			}
 			match := key{kind, date, ratDecimal(amount, 2)}
-			if expected[match] > 0 {
-				index[match] = append(index[match], BankStatementCandidate{
+			if group := groups[match]; group != nil {
+				group.documents = append(group.documents, BankStatementCandidate{
 					ID: document.ID, Number: document.Number, Operation: document.Operation, Posted: document.Posted,
 					PartnerID: document.CounterpartyID, BasisID: document.BasisID, BasisType: document.BasisType,
 				})
 			}
 		}
 	}
-	for match := range index {
-		sort.Slice(index[match], func(i, j int) bool { return index[match][i].ID < index[match][j].ID })
-	}
 	result := BankStatementReview{
 		Statement: statement, AccountID: strings.ToLower(accountID),
 		Rows: make([]BankStatementReviewRow, 0, len(statement.Entries)), Counts: map[string]int{},
 	}
+	partnerINNs := map[string]string{}
 	for _, entry := range statement.Entries {
-		match := key{entry.Kind, entry.BookedDate, entry.Amount}
-		candidates := index[match]
-		status := "candidate"
-		switch {
-		case len(candidates) == 0:
-			status = "no_candidate"
-		case len(candidates) > 1 || expected[match] > 1:
-			status = "ambiguous"
+		group := groups[key{entry.Kind, entry.BookedDate, entry.Amount}]
+		if group.documentINNs == nil {
+			if err := s.indexStatementCounterparties(ctx, group, partnerINNs); err != nil {
+				return BankStatementReview{}, err
+			}
 		}
-		result.Rows = append(result.Rows, BankStatementReviewRow{
-			EntryID: entry.ID, Status: status, CandidateCount: len(candidates),
-			Candidates: append([]BankStatementCandidate{}, candidates[:min(len(candidates), 10)]...),
-		})
-		result.Counts[status]++
+		row := group.review(entry)
+		result.Rows = append(result.Rows, row)
+		result.Counts[row.Status]++
 	}
 	return result, nil
+}
+
+func (s Service) indexStatementCounterparties(ctx context.Context, group *statementCandidateGroup, cache map[string]string) error {
+	const maxCounterparties = 100
+	group.documentINNs = map[string][]BankStatementCandidate{}
+	sort.Slice(group.documents, func(i, j int) bool { return group.documents[i].ID < group.documents[j].ID })
+	for _, candidate := range group.documents {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		inn := ""
+		if group.entryINNs[""] < group.entries && linkedGUID(candidate.PartnerID) {
+			id := strings.ToLower(candidate.PartnerID)
+			if value, ok := cache[id]; ok {
+				inn = value
+			} else if len(cache) < maxCounterparties {
+				inn = s.statementCounterpartyINN(ctx, id)
+				cache[id] = inn
+			}
+		}
+		group.documentINNs[inn] = append(group.documentINNs[inn], candidate)
+	}
+	return ctx.Err()
+}
+
+func (g statementCandidateGroup) review(entry BankStatementEntry) BankStatementReviewRow {
+	const limit = 10
+	row := BankStatementReviewRow{EntryID: entry.ID, Status: "no_candidate", Candidates: []BankStatementCandidate{}}
+	inn := statementINN(entry.CounterpartyINN)
+	unverified := g.documents
+	var sameINN []BankStatementCandidate
+	sourceRows := g.entries
+	if inn != "" {
+		sameINN, unverified = g.documentINNs[inn], g.documentINNs[""]
+		row.CounterpartyConflicts = len(g.documents) - len(sameINN) - len(unverified)
+		if len(unverified) == 0 {
+			sourceRows = g.entryINNs[inn] + g.entryINNs[""]
+		}
+	}
+	row.CandidateCount = len(sameINN) + len(unverified)
+	switch {
+	case row.CandidateCount == 0 && row.CounterpartyConflicts > 0:
+		row.Status = "counterparty_conflict"
+	case row.CandidateCount == 0:
+	case row.CandidateCount > 1 || sourceRows > 1:
+		row.Status = "ambiguous"
+	default:
+		row.Status = "candidate"
+		if len(sameINN) == 1 {
+			row.SuggestedDocumentID = sameINN[0].ID
+		}
+	}
+	for _, candidate := range sameINN[:min(limit, len(sameINN))] {
+		candidate.CounterpartyMatch = "matched"
+		row.Candidates = append(row.Candidates, candidate)
+	}
+	for _, candidate := range unverified[:min(limit-len(row.Candidates), len(unverified))] {
+		candidate.CounterpartyMatch = "unverified"
+		row.Candidates = append(row.Candidates, candidate)
+	}
+	return row
+}
+
+func statementINN(value string) string {
+	value = strings.TrimSpace(value)
+	if len(value) != 10 && len(value) != 12 || strings.Trim(value, "0123456789") != "" || strings.Trim(value, "0") == "" {
+		return ""
+	}
+	return value
+}
+
+func (s Service) statementCounterpartyINN(ctx context.Context, id string) string {
+	partner, err := s.activeRecord(ctx, config.Customers.Name, id, "Ref_Key,DeletionMark,IsFolder,Недействителен,ИНН")
+	if err != nil || string(partner["IsFolder"]) != "false" || string(partner["Недействителен"]) != "false" {
+		return ""
+	}
+	return statementINN(rawString(partner["ИНН"]))
 }
 
 type BankStatementPostingRequest struct {
@@ -265,9 +350,8 @@ func (s Service) validateStatementCounterparty(ctx context.Context, document Mon
 	if err != nil || rawString(currency["Code"]) != receiptBaseCurrency {
 		return errors.New("statement posting requires a ruble bank document")
 	}
-	partner, err := s.activeRecord(ctx, config.Customers.Name, document.CounterpartyID, "Ref_Key,DeletionMark,IsFolder,Недействителен,ИНН")
-	if err != nil || string(partner["IsFolder"]) != "false" || string(partner["Недействителен"]) != "false" ||
-		entry.CounterpartyINN == "" || entry.CounterpartyINN != rawString(partner["ИНН"]) {
+	inn := statementINN(entry.CounterpartyINN)
+	if inn == "" || inn != s.statementCounterpartyINN(ctx, document.CounterpartyID) {
 		return errors.New("the active counterparty INN must match the statement")
 	}
 	return nil

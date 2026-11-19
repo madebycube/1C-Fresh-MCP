@@ -86,7 +86,11 @@ func printBankStatement(out io.Writer, statement service.BankStatement, rows []s
 	for index, entry := range statement.Entries {
 		status := ""
 		if rows != nil {
-			status = fmt.Sprintf(" %s (%d)", rows[index].Status, rows[index].CandidateCount)
+			row := rows[index]
+			status = fmt.Sprintf(" %s (%d)", row.Status, row.CandidateCount)
+			if row.CounterpartyConflicts > 0 {
+				status += fmt.Sprintf(" | counterparty conflicts: %d", row.CounterpartyConflicts)
+			}
 		}
 		if _, err := fmt.Fprintf(out, "%s %s %s %s [%s]%s\n", entry.BookedDate, entry.Kind, entry.Amount, flat(entry.Number), entry.ID, status); err != nil {
 			return err
@@ -95,7 +99,7 @@ func printBankStatement(out io.Writer, statement service.BankStatement, rows []s
 			continue
 		}
 		for _, candidate := range rows[index].Candidates {
-			if _, err := fmt.Fprintf(out, "  %s %s %s posted=%t\n", candidate.ID, flat(candidate.Number), flat(candidate.Operation), candidate.Posted); err != nil {
+			if _, err := fmt.Fprintf(out, "  %s %s %s posted=%t counterparty=%s\n", candidate.ID, flat(candidate.Number), flat(candidate.Operation), candidate.Posted, candidate.CounterpartyMatch); err != nil {
 				return err
 			}
 		}

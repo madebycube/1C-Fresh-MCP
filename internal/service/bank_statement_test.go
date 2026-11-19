@@ -177,6 +177,48 @@ func TestReviewBankStatementReportsCandidatesAndAmbiguity(t *testing.T) {
 	}
 }
 
+func TestReviewBankStatementDistinguishesSameAmountByCounterparty(t *testing.T) {
+	const otherINN = "7700000002"
+	fake := newStatementWriter()
+	other := map[string]any{}
+	for key, value := range fake.rows[statementBankExpense][0] {
+		other[key] = value
+	}
+	other["Ref_Key"], other["Контрагент_Key"] = salesID(51), salesID(59)
+	fake.rows[statementBankExpense] = append(fake.rows[statementBankExpense], other)
+	fake.rows["Catalog_Контрагенты"] = append(fake.rows["Catalog_Контрагенты"], map[string]any{
+		"Ref_Key": salesID(59), "ИНН": otherINN, "IsFolder": false, "DeletionMark": false, "Недействителен": false,
+	})
+	header := strings.NewReplacer("ВсегоСписано=40.10", "ВсегоСписано=80.20", "КонечныйОстаток=60.10", "КонечныйОстаток=20.00").Replace(statementHeader)
+	payment := strings.NewReplacer("Номер=42", "Номер=43", statementPeerINN, otherINN).Replace(statementPayment)
+	input := header + statementPayment + payment + "КонецФайла"
+	review, err := (Service{OData: fake}).ReviewBankStatement(context.Background(), strings.NewReader(input), statementScope, salesID(9))
+	if err != nil || len(review.Rows) != 2 {
+		t.Fatalf("review = %+v, err = %v", review, err)
+	}
+	for index, row := range review.Rows {
+		if row.Status != "candidate" || row.CandidateCount != 1 || row.CounterpartyConflicts != 1 ||
+			row.SuggestedDocumentID != salesID(50+index) || row.Candidates[0].ID != salesID(50+index) ||
+			row.Candidates[0].CounterpartyMatch != "matched" {
+			t.Fatalf("row = %+v", row)
+		}
+	}
+
+	fake.rows["Catalog_Контрагенты"] = fake.rows["Catalog_Контрагенты"][:1]
+	review, err = (Service{OData: fake}).ReviewBankStatement(context.Background(), strings.NewReader(input), statementScope, salesID(9))
+	if err != nil || len(review.Rows) != 2 || review.Rows[0].Status != "ambiguous" || review.Rows[1].Status != "ambiguous" ||
+		len(review.Rows[0].Candidates) != 2 || review.Rows[0].Candidates[1].CounterpartyMatch != "unverified" {
+		t.Fatalf("review with unreadable counterparty = %+v, err = %v", review, err)
+	}
+
+	fake.rows[statementBankExpense] = fake.rows[statementBankExpense][:1]
+	review, err = (Service{OData: fake}).ReviewBankStatement(context.Background(), strings.NewReader(input), statementScope, salesID(9))
+	if err != nil || len(review.Rows) != 2 || review.Rows[1].Status != "counterparty_conflict" ||
+		review.Rows[1].CandidateCount != 0 || review.Rows[1].CounterpartyConflicts != 1 {
+		t.Fatalf("review with conflicting counterparty = %+v, err = %v", review, err)
+	}
+}
+
 type statementReviewReader struct {
 	*statementWriter
 	rejectFilter bool
