@@ -1,6 +1,7 @@
 package mcpserver
 
 import (
+	"bytes"
 	"context"
 
 	"github.com/madebycube/1C-Fresh-MCP/internal/operations"
@@ -846,6 +847,30 @@ type auditUnpostedInput struct {
 	Before string `json:"before" jsonschema:"Exclusive application date cutoff, YYYY-MM-DD; range at most 31 days"`
 }
 
+type bankStatementFileInput struct {
+	Statement []byte `json:"statement" jsonschema:"Base64-encoded 1CClientBankExchange file (up to 8 MiB decoded)"`
+	Number    string `json:"account_number" jsonschema:"Expected 20-digit account number"`
+	From      string `json:"from" jsonschema:"First statement day, YYYY-MM-DD"`
+	To        string `json:"to" jsonschema:"Last statement day, YYYY-MM-DD"`
+}
+
+func (input bankStatementFileInput) scope() service.BankStatementScope {
+	return service.BankStatementScope{AccountNumber: input.Number, From: input.From, To: input.To}
+}
+
+type reviewBankStatementInput struct {
+	bankStatementFileInput
+	Account string `json:"account_id" jsonschema:"Organization bank account GUID in 1C"`
+}
+
+type postBankStatementInput struct {
+	reviewBankStatementInput
+	EntryID  string `json:"entry_id" jsonschema:"Statement entry ID from the review"`
+	Document string `json:"document_id" jsonschema:"The reviewed 1C bank document GUID"`
+	Version  string `json:"expect_version,omitempty" jsonschema:"Data version from the preview; required to post a draft"`
+	Apply    bool   `json:"apply,omitempty" jsonschema:"Post the verified draft; default is preview"`
+}
+
 func New(svc service.Service) *mcp.Server {
 	server := mcp.NewServer(&mcp.Implementation{Name: "1c-fresh", Version: "0.1.0"}, nil)
 	additive := false
@@ -1010,6 +1035,33 @@ func New(svc service.Service) *mcp.Server {
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, input listProductUnitsInput) (*mcp.CallToolResult, service.ProductUnits, error) {
 		units, err := svc.ListProductUnits(ctx, input.ProductID)
 		return nil, units, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.CheckBankStatement.Tool, Description: operations.CheckBankStatement.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(_ context.Context, _ *mcp.CallToolRequest, input bankStatementFileInput) (*mcp.CallToolResult, service.BankStatement, error) {
+		statement, err := service.ParseBankStatement(bytes.NewReader(input.Statement), input.scope())
+		return nil, statement, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.ReviewBankStatement.Tool, Description: operations.ReviewBankStatement.Description,
+		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input reviewBankStatementInput) (*mcp.CallToolResult, service.BankStatementReview, error) {
+		review, err := svc.ReviewBankStatement(ctx, bytes.NewReader(input.Statement), input.scope(), input.Account)
+		return nil, review, err
+	})
+	mcp.AddTool(server, &mcp.Tool{
+		Name: operations.PostBankStatementPayment.Tool, Description: operations.PostBankStatementPayment.Description,
+		Annotations: &mcp.ToolAnnotations{IdempotentHint: true},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, input postBankStatementInput) (*mcp.CallToolResult, service.BankStatementPosting, error) {
+		posting, err := svc.PostBankStatementPayment(ctx, bytes.NewReader(input.Statement), service.BankStatementPostingRequest{
+			BankStatementScope: input.scope(), AccountID: input.Account, EntryID: input.EntryID, DocumentID: input.Document,
+			ExpectedDataVersion: input.Version, Apply: input.Apply,
+		})
+		if err == nil && posting.Error != "" {
+			return &mcp.CallToolResult{IsError: true, Content: []mcp.Content{&mcp.TextContent{Text: posting.Status + ": " + posting.Error}}}, posting, nil
+		}
+		return nil, posting, err
 	})
 	mcp.AddTool(server, &mcp.Tool{
 		Name: operations.UpdatePayment.Tool, Description: operations.UpdatePayment.Description,

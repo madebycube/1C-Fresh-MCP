@@ -430,6 +430,30 @@ var UnpostReceipt = Spec{
 	Example:     "1c unpost receipt RECEIPT_GUID --apply",
 }
 
+var CheckBankStatement = Spec{
+	Command:     "check bank-statement",
+	Tool:        "check_bank_statement",
+	Description: "Validate one bank statement file for the expected account and period, checking amounts and duplicates.",
+	Usage:       "1c check bank-statement --file PATH --number ACCOUNT_NUMBER --from YYYY-MM-DD --to YYYY-MM-DD [--json]",
+	Example:     "1c check bank-statement --file statement.txt --number ACCOUNT_NUMBER --from 2026-11-18 --to 2026-11-18",
+}
+
+var ReviewBankStatement = Spec{
+	Command:     "review bank-statement",
+	Tool:        "review_bank_statement",
+	Description: "Check a bank statement against existing 1C bank documents and report unmatched and ambiguous entries.",
+	Usage:       "1c review bank-statement --file PATH --number ACCOUNT_NUMBER --account GUID --from YYYY-MM-DD --to YYYY-MM-DD [--json]",
+	Example:     "1c review bank-statement --file statement.txt --number ACCOUNT_NUMBER --account ACCOUNT_GUID --from 2026-11-18 --to 2026-11-18 --json",
+}
+
+var PostBankStatementPayment = Spec{
+	Command:     "post bank-payment",
+	Tool:        "post_bank_statement_payment",
+	Description: "Preview or post a reviewed 1C bank payment against one statement entry and check its cash register movements.",
+	Usage:       "1c post bank-payment --file PATH --number ACCOUNT_NUMBER --account GUID --from YYYY-MM-DD --to YYYY-MM-DD --entry ENTRY_ID --document GUID [--expect-version DATA_VERSION --apply] [--journal PATH.jsonl] [--json]",
+	Example:     "1c post bank-payment --file statement.txt --number ACCOUNT_NUMBER --account ACCOUNT_GUID --from 2026-11-18 --to 2026-11-18 --entry ENTRY_ID --document DOCUMENT_GUID --json",
+}
+
 var ListMoneyAccounts = Spec{
 	Command:     "list accounts",
 	Tool:        "list_money_accounts",
@@ -791,7 +815,7 @@ var Topics = []Topic{
 	{Name: "partners", Description: "Customer and supplier records and folders", Commands: []Spec{ListCounterpartyGroups, CreateCounterpartyGroup, UpdateCounterpartyGroup, ListCustomers, SearchCustomers, GetCustomer, CreateCustomer, UpdateCustomer, ListSuppliers, SearchSuppliers, GetSupplier, CreateSupplier, UpdateSupplier}},
 	{Name: "sales", Description: "Customer orders and sales documents", Commands: []Spec{ListOrders, GetOrder, GetOrderPayments, ListSales, GetSale, ReportSales}},
 	{Name: "purchases", Description: "Supplier orders, goods receipts, and payment plans", Commands: []Spec{ListPurchases, GetPurchase, GetSupplierOrder, CreateSupplierOrder, UpdateSupplierOrder, PostSupplierOrder, UnpostSupplierOrder, CreateReceiptFromOrder, LinkReceiptToOrder, PreviewReceipts, CreateReceipt, UpdateReceipt, PostReceipt, UnpostReceipt, ListLinkProperties, GetReceiptLink, SetReceiptLink, ListPaymentPlans, GetPaymentPlan, CreatePaymentPlan, CreatePrepaymentPlan, UpdatePaymentPlan, PostPaymentPlan, UnpostPaymentPlan, TraceReceiptPayments, ReconcileSupplier}},
-	{Name: "money", Description: "Accounts, cash, bank, and card movements", Commands: []Spec{ListMoneyAccounts, ListMoney, GetMoney, ListCashBalances, ReportCashFlow, ListDebts, UpdatePayment}},
+	{Name: "money", Description: "Accounts, cash, bank, and card movements", Commands: []Spec{ListMoneyAccounts, ListMoney, GetMoney, ListCashBalances, ReportCashFlow, ListDebts, UpdatePayment, CheckBankStatement, ReviewBankStatement, PostBankStatementPayment}},
 	{Name: "advances", Description: "Advance reports and accountable funds", Commands: []Spec{ListAdvanceReports, GetAdvanceReport, GetAccountableBalance, CreateAdvanceReport, UpdateAdvanceReport, PostAdvanceReport, UnpostAdvanceReport}},
 	{Name: "receipts", Description: "Fiscal receipts and posting audit", Commands: []Spec{ListReceipts, GetReceipt, AuditUnpostedReceipts}},
 	{Name: "records", Description: "Document register movements and deletion marks", Commands: []Spec{GetMovements, SetDeletionMark}},

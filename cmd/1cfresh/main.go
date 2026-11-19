@@ -61,6 +61,9 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 	if command == "login" {
 		return runLogin(ctx, commandArgs, out)
 	}
+	if command == operations.CheckBankStatement.Command {
+		return runBankStatement(ctx, service.Service{}, operations.CheckBankStatement, commandArgs, out)
+	}
 	cfg, err := config.Load()
 	if err != nil {
 		return err
@@ -297,6 +300,10 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		return runPriceSet(ctx, svc, commandArgs, out)
 	case operations.CreateTransfer.Command:
 		return runTransferCreate(ctx, svc, commandArgs, out)
+	case operations.ReviewBankStatement.Command:
+		return runBankStatement(ctx, svc, operations.ReviewBankStatement, commandArgs, out)
+	case operations.PostBankStatementPayment.Command:
+		return runBankStatement(ctx, svc, operations.PostBankStatementPayment, commandArgs, out)
 	case operations.ListMoneyAccounts.Command:
 		return runMoneyAccountList(ctx, svc, commandArgs, out)
 	case operations.ListMoney.Command:
@@ -328,7 +335,8 @@ func parseCommand(args []string) (string, []string) {
 	}
 	command := args[0]
 	remaining := args[1:]
-	if command != "check" && command != "mcp" && command != "login" {
+	twoWordCheck := command == "check" && len(remaining) > 0 && remaining[0] == "bank-statement"
+	if twoWordCheck || command != "check" && command != "mcp" && command != "login" {
 		if len(args) < 2 {
 			return "", nil
 		}

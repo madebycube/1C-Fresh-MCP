@@ -167,42 +167,50 @@ func (s Service) ListMoneyDocuments(ctx context.Context, kind, from, to, account
 }
 
 func (s Service) GetMoneyDocument(ctx context.Context, kind, id string) (MoneyDocument, error) {
+	doc, _, err := s.readMoneyDocument(ctx, kind, id, "")
+	return doc, err
+}
+
+func (s Service) readMoneyDocument(ctx context.Context, kind, id, extraFields string) (MoneyDocument, map[string]json.RawMessage, error) {
 	plan, ok := config.MoneyDocuments[kind]
 	if !ok {
-		return MoneyDocument{}, errors.New("kind must be cash-in, cash-out, bank-in, bank-out, card-payment, or cash-shift")
+		return MoneyDocument{}, nil, errors.New("kind must be cash-in, cash-out, bank-in, bank-out, card-payment, or cash-shift")
 	}
 	if !guidPattern.MatchString(id) {
-		return MoneyDocument{}, errors.New("document ID must be a GUID")
+		return MoneyDocument{}, nil, errors.New("document ID must be a GUID")
 	}
 	resource := plan.Name + "(guid'" + strings.ToLower(id) + "')"
 	fields := sourceFields(plan.Fields)
+	if extraFields != "" {
+		fields += "," + extraFields
+	}
 	if plan.LinesField != "" {
 		fields += ",Комментарий," + plan.LinesField
 	}
 	params := url.Values{"$format": {"json"}, "$select": {fields}}
 	data, err := s.OData.Get(ctx, resource, params, 8<<20)
 	if err != nil {
-		return MoneyDocument{}, err
+		return MoneyDocument{}, nil, err
 	}
 	var row map[string]json.RawMessage
 	if err := json.Unmarshal(data, &row); err != nil || row == nil {
-		return MoneyDocument{}, errors.New("invalid OData money document response")
+		return MoneyDocument{}, nil, errors.New("invalid OData money document response")
 	}
 	doc, err := moneyDocument(row, plan, kind)
 	if err != nil || !strings.EqualFold(doc.ID, id) {
-		return MoneyDocument{}, errors.New("invalid OData money document")
+		return MoneyDocument{}, nil, errors.New("invalid OData money document")
 	}
 	if !moneyOperationAllowed(doc) {
-		return MoneyDocument{}, errors.New("document operation is outside the money read scope")
+		return MoneyDocument{}, nil, errors.New("document operation is outside the money read scope")
 	}
 	if plan.LinesField == "" {
-		return doc, nil
+		return doc, row, nil
 	}
 	doc.Comment = rawString(row["Комментарий"])
 	if doc.Allocations, err = s.moneyAllocations(ctx, row[plan.LinesField], plan.LineFields); err != nil {
-		return MoneyDocument{}, err
+		return MoneyDocument{}, nil, err
 	}
-	return doc, nil
+	return doc, row, nil
 }
 
 func (s Service) moneyAllocations(ctx context.Context, raw json.RawMessage, bindings []config.FieldBinding) ([]MoneyAllocation, error) {
