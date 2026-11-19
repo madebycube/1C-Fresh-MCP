@@ -18,6 +18,10 @@ const documentScanPageSize = 100
 const maxDocumentScan = 20000
 
 func (s Service) allDocumentRows(ctx context.Context, plan config.DocumentResource) ([]map[string]json.RawMessage, error) {
+	return s.scanDocumentRows(ctx, plan, "")
+}
+
+func (s Service) scanDocumentRows(ctx context.Context, plan config.DocumentResource, filter string) ([]map[string]json.RawMessage, error) {
 	fields := sourceFields(plan.Fields)
 	if !strings.Contains(","+fields+",", ","+plan.DeletedField+",") {
 		fields += "," + plan.DeletedField
@@ -25,6 +29,9 @@ func (s Service) allDocumentRows(ctx context.Context, plan config.DocumentResour
 	countParams := url.Values{
 		"$format": {"json"}, "$inlinecount": {"allpages"},
 		"$select": {"Ref_Key"}, "$top": {"1"},
+	}
+	if filter != "" {
+		countParams.Set("$filter", filter)
 	}
 	countData, err := s.OData.Get(ctx, plan.Name, countParams, 1<<20)
 	if err != nil {
@@ -52,6 +59,9 @@ func (s Service) allDocumentRows(ctx context.Context, plan config.DocumentResour
 			params := url.Values{
 				"$format": {"json"}, "$select": {fields},
 				"$orderby": {"Ref_Key asc"}, "$skip": {strconv.Itoa(offset)}, "$top": {strconv.Itoa(limit)},
+			}
+			if filter != "" {
+				params.Set("$filter", filter)
 			}
 			data, err := s.OData.Get(requestContext, plan.Name, params, 4<<20)
 			if err != nil {

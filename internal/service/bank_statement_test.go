@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -173,6 +174,41 @@ func TestReviewBankStatementReportsCandidatesAndAmbiguity(t *testing.T) {
 	}
 	if report.Rows[0].Candidates[1].ID != salesID(51) {
 		t.Fatalf("candidates = %+v", report.Rows[0].Candidates)
+	}
+}
+
+type statementReviewReader struct {
+	*statementWriter
+	rejectFilter bool
+	filters      []string
+}
+
+func (r *statementReviewReader) Get(ctx context.Context, resource string, args url.Values, limit int64) ([]byte, error) {
+	if resource == statementBankExpense {
+		filter := args.Get("$filter")
+		r.filters = append(r.filters, filter)
+		if r.rejectFilter && filter != "" {
+			return nil, errors.New("OData returned HTTP 500")
+		}
+	}
+	return r.statementWriter.Get(ctx, resource, args, limit)
+}
+
+func TestReviewBankStatementUsesDateFilterWithBoundedFallback(t *testing.T) {
+	const want = "Date ge datetime'2026-11-18T00:00:00' and Date lt datetime'2026-11-19T00:00:00'"
+	for _, rejects := range []bool{false, true} {
+		fake := &statementReviewReader{statementWriter: newStatementWriter(), rejectFilter: rejects}
+		review, err := (Service{OData: fake}).ReviewBankStatement(context.Background(), strings.NewReader(statementContents), statementScope, salesID(9))
+		if err != nil || review.Counts["candidate"] != 1 {
+			t.Fatalf("review = %+v, err = %v", review, err)
+		}
+		expected := []string{want, want}
+		if rejects {
+			expected = []string{want, "", ""}
+		}
+		if strings.Join(fake.filters, "|") != strings.Join(expected, "|") {
+			t.Fatalf("filters = %q; want %q", fake.filters, expected)
+		}
 	}
 }
 

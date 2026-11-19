@@ -69,12 +69,18 @@ func (s Service) ReviewBankStatement(ctx context.Context, input io.Reader, scope
 		kinds[entry.Kind] = true
 		expected[key{entry.Kind, entry.BookedDate, entry.Amount}]++
 	}
+	start, end, _ := documentDateRange(scope.From, scope.To) // The parser has validated the scope.
 	for _, kind := range []string{"bank-in", "bank-out"} {
 		if !kinds[kind] {
 			continue
 		}
 		plan := config.MoneyDocuments[kind]
-		rows, err := s.allDocumentRows(ctx, plan)
+		filter := "Date ge datetime'" + start + "' and Date lt datetime'" + end + "'"
+		rows, err := s.scanDocumentRows(ctx, plan, filter)
+		if err != nil && (err.Error() == "OData returned HTTP 400" || err.Error() == "OData returned HTTP 500") {
+			// Some 1C publications reject OData filters. The existing bounded scan still checks the period locally.
+			rows, err = s.allDocumentRows(ctx, plan)
+		}
 		if err != nil {
 			return BankStatementReview{}, fmt.Errorf("scan %s documents: %w", kind, err)
 		}
